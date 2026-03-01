@@ -52,11 +52,11 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                 if text:
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
-                    logger.warning("context script %s exited %d", script, proc.returncode)
+                    logger.warning("context script {} exited {}", script, proc.returncode)
             except asyncio.TimeoutError:
-                logger.warning("context script %s timed out after %ds", script, timeout)
+                logger.warning("context script {} timed out after {}s", script, timeout)
             except Exception as exc:
-                logger.warning("context script %s failed: %s", script, exc)
+                logger.warning("context script {} failed: {}", script, exc)
     return blocks
 
 
@@ -88,13 +88,13 @@ async def heartbeat(
     interval = cfg.heartbeat_interval
     timeout = cfg.heartbeat_timeout
 
-    logger.info("[%s] started (interval=%ds, timeout=%ds)", name, interval, timeout)
+    logger.info("[{}] started (interval={}s, timeout={}s)", name, interval, timeout)
 
     while True:
         try:
             await _tick(cfg, core_dir, rules, dry_run=dry_run)
         except Exception:
-            logger.exception("[%s] tick failed", name)
+            logger.exception("[{}] tick failed", name)
 
         if once:
             return
@@ -139,9 +139,9 @@ async def _tick(
     )
 
     if result.get("timed_out"):
-        logger.warning("[%s] timed out after %ds", name, cfg.heartbeat_timeout)
+        logger.warning("[{}] timed out after {}s", name, cfg.heartbeat_timeout)
     rc = result.get("returncode")
     if isinstance(rc, int) and rc != 0:
-        logger.warning("[%s] exited with code %d", name, rc)
+        logger.warning("[{}] exited with code {}", name, rc)
 
-    logger.debug("[%s] tick done (session=%s, duration=%s)", name, sid, result.get("duration"))
+    logger.debug("[{}] tick done (session={}, duration={})", name, sid, result.get("duration"))

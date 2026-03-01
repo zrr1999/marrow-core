@@ -39,7 +39,7 @@ async def run_agent(
         stderr_f = (log_dir / f"{session_id}.stderr.log").open("ab")
 
     try:
-        logger.info("exec: %s", cmd)
+        logger.info("exec: {}", " ".join(cmd))
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=stdout_f,

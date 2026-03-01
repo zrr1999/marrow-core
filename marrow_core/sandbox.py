@@ -16,10 +16,10 @@ def verify_workspace(workspace: str) -> bool:
     """Check that workspace exists and is writable."""
     p = Path(workspace)
     if not p.is_dir():
-        logger.error("workspace does not exist: %s", workspace)
+        logger.error("workspace does not exist: {}", workspace)
         return False
     if not os.access(p, os.W_OK):
-        logger.error("workspace is not writable: %s", workspace)
+        logger.error("workspace is not writable: {}", workspace)
         return False
     return True
 
@@ -53,7 +53,7 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
     ws_agents.mkdir(parents=True, exist_ok=True)
 
     if not core_agents.is_dir():
-        logger.warning("core agents dir not found: %s", core_agents)
+        logger.warning("core agents dir not found: {}", core_agents)
         return
 
     for src in sorted(core_agents.glob("*.md")):
@@ -67,10 +67,10 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
             # A real file exists — agent may have created it.
             # Back it up and replace with symlink.
             backup = dst.with_suffix(dst.suffix + ".agent-backup")
-            logger.warning("backing up agent-modified %s -> %s", dst, backup)
+            logger.warning("backing up agent-modified {} -> {}", dst, backup)
             dst.rename(backup)
         dst.symlink_to(src)
-        logger.info("symlinked %s -> %s", dst, src)
+        logger.info("symlinked {} -> {}", dst, src)
 
 
 def load_rules(core_dir: str) -> str:
