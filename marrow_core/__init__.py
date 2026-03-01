@@ -1,3 +1,3 @@
 """marrow-core: Minimal self-evolving agent scheduler."""
 
-__version__ = "0.1.0"
+from marrow_core._version import __version__, __version_tuple__
