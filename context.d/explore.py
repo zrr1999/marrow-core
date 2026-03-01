@@ -20,7 +20,7 @@ def main() -> None:
         if files:
             return  # queue.py handles this
 
-    print("No tasks queued. You may:")
+    print("No tasks queued. Autonomously perform housekeeping:")
     print("- Explore the workspace and check system health")
     print("- Review and organize runtime state")
     print("- Create or improve context scripts in context.d/")
