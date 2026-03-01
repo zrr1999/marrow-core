@@ -110,9 +110,10 @@ jobs:
 
       - name: Run scout agent once
         run: |
-          export MARROW_WORKSPACE=/tmp/marrow-test-workspace
           uv run marrow run-once --config /tmp/marrow-test.toml --verbose
         timeout-minutes: 15
+        env:
+          MARROW_WORKSPACE: /tmp/marrow-test-workspace
 
       - name: Verify execution logs
         run: |
@@ -154,3 +155,51 @@ jobs:
             /tmp/marrow-test-workspace/runtime/handoff/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "======================================"
+          echo "   macOS Integration Test Summary"
+          echo "======================================"
+          echo ""
+
+          # Check if logs exist
+          if [ -d "/tmp/marrow-test-workspace/runtime/logs/exec/" ] && [ -n "$(ls -A /tmp/marrow-test-workspace/runtime/logs/exec/)" ]; then
+            echo "✅ Agents executed successfully"
+            echo "   Logs found in runtime/logs/exec/"
+          else
+            echo "❌ No execution logs found"
+            echo "   Agents may not have run"
+          fi
+
+          # Check task processing
+          QUEUE_COUNT=$(find /tmp/marrow-test-workspace/tasks/queue/ -type f 2>/dev/null | wc -l)
+          DELEGATED_COUNT=$(find /tmp/marrow-test-workspace/tasks/delegated/ -type f 2>/dev/null | wc -l)
+          DONE_COUNT=$(find /tmp/marrow-test-workspace/tasks/done/ -type f 2>/dev/null | wc -l)
+
+          echo ""
+          echo "📋 Task Status:"
+          echo "   Queue: $QUEUE_COUNT tasks"
+          echo "   Delegated: $DELEGATED_COUNT tasks"
+          echo "   Done: $DONE_COUNT tasks"
+
+          # Check handoffs
+          HANDOFF_S2A=$(find /tmp/marrow-test-workspace/runtime/handoff/scout-to-artisan/ -type f 2>/dev/null | wc -l)
+          HANDOFF_A2S=$(find /tmp/marrow-test-workspace/runtime/handoff/artisan-to-scout/ -type f 2>/dev/null | wc -l)
+
+          echo ""
+          echo "🤝 Handoffs:"
+          echo "   Scout → Artisan: $HANDOFF_S2A"
+          echo "   Artisan → Scout: $HANDOFF_A2S"
+
+          # Check state files
+          STATE_COUNT=$(find /tmp/marrow-test-workspace/runtime/state/ -type f 2>/dev/null | wc -l)
+          echo ""
+          echo "💾 State Files: $STATE_COUNT"
+
+          echo ""
+          echo "======================================"
+          echo "Test artifacts uploaded for review"
+          echo "======================================"
+
