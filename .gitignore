@@ -5,3 +5,7 @@ runtime/
 dist/
 *.egg-info/
 .pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+marrow_core/_version.py

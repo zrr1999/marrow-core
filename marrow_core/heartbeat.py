@@ -55,7 +55,7 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
                     logger.warning("context script {} exited {}", script, proc.returncode)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("context script {} timed out after {}s", script, timeout)
             except Exception as exc:
                 logger.warning("context script {} failed: {}", script, exc)
