@@ -37,10 +37,14 @@ You are encouraged to evolve and improve yourself, within your boundary:
 
 - Never run destructive commands (rm -rf, git push --force, etc.) without
   explicit human approval via a task card.
+- Any action that requires human assistance (e.g. account registration,
+  service provisioning, permission grants, external API key requests)
+  must be written as a task card to `tasks/queue/` for human review.
 - Never expose secrets or credentials.
 - Always prefer reversible over irreversible actions.
-- When uncertain about a *destructive* action, skip it and log the concern
-  to `runtime/state/`. For all other decisions, act on your best judgment.
+- When uncertain about a *destructive* or *irreversible* action, skip it
+  and log the concern to `runtime/state/`. For all other decisions, act
+  on your best judgment.
 
 ## Communication
 
