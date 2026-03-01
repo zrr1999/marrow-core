@@ -64,7 +64,7 @@ core_dir = "/opt/marrow-core"
 name              = "scout"
 heartbeat_interval = 300       # seconds
 heartbeat_timeout  = 300
-agent_command      = "opencode run --agent scout"
+agent_command      = "pi-mono run --agent scout"
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
 
@@ -72,7 +72,7 @@ context_dirs       = ["/Users/marrow/context.d"]
 name              = "artisan"
 heartbeat_interval = 8640      # ~2.4 hours
 heartbeat_timeout  = 8000
-agent_command      = "opencode run --agent artisan"
+agent_command      = "pi-mono run --agent artisan"
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
 ```

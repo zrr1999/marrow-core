@@ -15,7 +15,7 @@ from marrow_core.config import AgentConfig, load_config
 def test_minimal_agent_config():
     cfg = AgentConfig(
         name="test",
-        agent_command="opencode run",
+        agent_command="pi-mono run",
         workspace="/tmp/test",
     )
     assert cfg.name == "test"
@@ -80,7 +80,7 @@ def test_load_config(tmp_path: Path):
 
         [[agents]]
         name = "scout"
-        agent_command = "opencode run --agent scout"
+        agent_command = "pi-mono run --agent scout"
         workspace = "/Users/marrow"
         context_dirs = ["/Users/marrow/context.d"]
     """)
