@@ -1,0 +1,24 @@
+# Test configuration for marrow-core with free models
+# This config uses github-copilot/gpt-4o-mini for testing
+
+core_dir = "/tmp/marrow-core-repo"
+
+[[agents]]
+name = "scout"
+heartbeat_interval = 300
+heartbeat_timeout = 500
+workspace = "/tmp/marrow-test-workspace"
+agent_command = "opencode run --agent scout --model github-copilot/gpt-4o-mini"
+context_dirs = [
+  "/tmp/marrow-test-workspace/context.d",
+]
+
+[[agents]]
+name = "artisan"
+heartbeat_interval = 8640
+heartbeat_timeout = 7200
+workspace = "/tmp/marrow-test-workspace"
+agent_command = "opencode run --agent artisan --model github-copilot/gpt-4o-mini"
+context_dirs = [
+  "/tmp/marrow-test-workspace/context.d",
+]

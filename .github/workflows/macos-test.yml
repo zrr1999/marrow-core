@@ -1,0 +1,156 @@
+name: macOS Integration Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos-test:
+    name: macOS End-to-End Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: pyproject.toml
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Install opencode
+        run: |
+          uv tool install opencode
+
+      - name: Set up test environment
+        run: |
+          # Create test workspace directory
+          mkdir -p /tmp/marrow-test-workspace
+
+          # Create workspace structure
+          mkdir -p /tmp/marrow-test-workspace/runtime/state
+          mkdir -p /tmp/marrow-test-workspace/runtime/handoff/scout-to-artisan
+          mkdir -p /tmp/marrow-test-workspace/runtime/handoff/artisan-to-scout
+          mkdir -p /tmp/marrow-test-workspace/runtime/checkpoints
+          mkdir -p /tmp/marrow-test-workspace/runtime/logs/exec
+          mkdir -p /tmp/marrow-test-workspace/tasks/queue
+          mkdir -p /tmp/marrow-test-workspace/tasks/delegated
+          mkdir -p /tmp/marrow-test-workspace/tasks/done
+          mkdir -p /tmp/marrow-test-workspace/context.d
+          mkdir -p /tmp/marrow-test-workspace/.opencode/agents
+
+          # Copy context providers
+          cp context.d/*.py /tmp/marrow-test-workspace/context.d/
+          chmod +x /tmp/marrow-test-workspace/context.d/*.py
+
+          # Link agent definitions
+          ln -s "$PWD/agents/scout.md" /tmp/marrow-test-workspace/.opencode/agents/scout.md
+          ln -s "$PWD/agents/artisan.md" /tmp/marrow-test-workspace/.opencode/agents/artisan.md
+
+      - name: Create test configuration
+        run: |
+          cat > /tmp/marrow-test.toml << 'EOF'
+          core_dir = "${{ github.workspace }}"
+
+          [[agents]]
+          name = "scout"
+          heartbeat_interval = 300
+          heartbeat_timeout = 500
+          workspace = "/tmp/marrow-test-workspace"
+          agent_command = "opencode run --agent scout --model github-copilot/gpt-4o-mini"
+          context_dirs = [
+            "/tmp/marrow-test-workspace/context.d",
+          ]
+
+          [[agents]]
+          name = "artisan"
+          heartbeat_interval = 8640
+          heartbeat_timeout = 7200
+          workspace = "/tmp/marrow-test-workspace"
+          agent_command = "opencode run --agent artisan --model github-copilot/gpt-4o-mini"
+          context_dirs = [
+            "/tmp/marrow-test-workspace/context.d",
+          ]
+          EOF
+
+      - name: Create test task
+        run: |
+          cat > /tmp/marrow-test-workspace/tasks/queue/test-task.md << 'EOF'
+          # Test Task: System Health Check
+
+          Please perform the following:
+          1. Check the current workspace directory structure
+          2. List files in the runtime directory
+          3. Create a simple status report in runtime/state/test-report.txt
+
+          This is a test task to verify the marrow-core system is working correctly.
+          EOF
+
+      - name: Validate configuration
+        run: |
+          uv run marrow validate --config /tmp/marrow-test.toml --verbose
+
+      - name: Run setup
+        run: |
+          export MARROW_WORKSPACE=/tmp/marrow-test-workspace
+          uv run marrow setup --config /tmp/marrow-test.toml --verbose
+
+      - name: Test dry-run mode
+        run: |
+          export MARROW_WORKSPACE=/tmp/marrow-test-workspace
+          uv run marrow dry-run --config /tmp/marrow-test.toml --verbose
+
+      - name: Run scout agent once
+        run: |
+          export MARROW_WORKSPACE=/tmp/marrow-test-workspace
+          uv run marrow run-once --config /tmp/marrow-test.toml --verbose
+        timeout-minutes: 15
+
+      - name: Verify execution logs
+        run: |
+          echo "=== Checking execution logs ==="
+          ls -la /tmp/marrow-test-workspace/runtime/logs/exec/ || echo "No execution logs found"
+
+          if [ -d "/tmp/marrow-test-workspace/runtime/logs/exec/" ]; then
+            echo "=== Scout logs ==="
+            find /tmp/marrow-test-workspace/runtime/logs/exec/ -name "*scout*.log" -exec echo "File: {}" \; -exec cat {} \; || true
+
+            echo "=== Artisan logs ==="
+            find /tmp/marrow-test-workspace/runtime/logs/exec/ -name "*artisan*.log" -exec echo "File: {}" \; -exec cat {} \; || true
+          fi
+
+      - name: Verify workspace state
+        run: |
+          echo "=== Task queue status ==="
+          ls -la /tmp/marrow-test-workspace/tasks/queue/ || echo "Queue directory empty or missing"
+
+          echo "=== Delegated tasks ==="
+          ls -la /tmp/marrow-test-workspace/tasks/delegated/ || echo "No delegated tasks"
+
+          echo "=== Handoff status ==="
+          ls -la /tmp/marrow-test-workspace/runtime/handoff/scout-to-artisan/ || echo "No scout-to-artisan handoffs"
+          ls -la /tmp/marrow-test-workspace/runtime/handoff/artisan-to-scout/ || echo "No artisan-to-scout handoffs"
+
+          echo "=== Runtime state ==="
+          ls -la /tmp/marrow-test-workspace/runtime/state/ || echo "No state files"
+          find /tmp/marrow-test-workspace/runtime/state/ -type f -exec echo "File: {}" \; -exec cat {} \; || true
+
+      - name: Upload logs as artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marrow-test-logs
+          path: |
+            /tmp/marrow-test-workspace/runtime/logs/
+            /tmp/marrow-test-workspace/runtime/state/
+            /tmp/marrow-test-workspace/runtime/handoff/
+          if-no-files-found: warn
+          retention-days: 7

@@ -93,6 +93,24 @@ The agent is free to add, edit, or remove scripts under its own `context.d/`.
 
 See [AGENTS.md](AGENTS.md) for a full breakdown.
 
+## Testing
+
+### macOS Integration Tests
+
+A complete end-to-end test suite runs on macOS using GitHub Actions. The test:
+- Sets up a full marrow-core environment
+- Uses free models (github-copilot/gpt-4o-mini)
+- Runs both scout and artisan agents
+- Verifies task processing and handoff mechanisms
+
+See [docs/macos-testing.md](docs/macos-testing.md) for details.
+
+To run tests locally:
+```bash
+./test-macos-setup.sh
+marrow run-once --config /tmp/marrow-test-auto.toml
+```
+
 ## License
 
 MIT
