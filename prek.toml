@@ -1,0 +1,26 @@
+[[repos]]
+repo = "local"
+
+  [[repos.hooks]]
+  id = "ruff-format"
+  name = "ruff format"
+  language = "system"
+  entry = "uv run ruff format"
+  types = ["python"]
+  pass_filenames = false
+
+  [[repos.hooks]]
+  id = "ruff-check"
+  name = "ruff check"
+  language = "system"
+  entry = "uv run ruff check --fix"
+  types = ["python"]
+  pass_filenames = false
+
+  [[repos.hooks]]
+  id = "ty"
+  name = "ty type check"
+  language = "system"
+  entry = "uv run ty check marrow_core"
+  types = ["python"]
+  pass_filenames = false

@@ -8,13 +8,11 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>/opt/marrow-core/.venv/bin/python</string>
-    <string>-m</string>
-    <string>marrow_core.cli</string>
+    <string>/opt/marrow-core/.venv/bin/marrow</string>
+    <string>run</string>
     <string>--config</string>
     <string>/opt/marrow-core/marrow.toml</string>
     <string>--json-logs</string>
-    <string>run</string>
   </array>
 
   <key>WorkingDirectory</key>

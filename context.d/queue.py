@@ -47,9 +47,7 @@ def main() -> None:
     if s2a.is_dir():
         pending = sorted(s2a.iterdir())
         if pending:
-            print(
-                f"\nDelegated to artisan (pending): {', '.join(p.name for p in pending)}"
-            )
+            print(f"\nDelegated to artisan (pending): {', '.join(p.name for p in pending)}")
 
     a2s = HANDOFF_DIR / "artisan-to-scout"
     if a2s.is_dir():
