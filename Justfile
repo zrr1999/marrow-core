@@ -2,7 +2,7 @@
 default:
     @just --list
 
-# Install dependencies in development mode
+# Install dependencies in development mode (prek = pre-commit hook manager)
 install:
     uv sync --all-groups
     uvx prek install
