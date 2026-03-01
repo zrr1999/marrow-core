@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from pathlib import Path
 from typing import Any
 
-log = logging.getLogger("marrow.runner")
+from loguru import logger
 
 
 async def run_agent(
@@ -40,7 +39,7 @@ async def run_agent(
         stderr_f = (log_dir / f"{session_id}.stderr.log").open("ab")
 
     try:
-        log.info("exec: %s", cmd)
+        logger.info("exec: %s", cmd)
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=stdout_f,

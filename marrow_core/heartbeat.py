@@ -8,18 +8,16 @@ scripts that output plain text to stdout.
 from __future__ import annotations
 
 import asyncio
-import logging
 import os
 import shlex
 import time
 from pathlib import Path
-from typing import Any
+
+from loguru import logger
 
 from marrow_core.config import AgentConfig
 from marrow_core.runner import run_agent
 from marrow_core.sandbox import load_rules
-
-log = logging.getLogger("marrow.heartbeat")
 
 
 def _session_id(agent_name: str) -> str:
@@ -41,9 +39,7 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
         d = Path(raw)
         if not d.is_dir():
             continue
-        scripts = sorted(
-            p for p in d.iterdir() if p.is_file() and os.access(p, os.X_OK)
-        )
+        scripts = sorted(p for p in d.iterdir() if p.is_file() and os.access(p, os.X_OK))
         for script in scripts:
             try:
                 proc = await asyncio.create_subprocess_exec(
@@ -51,16 +47,16 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                out, _err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
                 text = (out or b"").decode("utf-8", errors="replace").strip()
                 if text:
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
-                    log.warning("context script %s exited %d", script, proc.returncode)
+                    logger.warning("context script %s exited %d", script, proc.returncode)
             except asyncio.TimeoutError:
-                log.warning("context script %s timed out after %ds", script, timeout)
+                logger.warning("context script %s timed out after %ds", script, timeout)
             except Exception as exc:
-                log.warning("context script %s failed: %s", script, exc)
+                logger.warning("context script %s failed: %s", script, exc)
     return blocks
 
 
@@ -92,13 +88,13 @@ async def heartbeat(
     interval = cfg.heartbeat_interval
     timeout = cfg.heartbeat_timeout
 
-    log.info("[%s] started (interval=%ds, timeout=%ds)", name, interval, timeout)
+    logger.info("[%s] started (interval=%ds, timeout=%ds)", name, interval, timeout)
 
     while True:
         try:
             await _tick(cfg, core_dir, rules, dry_run=dry_run)
         except Exception:
-            log.exception("[%s] tick failed", name)
+            logger.exception("[%s] tick failed", name)
 
         if once:
             return
@@ -143,11 +139,9 @@ async def _tick(
     )
 
     if result.get("timed_out"):
-        log.warning("[%s] timed out after %ds", name, cfg.heartbeat_timeout)
+        logger.warning("[%s] timed out after %ds", name, cfg.heartbeat_timeout)
     rc = result.get("returncode")
     if isinstance(rc, int) and rc != 0:
-        log.warning("[%s] exited with code %d", name, rc)
+        logger.warning("[%s] exited with code %d", name, rc)
 
-    log.debug(
-        "[%s] tick done (session=%s, duration=%s)", name, sid, result.get("duration")
-    )
+    logger.debug("[%s] tick done (session=%s, duration=%s)", name, sid, result.get("duration"))

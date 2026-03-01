@@ -1,25 +1,60 @@
 [project]
 name = "marrow-core"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Minimal self-evolving agent scheduler with hard core/evolution isolation"
-requires-python = ">=3.11"
+readme = "README.md"
+authors = [
+    { name = "Zhan Rongrui", email = "2742392377@qq.com" },
+]
+requires-python = ">=3.12"
+license = { text = "MIT" }
 dependencies = [
-  "pydantic>=2.6,<3",
-  "typer>=0.12,<1",
+    "loguru>=0.7.3",
+    "pydantic>=2.12",
+    "typer>=0.15",
 ]
 
 [project.scripts]
-marrow = "marrow_core.cli:main"
+marrow = "marrow_core.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/zrr1999/marrow-core"
+Repository = "https://github.com/zrr1999/marrow-core"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [dependency-groups]
 dev = [
-  "pytest>=8,<9",
-  "pytest-asyncio>=0.23,<1",
+    "pytest>=8",
+    "pytest-asyncio>=1.3",
+    "ruff>=0.11",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["F", "I", "B", "C4", "PGH", "RUF", "W", "YTT"]
+ignore = ["PGH003", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["marrow_core"]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "I002"]
+"tests/**" = ["I002"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

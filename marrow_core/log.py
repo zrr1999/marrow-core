@@ -1,41 +1,33 @@
-"""Structured logging — JSON for daemons, compact for humans."""
+"""Logging setup — loguru with JSON or compact human output."""
 
 from __future__ import annotations
 
-import json
-import logging
 import sys
-import time
-from typing import Any
 
-
-class JSONFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        entry: dict[str, Any] = {
-            "ts": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(record.created)),
-            "level": record.levelname,
-            "logger": record.name,
-            "msg": record.getMessage(),
-        }
-        if record.exc_info and record.exc_info[1]:
-            entry["exc"] = str(record.exc_info[1])
-        return json.dumps(entry, ensure_ascii=True)
-
-
-class CompactFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        ts = time.strftime("%H:%M:%S", time.localtime(record.created))
-        msg = record.getMessage()
-        if record.exc_info and record.exc_info[1]:
-            msg += f" ({record.exc_info[1]})"
-        return f"[{ts}] {record.name}: {msg}"
+from loguru import logger
 
 
 def setup_logging(*, verbose: bool = False, json_logs: bool = False) -> None:
-    level = logging.DEBUG if verbose else logging.INFO
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(JSONFormatter() if json_logs else CompactFormatter())
-    root = logging.getLogger("marrow")
-    root.handlers.clear()
-    root.addHandler(handler)
-    root.setLevel(level)
+    """Configure loguru for the marrow scheduler.
+
+    - json_logs: emit newline-delimited JSON records (for daemons / log aggregators)
+    - verbose: set level to DEBUG, otherwise INFO
+    """
+    logger.remove()
+    level = "DEBUG" if verbose else "INFO"
+    if json_logs:
+        logger.add(
+            sys.stderr,
+            level=level,
+            serialize=True,  # built-in JSON serialisation
+        )
+    else:
+        logger.add(
+            sys.stderr,
+            level=level,
+            format="[{time:HH:mm:ss}] {name}: {message}",
+            colorize=True,
+        )
+
+
+__all__ = ["logger", "setup_logging"]

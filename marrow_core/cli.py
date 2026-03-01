@@ -1,41 +1,34 @@
-"""CLI entry point — minimal surface: run, run-once, dry-run, validate, setup."""
+"""CLI entry point — run, run-once, dry-run, validate, setup."""
 
 from __future__ import annotations
 
 import asyncio
-import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
 from marrow_core.config import load_config
 from marrow_core.heartbeat import heartbeat
 from marrow_core.log import setup_logging
-from marrow_core.sandbox import (
-    ensure_workspace_dirs,
-    sync_agent_symlinks,
-    verify_workspace,
-)
+from marrow_core.sandbox import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
 
-app = typer.Typer(
-    add_completion=False, help="marrow-core: self-evolving agent scheduler."
-)
+app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
 
-
-def _default_config() -> Path:
-    return Path("marrow.toml")
+# Shared option types
+ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
+VerboseOpt = Annotated[bool, typer.Option("--verbose", "-v", help="Enable debug logging")]
+JsonLogsOpt = Annotated[bool, typer.Option("--json-logs", help="Emit JSON log records")]
 
 
 async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> None:
     if not config.is_file():
         typer.echo(f"config not found: {config}", err=True)
-        raise SystemExit(1)
-
+        raise typer.Exit(code=1)
     root = load_config(config)
     if not root.agents:
         typer.echo("no agents configured", err=True)
-        raise SystemExit(1)
-
+        raise typer.Exit(code=1)
     tasks = [
         asyncio.create_task(
             heartbeat(agent, root.core_dir, once=once, dry_run=dry_run),
@@ -46,45 +39,47 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
     await asyncio.gather(*tasks)
 
 
-@app.callback(invoke_without_command=True)
-def _default(
-    ctx: typer.Context,
-    config: Path = typer.Option(_default_config(), "--config", "-c"),
-    verbose: bool = typer.Option(False, "--verbose", "-v"),
-    json_logs: bool = typer.Option(False, "--json-logs"),
-) -> None:
-    """Run all agents (default when no subcommand)."""
-    ctx.ensure_object(dict)
-    ctx.obj["config"] = config
-    setup_logging(verbose=verbose, json_logs=json_logs)
-    if ctx.invoked_subcommand is None:
-        asyncio.run(_run(config))
-
-
 @app.command()
-def run(ctx: typer.Context) -> None:
+def run(
+    config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
+    json_logs: JsonLogsOpt = False,
+) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    asyncio.run(_run(Path(ctx.obj["config"])))
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    asyncio.run(_run(config))
 
 
 @app.command(name="run-once")
-def run_once(ctx: typer.Context) -> None:
+def run_once(
+    config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
+    json_logs: JsonLogsOpt = False,
+) -> None:
     """Execute one tick per agent then exit."""
-    asyncio.run(_run(Path(ctx.obj["config"]), once=True))
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    asyncio.run(_run(config, once=True))
 
 
 @app.command(name="dry-run")
-def dry_run(ctx: typer.Context) -> None:
+def dry_run(
+    config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
+    json_logs: JsonLogsOpt = False,
+) -> None:
     """Build and print prompts without running agents."""
-    asyncio.run(_run(Path(ctx.obj["config"]), once=True, dry_run=True))
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    asyncio.run(_run(config, once=True, dry_run=True))
 
 
 @app.command()
-def setup(ctx: typer.Context) -> None:
+def setup(
+    config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
+) -> None:
     """Initialize workspace dirs and sync agent symlinks."""
-    config = Path(ctx.obj["config"])
+    setup_logging(verbose=verbose)
     root = load_config(config)
-
     for agent in root.agents:
         if not verify_workspace(agent.workspace):
             typer.echo(f"FAIL: workspace invalid for {agent.name}", err=True)
@@ -95,19 +90,18 @@ def setup(ctx: typer.Context) -> None:
 
 
 @app.command()
-def validate(ctx: typer.Context) -> None:
+def validate(
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
     """Check config and show summary."""
-    config = Path(ctx.obj["config"])
     try:
         root = load_config(config)
     except Exception as exc:
         typer.echo(f"FAIL: {exc}", err=True)
-        raise typer.Exit(code=2)
-
+        raise typer.Exit(code=2) from exc
     if not root.agents:
         typer.echo("FAIL: no agents configured", err=True)
         raise typer.Exit(code=2)
-
     for agent in root.agents:
         typer.echo(f"\n  Agent: {agent.name}")
         typer.echo(f"    interval : {agent.heartbeat_interval}s")
@@ -115,9 +109,4 @@ def validate(ctx: typer.Context) -> None:
         typer.echo(f"    command  : {agent.agent_command}")
         typer.echo(f"    workspace: {agent.workspace}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
-
     typer.echo("\nVALIDATE OK")
-
-
-def main() -> None:
-    app()

@@ -17,9 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
     clamped = max(lo, min(hi, int(value)))
     if clamped != int(value):
-        warnings.warn(
-            f"{name}={value} outside [{lo},{hi}], clamped to {clamped}", stacklevel=3
-        )
+        warnings.warn(f"{name}={value} outside [{lo},{hi}], clamped to {clamped}", stacklevel=3)
     return clamped
 
 

@@ -7,8 +7,9 @@ import warnings
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, RootConfig, load_config
+from marrow_core.config import AgentConfig, load_config
 
 
 def test_minimal_agent_config():
@@ -56,7 +57,7 @@ def test_context_dirs_normalization():
         name="x",
         agent_command="cmd",
         workspace="/tmp",
-        context_dirs="/foo/bar",
+        context_dirs=["/foo/bar"],
     )
     assert cfg.context_dirs == ["/foo/bar"]
 
@@ -101,5 +102,5 @@ def test_extra_forbid(tmp_path: Path):
         workspace = "/tmp"
     """)
     )
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         load_config(toml)
