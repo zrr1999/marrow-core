@@ -11,6 +11,20 @@ from pathlib import Path
 
 from loguru import logger
 
+# Standard workspace subdirectories — single source of truth.
+# setup.sh should mirror this list.
+WORKSPACE_DIRS = (
+    "runtime/state",
+    "runtime/handoff/scout-to-artisan",
+    "runtime/handoff/artisan-to-scout",
+    "runtime/checkpoints",
+    "runtime/logs/exec",
+    "tasks/queue",
+    "tasks/delegated",
+    "tasks/done",
+    ".opencode/agents",
+)
+
 
 def verify_workspace(workspace: str) -> bool:
     """Check that workspace exists and is writable."""
@@ -27,18 +41,7 @@ def verify_workspace(workspace: str) -> bool:
 def ensure_workspace_dirs(workspace: str) -> None:
     """Create standard workspace subdirectories if missing."""
     base = Path(workspace)
-    dirs = [
-        "runtime/state",
-        "runtime/handoff/scout-to-artisan",
-        "runtime/handoff/artisan-to-scout",
-        "runtime/checkpoints",
-        "runtime/logs/exec",
-        "tasks/queue",
-        "tasks/delegated",
-        "tasks/done",
-        ".opencode/agents",
-    ]
-    for d in dirs:
+    for d in WORKSPACE_DIRS:
         (base / d).mkdir(parents=True, exist_ok=True)
 
 

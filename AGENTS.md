@@ -10,7 +10,7 @@ behavior within its workspace, but can never modify the core.
 
 1. **Hard isolation** — Core is root-owned at `/opt/marrow-core/`. Agent
    workspace is at `/Users/marrow/`. Filesystem permissions enforce the boundary.
-2. **Simplicity** — ~300 lines of core Python. No JSON plugin protocol,
+2. **Simplicity** — ~550 lines of core Python. No JSON plugin protocol,
    no Pydantic extra magic. Context scripts output plain text to stdout.
 3. **Filesystem-as-API** — Tasks, handoffs, state, checkpoints are all
    just files. No database, no queue service.
@@ -68,6 +68,7 @@ behavior within its workspace, but can never modify the core.
 │   └── rules.md            # Immutable rules injected into every prompt
 ├── context.d/              # Default context providers (copied to workspace)
 ├── marrow.toml             # Agent configuration
+├── lib.sh                  # Shared shell functions
 └── setup.sh / sync.sh      # Deployment scripts
 
 /Users/marrow/              # AGENT-OWNED (agent can modify freely)
@@ -117,6 +118,6 @@ See `marrow.toml`. Key fields per agent:
 | Plugin protocol | JSON stdin/stdout | Plain text stdout |
 | Agent definitions | Inside core repo | Symlinked from core |
 | Permission boundary | Convention only | Filesystem enforced |
-| Core lines | ~800 | ~300 |
+| Core lines | ~800 | ~550 |
 | Config keys per agent | 9 | 6 |
 | Evolution | Unrestricted | Bounded by workspace |

@@ -31,7 +31,7 @@ class AgentConfig(BaseModel):
     workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
     context_dirs: list[str] = Field(default_factory=list)
 
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("name", mode="before")
     @classmethod

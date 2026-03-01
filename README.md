@@ -1,3 +1,13 @@
+TODO
+- agent经常出现类似这样的输出：
+    Next suggested actions (pick one)
+    - I can create a concise artisan task card in runtime/handoff/scout-to-artisan/ asking to investigate/start the expected app on :8765.
+    - I can run more diagnostics (ps, lsof, check recent logs) to gather details before delegating.
+    - Or I can stay idle until a task appears.
+
+    Which would you like?
+我们需要避免这种情况，让他不要提问
+
 # marrow-core
 
 Minimal self-evolving agent scheduler with hard isolation between the **core** (human-maintained) and **agent evolution** (agent-maintained).

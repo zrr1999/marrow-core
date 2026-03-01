@@ -2,14 +2,10 @@
 # marrow-core auto-sync: pull latest, refresh venv, re-link agents, restart.
 set -euo pipefail
 
-CORE_DIR="/opt/marrow-core"
-DAEMON_DIR="/Library/LaunchDaemons"
-HEART_PLIST="com.marrow.heart"
-WORKSPACE="/Users/marrow"
-PYTHON="/opt/homebrew/bin/python3"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/lib.sh"
 
-[[ -d "${CORE_DIR}/.git" ]] || git clone --branch main --single-branch \
-  "https://github.com/zrr1999/marrow-core.git" "$CORE_DIR"
+[[ -d "${CORE_DIR}/.git" ]] || git clone --branch main --single-branch "$REPO_URL" "$CORE_DIR"
 
 cd "$CORE_DIR"
 git fetch origin main
@@ -36,23 +32,13 @@ git merge --ff-only origin/main 2>/dev/null || {
 }
 
 # Refresh venv
-if command -v uv >/dev/null 2>&1; then
-  [[ -d .venv ]] || uv venv --python "$PYTHON" >/dev/null
-  uv sync --no-dev || true
-fi
+ensure_venv
 
-# Re-link agents (core may have updated agent defs)
-for agent_md in "${CORE_DIR}"/agents/*.md; do
-  name=$(basename "$agent_md")
-  dst="${WORKSPACE}/.opencode/agents/${name}"
-  ln -sf "$agent_md" "$dst" 2>/dev/null || true
-done
+# Ensure workspace dirs & re-link agents (core may have updated agent defs)
+ensure_workspace_dirs
+link_agents
 
-# Restart daemon
-src="${CORE_DIR}/${HEART_PLIST}.plist"
-dst="${DAEMON_DIR}/${HEART_PLIST}.plist"
-[[ -f "$src" ]] && cp "$src" "$dst" && chown root:wheel "$dst" && chmod 644 "$dst"
-launchctl bootout "system/${HEART_PLIST}" 2>/dev/null || true
-launchctl bootstrap system "$dst"
+# Restart heartbeat daemon
+install_daemon "com.marrow.heart"
 
 echo "[marrow-sync] Done."

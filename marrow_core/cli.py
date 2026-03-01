@@ -39,6 +39,19 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
     await asyncio.gather(*tasks)
 
 
+def _run_heartbeat(
+    config: Path,
+    verbose: bool,
+    json_logs: bool,
+    *,
+    once: bool = False,
+    dry_run: bool = False,
+) -> None:
+    """Shared logic for run / run-once / dry-run commands."""
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    asyncio.run(_run(config, once=once, dry_run=dry_run))
+
+
 @app.command()
 def run(
     config: ConfigOpt = Path("marrow.toml"),
@@ -46,8 +59,7 @@ def run(
     json_logs: JsonLogsOpt = False,
 ) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config))
+    _run_heartbeat(config, verbose, json_logs)
 
 
 @app.command(name="run-once")
@@ -57,8 +69,7 @@ def run_once(
     json_logs: JsonLogsOpt = False,
 ) -> None:
     """Execute one tick per agent then exit."""
-    setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config, once=True))
+    _run_heartbeat(config, verbose, json_logs, once=True)
 
 
 @app.command(name="dry-run")
@@ -68,8 +79,7 @@ def dry_run(
     json_logs: JsonLogsOpt = False,
 ) -> None:
     """Build and print prompts without running agents."""
-    setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config, once=True, dry_run=True))
+    _run_heartbeat(config, verbose, json_logs, once=True, dry_run=True)
 
 
 @app.command()

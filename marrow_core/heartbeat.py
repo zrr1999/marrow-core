@@ -19,6 +19,8 @@ from marrow_core.config import AgentConfig
 from marrow_core.runner import run_agent
 from marrow_core.sandbox import load_rules
 
+BASE_PROMPT = "Run one round of work. Follow context and rules."
+
 
 def _session_id(agent_name: str) -> str:
     t = time.time()
@@ -116,11 +118,7 @@ async def _tick(
     # Gather context from all configured context dirs
     context_blocks = await _gather_context(cfg.context_dirs)
 
-    prompt = _build_prompt(
-        "Run one round of work. Follow context and rules.",
-        rules,
-        context_blocks,
-    )
+    prompt = _build_prompt(BASE_PROMPT, rules, context_blocks)
 
     if dry_run:
         print(f"--- DRY RUN [{name}] session={sid} ---")
@@ -138,10 +136,9 @@ async def _tick(
         session_id=sid,
     )
 
-    if result.get("timed_out"):
+    if result.timed_out:
         logger.warning("[{}] timed out after {}s", name, cfg.heartbeat_timeout)
-    rc = result.get("returncode")
-    if isinstance(rc, int) and rc != 0:
-        logger.warning("[{}] exited with code {}", name, rc)
+    if result.returncode is not None and result.returncode != 0:
+        logger.warning("[{}] exited with code {}", name, result.returncode)
 
-    logger.debug("[{}] tick done (session={}, duration={})", name, sid, result.get("duration"))
+    logger.debug("[{}] tick done (session={}, duration={})", name, sid, result.duration)
