@@ -1,0 +1,21 @@
+core_dir = "/opt/marrow-core"
+
+[[agents]]
+name = "scout"
+heartbeat_interval = 300
+heartbeat_timeout = 500
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent scout"
+context_dirs = [
+  "/Users/marrow/context.d",
+]
+
+[[agents]]
+name = "artisan"
+heartbeat_interval = 8640
+heartbeat_timeout = 7200
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent artisan"
+context_dirs = [
+  "/Users/marrow/context.d",
+]

@@ -1,0 +1,25 @@
+[project]
+name = "marrow-core"
+version = "0.1.0"
+description = "Minimal self-evolving agent scheduler with hard core/evolution isolation"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.6,<3",
+  "typer>=0.12,<1",
+]
+
+[project.scripts]
+marrow = "marrow_core.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.23,<1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
