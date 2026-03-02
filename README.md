@@ -39,9 +39,9 @@ Options available on every command:
 ## Installation
 
 ```bash
-uv tool install marrow-core
+uv tool install marrow-bot
 # or inside a project:
-uv add marrow-core
+uv add marrow-bot
 ```
 
 ## Configuration
