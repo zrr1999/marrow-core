@@ -76,11 +76,23 @@ class AgentConfig(BaseModel):
         return v
 
 
+class WebConfig(BaseModel):
+    """Optional web UI configuration."""
+
+    enabled: bool = False
+    host: str = "127.0.0.1"
+    port: int = 8321
+    task_dir: str = ""  # If empty, derived from first agent's workspace
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
     core_dir: str = "/opt/marrow-core"
     agents: list[AgentConfig] = Field(default_factory=list)
+    web: WebConfig = Field(default_factory=WebConfig)
 
     model_config = ConfigDict(extra="forbid")
 

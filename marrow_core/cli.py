@@ -12,6 +12,7 @@ from marrow_core.config import load_config
 from marrow_core.heartbeat import heartbeat
 from marrow_core.log import setup_logging
 from marrow_core.sandbox import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
+from marrow_core.web import start_web_server
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
 
@@ -19,9 +20,14 @@ app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent s
 ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
 VerboseOpt = Annotated[bool, typer.Option("--verbose", "-v", help="Enable debug logging")]
 JsonLogsOpt = Annotated[bool, typer.Option("--json-logs", help="Emit JSON log records")]
+WebOpt = Annotated[
+    bool | None, typer.Option("--web/--no-web", help="Override web UI (default: from config)")
+]
 
 
-async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> None:
+async def _run(
+    config: Path, *, once: bool = False, dry_run: bool = False, web: bool | None = None
+) -> None:
     if not config.is_file():
         typer.echo(f"config not found: {config}", err=True)
         raise typer.Exit(code=1)
@@ -29,6 +35,16 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
     if not root.agents:
         typer.echo("no agents configured", err=True)
         raise typer.Exit(code=1)
+
+    # Determine whether to start web server
+    web_enabled = web if web is not None else root.web.enabled
+    server = None
+    if web_enabled and not dry_run:
+        task_dir = root.web.task_dir
+        if not task_dir and root.agents:
+            task_dir = str(Path(root.agents[0].workspace) / "tasks" / "queue")
+        server = await start_web_server(task_dir, root.web.host, root.web.port)
+
     tasks = [
         asyncio.create_task(
             heartbeat(agent, root.core_dir, once=once, dry_run=dry_run),
@@ -36,7 +52,12 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
         )
         for agent in root.agents
     ]
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        if server is not None:
+            server.close()
+            await server.wait_closed()
 
 
 def _run_heartbeat(
@@ -46,10 +67,11 @@ def _run_heartbeat(
     *,
     once: bool = False,
     dry_run: bool = False,
+    web: bool | None = None,
 ) -> None:
     """Shared logic for run / run-once / dry-run commands."""
     setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config, once=once, dry_run=dry_run))
+    asyncio.run(_run(config, once=once, dry_run=dry_run, web=web))
 
 
 @app.command()
@@ -57,9 +79,10 @@ def run(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
+    web: WebOpt = None,
 ) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    _run_heartbeat(config, verbose, json_logs)
+    _run_heartbeat(config, verbose, json_logs, web=web)
 
 
 @app.command(name="run-once")
