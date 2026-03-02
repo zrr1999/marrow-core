@@ -160,7 +160,7 @@ wheels = [
 ]
 
 [[package]]
-name = "marrow-bot"
+name = "marrow-core"
 source = { editable = "." }
 dependencies = [
     { name = "loguru" },
