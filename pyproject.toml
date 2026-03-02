@@ -1,18 +1,18 @@
 [project]
 name = "marrow-bot"
-dynamic = ["version"]
 description = "Minimal self-evolving agent scheduler with hard core/evolution isolation"
 readme = "README.md"
-authors = [
-    { name = "Zhan Rongrui", email = "2742392377@qq.com" },
-]
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = [
-    "loguru>=0.7.3",
-    "pydantic>=2.12",
-    "typer>=0.15",
+authors = [
+  { name = "Zhan Rongrui", email = "2742392377@qq.com" },
 ]
+dependencies = [
+  "loguru>=0.7.3",
+  "pydantic>=2.12",
+  "typer>=0.15",
+]
+dynamic = ["version"]
 
 [project.scripts]
 marrow = "marrow_core.cli:app"
@@ -22,7 +22,7 @@ Homepage = "https://github.com/zrr1999/marrow-core"
 Repository = "https://github.com/zrr1999/marrow-core"
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatch-vcs", "hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -33,15 +33,15 @@ version-file = "marrow_core/_version.py"
 
 [dependency-groups]
 dev = [
-    { include-group = "test" },
-    "prek>=0.3.4",
-    "ruff>=0.11",
-    "ty>=0.0.19",
+  "prek>=0.3.4",
+  "ruff>=0.11",
+  "ty>=0.0.19",
+  { include-group = "test" },
 ]
 test = [
-    "pytest>=8",
-    "pytest-asyncio>=1.3",
-    "pytest-cov>=6.0",
+  "pytest>=8",
+  "pytest-asyncio>=1.3",
+  "pytest-cov>=6.0",
 ]
 
 [tool.pytest.ini_options]
@@ -58,14 +58,14 @@ omit = ["*/tests/*"]
 precision = 2
 show_missing = true
 exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-    "@abstractmethod",
-    "\\.\\.\\.",
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@abstractmethod",
+  "\\.\\.\\.",
 ]
 
 [tool.ruff]
@@ -75,18 +75,18 @@ exclude = ["marrow_core/_version.py"]
 
 [tool.ruff.lint]
 select = [
-    "F",     # pyflakes
-    "E",     # pycodestyle errors
-    "W",     # pycodestyle warnings
-    "I",     # isort
-    "B",     # flake8-bugbear
-    "C4",    # flake8-comprehensions
-    "UP",    # pyupgrade
-    "SIM",   # flake8-simplify
-    "RUF",   # ruff-specific rules
-    "PGH",   # pygrep-hooks
-    "FA",    # flake8-future-annotations
-    "YTT",   # flake8-2020
+  "F",  # pyflakes
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "I",  # isort
+  "B",  # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "UP",  # pyupgrade
+  "SIM",  # flake8-simplify
+  "RUF",  # ruff-specific rules
+  "PGH",  # pygrep-hooks
+  "FA",  # flake8-future-annotations
+  "YTT",  # flake8-2020
 ]
 ignore = ["PGH003", "B008"]
 

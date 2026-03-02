@@ -13,8 +13,6 @@ from pathlib import Path
 WORKSPACE = Path(os.environ.get("MARROW_WORKSPACE") or os.environ.get("HOME") or "/Users/marrow")
 QUEUE_DIR = WORKSPACE / "tasks" / "queue"
 HANDOFF_DIR = WORKSPACE / "runtime" / "handoff"
-MAX_TOTAL = 20_000
-PER_FILE = 4_000
 
 
 def main() -> None:
@@ -25,22 +23,11 @@ def main() -> None:
     if not files:
         return
 
-    parts: list[str] = []
-    total = 0
-    for f in files:
-        if total >= MAX_TOTAL:
-            break
-        try:
-            body = f.read_bytes()[:PER_FILE].decode("utf-8", errors="replace").strip()
-        except Exception:
-            continue
-        chunk = f"## {f.name}\n{body}\n"
-        parts.append(chunk)
-        total += len(chunk)
+    print("Task queue lives in tasks/queue/. Completed tasks go to tasks/done/.")
+    print("Process the following task queue files (full paths):\n")
 
-    if parts:
-        print("Process the following task queue:\n")
-        print("\n".join(parts))
+    for f in files:
+        print(f.resolve())
 
     # Show delegation status
     s2a = HANDOFF_DIR / "scout-to-artisan"

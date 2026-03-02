@@ -49,6 +49,5 @@ You are encouraged to evolve and improve yourself, within your boundary:
 ## Communication
 
 - Scout <-> Artisan communication goes through `runtime/handoff/`.
-- Task queue lives in `tasks/queue/`. Completed tasks go to `tasks/done/`.
 - State files go in `runtime/state/`.
 - Checkpoints go in `runtime/checkpoints/`.
