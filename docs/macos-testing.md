@@ -144,12 +144,12 @@ For production, you can use more capable models:
 
 ### Agent Not Found
 
-If `opencode run` fails:
+If `opencode run` fails, install opencode using npm:
 ```bash
-uv tool install opencode
-# or
-pip install opencode
+npm install -g opencode-ai@latest
 ```
+
+Note: opencode is a Node.js package, not a Python package. Use `npm` to install it, not `uv` or `pip`.
 
 ### Permission Denied
 
