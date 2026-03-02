@@ -29,6 +29,16 @@ class RunResult:
         return self.returncode == 0 and not self.timed_out and not self.error
 
 
+def _read_tail(path: Path, lines: int = 20) -> str:
+    """Read the last `lines` lines of a text file, returning a single string."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        tail_lines = text.splitlines()[-lines:]
+        return "\n".join(tail_lines).strip()
+    except OSError:
+        return ""
+
+
 async def run_agent(
     argv: list[str],
     *,
@@ -63,6 +73,11 @@ async def run_agent(
         )
     except Exception as exc:
         return RunResult(error=str(exc), started=started, ended=time.time())
+
+    if proc.returncode != 0 and not timed_out and stderr_path.exists():
+        tail = _read_tail(stderr_path, lines=20)
+        if tail:
+            logger.debug("[runner] stderr tail ({}): {}", session_id, tail)
 
     return RunResult(
         returncode=proc.returncode,

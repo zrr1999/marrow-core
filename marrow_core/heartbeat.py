@@ -52,12 +52,18 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                out, _err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
                 text = (out or b"").decode("utf-8", errors="replace").strip()
                 if text:
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
                     logger.warning("context script {} exited {}", script, proc.returncode)
+                    if err:
+                        logger.debug(
+                            "context script {} stderr: {}",
+                            script,
+                            err.decode("utf-8", errors="replace").strip(),
+                        )
             except TimeoutError:
                 logger.warning("context script {} timed out after {}s", script, timeout)
             except Exception as exc:
