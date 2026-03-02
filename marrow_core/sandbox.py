@@ -22,6 +22,7 @@ WORKSPACE_DIRS = (
     "tasks/queue",
     "tasks/delegated",
     "tasks/done",
+    "context.d",
     ".opencode/agents",
 )
 

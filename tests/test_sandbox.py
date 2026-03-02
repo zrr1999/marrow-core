@@ -21,6 +21,7 @@ def test_ensure_workspace_dirs(tmp_path: Path):
     ensure_workspace_dirs(str(tmp_path))
     assert (tmp_path / "runtime" / "state").is_dir()
     assert (tmp_path / "tasks" / "queue").is_dir()
+    assert (tmp_path / "context.d").is_dir()
     assert (tmp_path / ".opencode" / "agents").is_dir()
 
 
