@@ -1,0 +1,187 @@
+"""IPC server — Unix domain socket with JSON API.
+
+Runs as a background asyncio task alongside the heartbeat loop.
+Provides task submission, queue listing, and heartbeat status over
+a Unix domain socket using a minimal HTTP/1.1 protocol with JSON bodies.
+
+Usage with curl:
+    curl --unix-socket /path/to/marrow.sock http://localhost/status
+    curl --unix-socket /path/to/marrow.sock -X POST -d '{"title":"fix bug"}' http://localhost/tasks
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import time
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
+
+if TYPE_CHECKING:
+    from marrow_core.heartbeat import HeartbeatState
+
+
+def _create_task_file(task_dir: Path, title: str, body: str) -> Path:
+    """Write a task markdown file into the queue directory."""
+    task_dir.mkdir(parents=True, exist_ok=True)
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    safe = "".join(c if c.isalnum() or c in "-_ " else "" for c in title)[:50].strip()
+    safe = safe.replace(" ", "-") or "task"
+    path = task_dir / f"{ts}-{safe}.md"
+    content = f"# {title}\n\n{body}\n" if body else f"# {title}\n"
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def _list_tasks(task_dir: Path) -> list[dict[str, Any]]:
+    """List task files in queue directory."""
+    if not task_dir.is_dir():
+        return []
+    tasks: list[dict[str, Any]] = []
+    for f in sorted(task_dir.glob("*.md")):
+        first_line = f.read_text(encoding="utf-8").split("\n", 1)[0]
+        title = first_line.lstrip("# ").strip() if first_line.startswith("#") else f.stem
+        tasks.append({
+            "file": f.name,
+            "title": title,
+            "created": f.stat().st_ctime,
+        })
+    return tasks
+
+
+# ---------------------------------------------------------------------------
+# Minimal HTTP helpers
+# ---------------------------------------------------------------------------
+
+_STATUS_TEXT = {
+    200: "OK",
+    400: "Bad Request",
+    404: "Not Found",
+    405: "Method Not Allowed",
+    500: "Internal Server Error",
+}
+
+
+def _send(
+    writer: asyncio.StreamWriter, status: int, body: dict[str, Any] | str,
+) -> None:
+    """Write an HTTP/1.1 JSON response."""
+    reason = _STATUS_TEXT.get(status, "OK")
+    payload = json.dumps(body).encode() if isinstance(body, dict) else body.encode()
+    writer.write(
+        f"HTTP/1.1 {status} {reason}\r\n"
+        f"Content-Type: application/json; charset=utf-8\r\n"
+        f"Content-Length: {len(payload)}\r\n"
+        f"Connection: close\r\n"
+        f"\r\n".encode()
+        + payload
+    )
+
+
+# ---------------------------------------------------------------------------
+# Request handler
+# ---------------------------------------------------------------------------
+
+
+async def _handle(
+    reader: asyncio.StreamReader,
+    writer: asyncio.StreamWriter,
+    task_dir: Path,
+    state: HeartbeatState,
+) -> None:
+    """Handle one HTTP request over the Unix socket."""
+    try:
+        request_line = await asyncio.wait_for(reader.readline(), timeout=30)
+        if not request_line:
+            return
+        parts = request_line.decode("utf-8", errors="replace").strip().split()
+        if len(parts) < 2:
+            return
+        method, path = parts[0], parts[1]
+
+        # Read headers
+        content_length = 0
+        while True:
+            hdr = await asyncio.wait_for(reader.readline(), timeout=10)
+            line = hdr.decode("utf-8", errors="replace").strip()
+            if not line:
+                break
+            if line.lower().startswith("content-length:"):
+                content_length = int(line.split(":", 1)[1].strip())
+
+        # Read body if present
+        raw_body = ""
+        if content_length > 0:
+            data = await asyncio.wait_for(
+                reader.readexactly(content_length), timeout=10
+            )
+            raw_body = data.decode("utf-8", errors="replace")
+
+        # Route
+        if path == "/health" and method == "GET":
+            _send(writer, 200, {"status": "ok"})
+
+        elif path == "/status" and method == "GET":
+            _send(writer, 200, state.to_dict())
+
+        elif path == "/tasks" and method == "GET":
+            _send(writer, 200, {"tasks": _list_tasks(task_dir)})
+
+        elif path == "/tasks" and method == "POST":
+            try:
+                req = json.loads(raw_body) if raw_body else {}
+            except json.JSONDecodeError:
+                _send(writer, 400, {"error": "invalid JSON"})
+                return
+            title = req.get("title", "").strip() if isinstance(req, dict) else ""
+            if not title:
+                _send(writer, 400, {"error": "title is required"})
+                return
+            body_text = req.get("body", "").strip() if isinstance(req, dict) else ""
+            fp = _create_task_file(task_dir, title, body_text)
+            logger.info("task submitted via ipc: {}", fp.name)
+            _send(writer, 200, {"ok": True, "file": fp.name})
+
+        else:
+            _send(writer, 404, {"error": "not found"})
+
+    except (TimeoutError, ConnectionError):
+        pass  # Idle / broken connections
+    except Exception as exc:
+        logger.warning("ipc request error: {}", exc)
+        with contextlib.suppress(Exception):
+            _send(writer, 500, {"error": "internal server error"})
+    finally:
+        with contextlib.suppress(Exception):
+            writer.close()
+            await writer.wait_closed()
+
+
+# ---------------------------------------------------------------------------
+# Server lifecycle
+# ---------------------------------------------------------------------------
+
+
+async def start_ipc_server(
+    socket_path: str,
+    task_dir: str,
+    state: HeartbeatState,
+) -> asyncio.Server:
+    """Start the IPC server on a Unix domain socket."""
+    sock = Path(socket_path)
+    sock.parent.mkdir(parents=True, exist_ok=True)
+    # Remove stale socket file
+    if sock.exists():
+        sock.unlink()
+
+    td = Path(task_dir)
+
+    async def handler(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
+        await _handle(r, w, td, state)
+
+    server = await asyncio.start_unix_server(handler, path=str(sock))
+    logger.info("ipc server listening on {}", sock)
+    return server

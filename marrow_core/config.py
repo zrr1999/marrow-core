@@ -76,12 +76,11 @@ class AgentConfig(BaseModel):
         return v
 
 
-class WebConfig(BaseModel):
-    """Optional web UI configuration."""
+class IpcConfig(BaseModel):
+    """Optional IPC server configuration (Unix domain socket)."""
 
     enabled: bool = False
-    host: str = "127.0.0.1"
-    port: int = 8321
+    socket_path: str = ""  # If empty, derived from first agent's workspace
     task_dir: str = ""  # If empty, derived from first agent's workspace
 
     model_config = ConfigDict(extra="forbid")
@@ -92,7 +91,7 @@ class RootConfig(BaseModel):
 
     core_dir: str = "/opt/marrow-core"
     agents: list[AgentConfig] = Field(default_factory=list)
-    web: WebConfig = Field(default_factory=WebConfig)
+    ipc: IpcConfig = Field(default_factory=IpcConfig)
 
     model_config = ConfigDict(extra="forbid")
 
