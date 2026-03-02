@@ -53,7 +53,7 @@ async def run_agent(
             timed_out = False
             try:
                 await asyncio.wait_for(proc.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 timed_out = True
                 proc.kill()
                 await proc.wait()

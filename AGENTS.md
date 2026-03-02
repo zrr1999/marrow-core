@@ -111,6 +111,45 @@ See `marrow.toml`. Key fields per agent:
 - `agent_command` — Command to invoke the agent
 - `context_dirs` — Directories to scan for context scripts
 
+## Commit & PR Conventions
+
+This project uses **gitmoji** for commit messages and PR titles.
+
+### Commit message format
+
+```
+<gitmoji> <type>: <description>
+```
+
+| Gitmoji | Type | When to use |
+|---------|------|-------------|
+| 🎉 | `init` | Initial commit / project scaffolding |
+| ✨ | `feat` | New feature or capability |
+| 🐛 | `fix` | Bug fix |
+| 📝 | `docs` | Documentation only |
+| ♻️ | `refactor` | Code refactoring (no behavior change) |
+| 🔧 | `chore` | Config, tooling, or maintenance |
+| ✅ | `test` | Add or update tests |
+| 🔥 | `remove` | Remove code or files |
+| 🎨 | `style` | Code style / formatting |
+| 🚀 | `deploy` | Deployment related changes |
+
+**Examples:**
+
+```
+✨ feat: add checkpoint auto-pruning for artisan
+🐛 fix: use loguru {} format instead of stdlib % format
+📝 docs: update AGENTS.md with commit conventions
+```
+
+### PR title format
+
+PR titles follow the same gitmoji format:
+
+```
+✨ feat: add checkpoint auto-pruning for artisan
+```
+
 ## Comparison with genesis-core
 
 | Aspect | genesis-core | marrow-core |

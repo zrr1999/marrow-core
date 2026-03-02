@@ -19,7 +19,10 @@ from marrow_core.config import AgentConfig
 from marrow_core.runner import run_agent
 from marrow_core.sandbox import load_rules
 
-BASE_PROMPT = "Run one round of work. Follow context and rules."
+BASE_PROMPT = (
+    "Run one autonomous round of work. Follow context and rules. "
+    "Act decisively — never ask questions or present choices."
+)
 
 
 def _session_id(agent_name: str) -> str:
@@ -55,7 +58,7 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
                     logger.warning("context script {} exited {}", script, proc.returncode)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("context script {} timed out after {}s", script, timeout)
             except Exception as exc:
                 logger.warning("context script {} failed: {}", script, exc)
