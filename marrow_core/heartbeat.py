@@ -20,8 +20,11 @@ from marrow_core.runner import run_agent
 from marrow_core.sandbox import load_rules
 
 BASE_PROMPT = (
-    "Run one autonomous round of work. Follow context and rules. "
-    "Act decisively — never ask questions or present choices."
+    "You are a relentless autonomous agent. Execute one round of high-value work now. "
+    "If tasks are queued, attack the highest-priority one immediately. "
+    "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
+    "explore your environment, or create tasks for future value. "
+    "Never idle. Never ask questions. Produce tangible output every tick."
 )
 
 

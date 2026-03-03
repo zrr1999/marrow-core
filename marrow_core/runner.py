@@ -1,4 +1,4 @@
-"""Agent command execution — run opencode as a subprocess."""
+"""Agent command execution — run agent as a subprocess."""
 
 from __future__ import annotations
 

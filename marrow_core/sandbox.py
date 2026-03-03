@@ -22,6 +22,7 @@ WORKSPACE_DIRS = (
     "tasks/queue",
     "tasks/delegated",
     "tasks/done",
+    "context.d",
     ".opencode/agents",
 )
 
@@ -81,4 +82,5 @@ def load_rules(core_dir: str) -> str:
     rules_path = Path(core_dir) / "prompts" / "rules.md"
     if rules_path.is_file():
         return rules_path.read_text(encoding="utf-8").strip()
+    logger.warning("rules file not found: {}", rules_path)
     return ""
