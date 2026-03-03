@@ -62,7 +62,9 @@ def test_sync_agent_symlinks_does_not_overwrite_existing_backup(tmp_path: Path) 
     assert dst.is_symlink()
     # ensure a new backup was created without clobbering the old one
     assert (ws / ".opencode" / "agents" / "scout.md.agent-backup").read_text() == "older backup"
-    assert (ws / ".opencode" / "agents" / "scout.md.agent-backup-1").read_text() == "local agent override"
+    assert (
+        ws / ".opencode" / "agents" / "scout.md.agent-backup-1"
+    ).read_text() == "local agent override"
 
 
 def test_sync_replaces_stale_symlink(tmp_path: Path):
