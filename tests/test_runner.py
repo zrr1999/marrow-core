@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from marrow_core.runner import RunResult, run_agent
+from marrow_core.runner import RunResult, _read_tail, run_agent
 
 
 def test_run_result_properties():
@@ -27,6 +27,17 @@ def test_run_result_timed_out():
 def test_run_result_nonzero():
     r = RunResult(returncode=1)
     assert not r.ok
+
+
+def test_read_tail_normal(tmp_path: Path):
+    f = tmp_path / "out.log"
+    f.write_text("\n".join(str(i) for i in range(50)))
+    tail = _read_tail(f, lines=5)
+    assert tail == "45\n46\n47\n48\n49"
+
+
+def test_read_tail_missing(tmp_path: Path):
+    assert _read_tail(tmp_path / "nonexistent.log") == ""
 
 
 async def test_run_agent_success(tmp_path: Path):
@@ -69,3 +80,20 @@ async def test_run_agent_timeout(tmp_path: Path):
     )
     assert result.timed_out
     assert not result.ok
+
+
+async def test_run_agent_nonzero_writes_stderr_log(tmp_path: Path):
+    """Non-zero exit creates a stderr log that can be inspected."""
+    result = await run_agent(
+        [sys.executable, "-c", "import sys; print('err msg', file=sys.stderr); sys.exit(1)"],
+        message="test",
+        timeout=10,
+        cwd=str(tmp_path),
+        log_dir=tmp_path / "logs",
+        session_id="test-004",
+    )
+    assert result.returncode == 1
+    assert not result.ok
+    stderr_log = tmp_path / "logs" / "test-004.stderr.log"
+    assert stderr_log.exists()
+    assert "err msg" in stderr_log.read_text()
