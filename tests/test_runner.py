@@ -97,4 +97,3 @@ async def test_run_agent_nonzero_writes_stderr_log(tmp_path: Path):
     stderr_log = tmp_path / "logs" / "test-004.stderr.log"
     assert stderr_log.exists()
     assert "err msg" in stderr_log.read_text()
-
