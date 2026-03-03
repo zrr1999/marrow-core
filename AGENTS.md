@@ -18,29 +18,50 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Two-Tier Agent Model
+## Five-Agent Model
 
 ```
-              ┌──────────────────┐
-              │   marrow-core    │
-              │   (heartbeat)    │
-              └──┬───────────┬───┘
-                 │           │
-        every 5m │           │ every ~2.4h
-                 ▼           ▼
-          ┌──────────┐ ┌───────────┐
-          │  scout   │ │  artisan  │
-          │  (fast)  │ │  (deep)   │
-          └──────────┘ └───────────┘
-                 │           ▲
-                 │  handoff  │
-                 └───────────┘
+                      ┌──────────────────┐
+                      │   marrow-core    │
+                      │   (heartbeat)    │
+                      └─┬──┬──┬──┬──┬───┘
+                        │  │  │  │  │
+           every 2m ────┘  │  │  │  └──── every 6h
+                           │  │  │
+           every 5m ───────┘  │  └──────── every 15m
+                              │
+                        every 2.4h
+                              │
+       ┌──────────┐    ┌──────▼────┐    ┌───────────┐
+       │ watchdog │    │  artisan  │    │ reviewer  │
+       │  (infra) │    │  (deep)   │    │  (github) │
+       └──────────┘    └──────┬────┘    └───────────┘
+                              │
+       ┌──────────┐    ┌──────┴────┐
+       │  scout   │◄───┤  handoff  ├───►│  analyst  │
+       │  (fast)  │    │  files    │    │ (research)│
+       └──────────┘    └───────────┘    └───────────┘
 ```
 
-- **scout** — Fast dispatcher (~3 min). Scans queue, does trivial work,
-  delegates complex tasks to artisan.
-- **artisan** — Deep worker (up to 2 hours). Picks highest-value task,
-  completes it end-to-end with checkpoints.
+### Agent Roles
+
+| Agent | Interval | Purpose |
+|-------|----------|---------|
+| **watchdog** | 2 min | Infrastructure health; restart crashed services; alert humans |
+| **scout** | 5 min | Fast dispatcher; scan queue; do trivial tasks; delegate complex |
+| **reviewer** | 15 min | GitHub triage; read PR diffs; write review comments; reply to issues |
+| **artisan** | 2.4 h | Deep worker; end-to-end task completion with checkpoints |
+| **analyst** | 6 h | Research; paper digests; repo exploration; structured summaries |
+
+### Interaction Patterns
+
+- **scout** delegates complex work → `runtime/handoff/scout-to-artisan/`
+- **artisan** offloads quick checks → `runtime/handoff/artisan-to-scout/`
+- **reviewer** queues implementation tasks → `tasks/queue/` for artisan
+- **analyst** queues follow-up actions → `tasks/queue/` for artisan/scout
+- **watchdog** alerts humans → `runtime/handoff/scout-to-human/`
+- All agents read `tasks/queue/` for new work
+- Human responds → `tasks/queue/` (new task) or `runtime/handoff/human-to-scout/`
 
 ## Heartbeat Cycle
 

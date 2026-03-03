@@ -1,6 +1,16 @@
 core_dir = "/opt/marrow-core"
 
 [[agents]]
+name = "watchdog"
+heartbeat_interval = 120
+heartbeat_timeout = 60
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent watchdog"
+context_dirs = [
+  "/Users/marrow/context.d",
+]
+
+[[agents]]
 name = "scout"
 heartbeat_interval = 300
 heartbeat_timeout = 500
@@ -11,11 +21,31 @@ context_dirs = [
 ]
 
 [[agents]]
+name = "reviewer"
+heartbeat_interval = 900
+heartbeat_timeout = 600
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent reviewer"
+context_dirs = [
+  "/Users/marrow/context.d",
+]
+
+[[agents]]
 name = "artisan"
 heartbeat_interval = 8640
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent artisan"
+context_dirs = [
+  "/Users/marrow/context.d",
+]
+
+[[agents]]
+name = "analyst"
+heartbeat_interval = 21600
+heartbeat_timeout = 7200
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent analyst"
 context_dirs = [
   "/Users/marrow/context.d",
 ]
