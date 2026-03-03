@@ -17,7 +17,7 @@ from loguru import logger
 
 from marrow_core.config import AgentConfig
 from marrow_core.runner import run_agent
-from marrow_core.sandbox import load_rules
+from marrow_core.workspace import load_rules
 
 BASE_PROMPT = (
     "You are a relentless autonomous agent. Execute one round of high-value work now. "
