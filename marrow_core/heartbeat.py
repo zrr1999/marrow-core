@@ -1,7 +1,7 @@
 """Heartbeat loop — the core scheduler.
 
 Each tick: gather context -> build prompt -> run agent.
-Simplified from genesis-core: no JSON plugin protocol, just executable
+Simplified from marrow-core: no JSON plugin protocol, just executable
 scripts that output plain text to stdout.
 """
 
