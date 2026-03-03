@@ -1,10 +1,10 @@
-"""Tests for marrow_core.sandbox."""
+"""Tests for marrow_core.workspace."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from marrow_core.sandbox import (
+from marrow_core.workspace import (
     ensure_workspace_dirs,
     load_rules,
     sync_agent_symlinks,

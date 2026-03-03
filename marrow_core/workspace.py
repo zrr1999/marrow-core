@@ -1,4 +1,4 @@
-"""Sandbox — enforce core/evolution isolation.
+"""Workspace — setup and isolation helpers.
 
 Core principle: the agent (user marrow) can only write within its workspace.
 This module verifies the boundary and manages symlinks from core -> workspace.
