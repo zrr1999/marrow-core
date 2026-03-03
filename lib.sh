@@ -6,7 +6,6 @@ REPO_URL="https://github.com/zrr1999/marrow-core.git"
 CORE_DIR="/opt/marrow-core"
 DAEMON_DIR="/Library/LaunchDaemons"
 WORKSPACE="/Users/marrow"
-PYTHON="/opt/homebrew/bin/python3"
 
 PLISTS=(com.marrow.heart com.marrow.heart.sync)
 
@@ -56,6 +55,8 @@ install_daemon() {
 
 ensure_venv() {
   command -v uv >/dev/null 2>&1 || { echo "ERROR: uv required (brew install uv)" >&2; exit 1; }
-  [[ -d "${CORE_DIR}/.venv" ]] || uv venv --python "$PYTHON" --directory "$CORE_DIR" >/dev/null
+  # Use uv's built-in Python resolution (>=3.12 per pyproject.toml) rather than
+  # a hardcoded path that only works on Homebrew macOS installations.
+  [[ -d "${CORE_DIR}/.venv" ]] || uv venv --python 3.12 --directory "$CORE_DIR" >/dev/null
   uv sync --no-dev --directory "$CORE_DIR"
 }

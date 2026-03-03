@@ -1,5 +1,5 @@
 [project]
-name = "marrow-bot"
+name = "marrow-core"
 description = "Minimal self-evolving agent scheduler with hard core/evolution isolation"
 readme = "README.md"
 requires-python = ">=3.12"
