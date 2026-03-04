@@ -19,11 +19,14 @@ from loguru import logger
 
 from marrow_core.config import AgentConfig
 from marrow_core.runner import run_agent
-from marrow_core.sandbox import load_rules
+from marrow_core.workspace import load_rules
 
 BASE_PROMPT = (
-    "Run one autonomous round of work. Follow context and rules. "
-    "Act decisively — never ask questions or present choices."
+    "You are a relentless autonomous agent. Execute one round of high-value work now. "
+    "If tasks are queued, attack the highest-priority one immediately. "
+    "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
+    "explore your environment, or create tasks for future value. "
+    "Never idle. Never ask questions. Produce tangible output every tick."
 )
 
 
@@ -95,12 +98,18 @@ async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[st
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                out, _err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+                out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
                 text = (out or b"").decode("utf-8", errors="replace").strip()
                 if text:
                     blocks.append(f"--- [{script.stem}] ---\n{text}")
                 if proc.returncode != 0:
                     logger.warning("context script {} exited {}", script, proc.returncode)
+                    if err:
+                        logger.debug(
+                            "context script {} stderr: {}",
+                            script,
+                            err.decode("utf-8", errors="replace").strip(),
+                        )
             except TimeoutError:
                 logger.warning("context script {} timed out after {}s", script, timeout)
             except Exception as exc:

@@ -13,7 +13,7 @@ from marrow_core.config import load_config
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
-from marrow_core.sandbox import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
+from marrow_core.workspace import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
 

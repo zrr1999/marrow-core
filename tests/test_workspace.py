@@ -1,10 +1,10 @@
-"""Tests for marrow_core.sandbox."""
+"""Tests for marrow_core.workspace."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from marrow_core.sandbox import (
+from marrow_core.workspace import (
     ensure_workspace_dirs,
     load_rules,
     sync_agent_symlinks,
@@ -21,6 +21,7 @@ def test_ensure_workspace_dirs(tmp_path: Path):
     ensure_workspace_dirs(str(tmp_path))
     assert (tmp_path / "runtime" / "state").is_dir()
     assert (tmp_path / "tasks" / "queue").is_dir()
+    assert (tmp_path / "context.d").is_dir()
     assert (tmp_path / ".opencode" / "agents").is_dir()
 
 
@@ -42,6 +43,28 @@ def test_sync_agent_symlinks(tmp_path: Path):
     assert scout_link.is_symlink()
     assert scout_link.resolve() == (core_dir / "agents" / "scout.md").resolve()
     assert scout_link.read_text() == "# Scout"
+
+
+def test_sync_agent_symlinks_does_not_overwrite_existing_backup(tmp_path: Path) -> None:
+    core_dir = tmp_path / "core"
+    (core_dir / "agents").mkdir(parents=True)
+    (core_dir / "agents" / "scout.md").write_text("# Scout")
+
+    ws = tmp_path / "workspace"
+    (ws / ".opencode" / "agents").mkdir(parents=True)
+    dst = ws / ".opencode" / "agents" / "scout.md"
+    dst.write_text("local agent override")
+    # Pre-existing backup file should be preserved.
+    (ws / ".opencode" / "agents" / "scout.md.agent-backup").write_text("older backup")
+
+    sync_agent_symlinks(str(core_dir), str(ws))
+
+    assert dst.is_symlink()
+    # ensure a new backup was created without clobbering the old one
+    assert (ws / ".opencode" / "agents" / "scout.md.agent-backup").read_text() == "older backup"
+    assert (
+        ws / ".opencode" / "agents" / "scout.md.agent-backup-1"
+    ).read_text() == "local agent override"
 
 
 def test_sync_replaces_stale_symlink(tmp_path: Path):
