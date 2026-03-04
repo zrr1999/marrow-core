@@ -32,7 +32,7 @@ context_dirs = [
 
 [[agents]]
 name = "artisan"
-heartbeat_interval = 8640
+heartbeat_interval = 14400
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent artisan"

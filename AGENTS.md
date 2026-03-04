@@ -26,17 +26,17 @@ behavior within its workspace, but can never modify the core.
                       │   (heartbeat)    │
                       └─┬──┬──┬──┬──┬───┘
                         │  │  │  │  │
-           every 2m ────┘  │  │  │  └──── every 6h
+           every 2m ────┘  │  │  │  └──── every 6h (+ on-demand)
                            │  │  │
            every 5m ───────┘  │  └──────── every 15m
                               │
-                        every 2.4h
+                         every 4h
                               │
        ┌──────────┐    ┌──────▼────┐    ┌───────────┐
        │ watchdog │    │  artisan  │    │ reviewer  │
        │  (infra) │    │  (deep)   │    │  (github) │
        └──────────┘    └──────┬────┘    └───────────┘
-                              │
+                              │ spawns (on-demand)
        ┌──────────┐    ┌──────┴────┐
        │  scout   │◄───┤  handoff  ├───►│  analyst  │
        │  (fast)  │    │  files    │    │ (research)│
@@ -50,18 +50,37 @@ behavior within its workspace, but can never modify the core.
 | **watchdog** | 2 min | Infrastructure health; restart crashed services; alert humans |
 | **scout** | 5 min | Fast dispatcher; scan queue; do trivial tasks; delegate complex |
 | **reviewer** | 15 min | GitHub triage; read PR diffs; write review comments; reply to issues |
-| **artisan** | 2.4 h | Deep worker; end-to-end task completion with checkpoints |
-| **analyst** | 6 h | Research; paper digests; repo exploration; structured summaries |
+| **artisan** | 4 h | Deep worker; end-to-end task completion with checkpoints; spawns subagents |
+| **analyst** | 6 h (+ on-demand) | Research; paper digests; repo exploration; structured summaries |
 
 ### Interaction Patterns
 
 - **scout** delegates complex work → `runtime/handoff/scout-to-artisan/`
 - **artisan** offloads quick checks → `runtime/handoff/artisan-to-scout/`
+- **artisan** spawns **analyst** on-demand for focused research subtasks
 - **reviewer** queues implementation tasks → `tasks/queue/` for artisan
 - **analyst** queues follow-up actions → `tasks/queue/` for artisan/scout
 - **watchdog** alerts humans → `runtime/handoff/scout-to-human/`
 - All agents read `tasks/queue/` for new work
 - Human responds → `tasks/queue/` (new task) or `runtime/handoff/human-to-scout/`
+
+### On-demand Sub-agent Pattern
+
+Artisan can spawn Analyst as a focused subagent for parallel research work:
+
+1. Artisan writes a self-contained task spec (≤200 words) to `tasks/parallel/<id>/task.md`
+2. Analyst picks it up, works in isolation (fresh context), writes result to
+   `tasks/parallel/<id>/result.json`
+3. Artisan polls for completion and merges the result
+
+This enables parallel decomposition: Artisan implements while Analyst researches,
+reducing total session time for complex multi-faceted tasks.
+
+### Persistent TODO Queue
+
+Artisan maintains a persistent TODO queue at `runtime/state/artisan-todo.json`.
+Items survive session boundaries — incomplete tasks are resumed in the next session.
+This enables reliable multi-session execution of large tasks.
 
 ## Heartbeat Cycle
 
