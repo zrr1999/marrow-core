@@ -18,70 +18,49 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Six-Agent Model
+## Five-Agent Model
 
 ```
-                      ┌──────────────────┐
-                      │   marrow-core    │
-                      │   (heartbeat)    │
-                      └─┬──┬──┬──┬──┬──┬┘
-                        │  │  │  │  │  │
-           every 2m ────┘  │  │  │  │  └──── every 6h (+ on-demand)
-                           │  │  │  │
-           every 5m ───────┘  │  │  └──────── every 15m
-                              │  │
-                         every 4h └────────── weekly (+ on-demand)
-                              │
-       ┌──────────┐    ┌──────▼────┐    ┌───────────┐
-       │ watchdog │    │  artisan  │    │ reviewer  │
-       │  (infra) │    │  (deep)   │    │  (github) │
-       └──────────┘    └──────┬────┘    └───────────┘
-                              │ spawns (on-demand)
-       ┌──────────┐    ┌──────┴────┐    ┌───────────┐
-       │  scout   │◄───┤  handoff  ├───►│  analyst  │
-       │  (fast)  │    │  files    │    │ (research)│
-       └──────────┘    └───────────┘    └───────────┘
-                             ▲
-                      ┌──────┴────┐
-                      │   refit   │
-                      │ (meta-AI) │
-                      └───────────┘
+         ┌─────────────────────────────────────────────────┐
+         │           marrow-core (heartbeat)               │
+         │    schedules agents on fixed intervals          │
+         └──┬──────┬────────┬──────────┬────────────────────┘
+            │      │        │          │              │
+         2 min   5 min   15 min       4 h         3.5 days
+            │      │        │          │              │
+            ▼      ▼        ▼          ▼              ▼
+        ┌───────┐ ┌──────┐ ┌────────┐ ┌──────────┐ ┌───────┐
+        │watch- │ │scout │ │review- │ │ artisan  │ │refit  │
+        │ dog   │ │      │ │  er    │ │(+research)│ │       │
+        └───┬───┘ └──┬───┘ └───┬────┘ └────┬─────┘ └───┬───┘
+            │        │         │            │             │
+            │    delegates     │       checkpoints,       │
+            │   deep work ─────┼──►  tasks, learnings     │
+            │        │         │            │             │
+            └────────┴─────────┴────────────┘             │
+                     filesystem (tasks/, runtime/)    ◄───┘
+                     shared read/write by all agents
 ```
 
 ### Agent Roles
 
-| Agent | Interval | Model | Purpose |
-|-------|----------|-------|---------|
-| **watchdog** | 2 min | gpt-5-mini | Infrastructure health; restart crashed services; alert humans |
-| **scout** | 5 min | gpt-5-mini | Fast dispatcher; scan queue; do trivial tasks; delegate complex |
-| **reviewer** | 15 min | gpt-5-mini | GitHub triage; read PR diffs; write review comments; reply to issues |
-| **artisan** | 4 h | claude-sonnet-4.6 | Deep worker; end-to-end task completion with checkpoints; spawns subagents |
-| **analyst** | 6 h (+ on-demand) | claude-sonnet-4.6 | Research; paper digests; repo exploration; structured summaries |
-| **refit** | weekly (+ on-demand) | claude-opus-4.6 | Meta-learning; review performance; propose prompt/workflow improvements |
+| Agent | Interval | Model | Role |
+|-------|----------|-------|------|
+| **watchdog** | 2 min | gpt-5-mini | Infra health; restart services; alert humans |
+| **scout** | 5 min | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
+| **reviewer** | 15 min | gpt-5-mini | GitHub triage; PR reviews; issue replies |
+| **artisan** | 4 h | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
+| **refit** | twice a week | claude-opus-4.6 | Meta-learning; review performance; propose improvements |
 
 ### Interaction Patterns
 
 - **scout** delegates complex work → `runtime/handoff/scout-to-artisan/`
 - **artisan** offloads quick checks → `runtime/handoff/artisan-to-scout/`
-- **artisan** spawns **analyst** on-demand for focused research subtasks
 - **reviewer** queues implementation tasks → `tasks/queue/` for artisan
-- **analyst** queues follow-up actions → `tasks/queue/` for artisan/scout
 - **watchdog** alerts humans → `runtime/handoff/scout-to-human/`
 - **refit** analyzes all agent outputs and writes proposals → `tasks/queue/core-proposal-*.md`
 - All agents read `tasks/queue/` for new work
 - Human responds → `tasks/queue/` (new task) or `runtime/handoff/human-to-scout/`
-
-### On-demand Sub-agent Pattern
-
-Artisan can spawn Analyst as a focused subagent for parallel research work:
-
-1. Artisan writes a self-contained task spec (≤200 words) to `tasks/parallel/<id>/task.md`
-2. Analyst picks it up, works in isolation (fresh context), writes result to
-   `tasks/parallel/<id>/result.json`
-3. Artisan polls for completion and merges the result
-
-This enables parallel decomposition: Artisan implements while Analyst researches,
-reducing total session time for complex multi-faceted tasks.
 
 ### Persistent TODO Queue
 
@@ -105,7 +84,7 @@ This enables reliable multi-session execution of large tasks.
 │   ├── config.py           # TOML config + Pydantic validation
 │   ├── heartbeat.py        # Core scheduler loop
 │   ├── runner.py           # Agent subprocess execution
-│   ├── sandbox.py          # Permission enforcement + symlinks
+│   ├── workspace.py          # Permission enforcement + symlinks
 │   ├── log.py              # Structured logging
 │   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
 ├── agents/                 # Base agent definitions (symlinked to workspace)

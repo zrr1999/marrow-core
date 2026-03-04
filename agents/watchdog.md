@@ -3,7 +3,7 @@ description: >-
   Infrastructure watchdog. Monitors services, checks health, restarts
   crashed processes, and alerts humans via the scout-to-human handoff.
   Runs every ~2 minutes.
-mode: primary
+mode: subagent
 model: github-copilot/gpt-5-mini
 tools:
   bash: true

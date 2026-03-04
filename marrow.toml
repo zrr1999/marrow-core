@@ -41,18 +41,8 @@ context_dirs = [
 ]
 
 [[agents]]
-name = "analyst"
-heartbeat_interval = 21600
-heartbeat_timeout = 7200
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent analyst"
-context_dirs = [
-  "/Users/marrow/context.d",
-]
-
-[[agents]]
 name = "refit"
-heartbeat_interval = 604800  # weekly (7 days)
+heartbeat_interval = 302400  # twice a week (3.5 days)
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
