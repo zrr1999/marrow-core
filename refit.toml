@@ -1,0 +1,12 @@
+# refit.toml — agent-caster project configuration
+# Maps abstract model tiers to concrete models and configures cast targets.
+
+[project]
+agents_dir = "roles"
+
+[targets.opencode]
+output_dir = "."
+
+[targets.opencode.model_map]
+reasoning = "github-copilot/claude-sonnet-4.6"
+coding = "github-copilot/gpt-5-mini"
