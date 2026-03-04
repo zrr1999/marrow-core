@@ -21,46 +21,33 @@ behavior within its workspace, but can never modify the core.
 ## Five-Agent Model
 
 ```
-         ┌─────────────────────────────────────────────────┐
-         │           marrow-core (heartbeat)               │
-         │    schedules agents on fixed intervals          │
-         └──┬──────┬────────┬──────────┬────────────────────┘
-            │      │        │          │              │
-         2 min   5 min   15 min       4 h         3.5 days
-            │      │        │          │              │
-            ▼      ▼        ▼          ▼              ▼
-        ┌───────┐ ┌──────┐ ┌────────┐ ┌──────────┐ ┌───────┐
-        │watch- │ │scout │ │review- │ │ artisan  │ │refit  │
-        │ dog   │ │      │ │  er    │ │(+research)│ │       │
-        └───┬───┘ └──┬───┘ └───┬────┘ └────┬─────┘ └───┬───┘
-            │        │         │            │             │
-            │    delegates     │       checkpoints,       │
-            │   deep work ─────┼──►  tasks, learnings     │
-            │        │         │            │             │
-            └────────┴─────────┴────────────┘             │
-                     filesystem (tasks/, runtime/)    ◄───┘
-                     shared read/write by all agents
+marrow-core heartbeat (scheduler)
+│
+├── 2 min ──► watchdog   monitor infra; restart services; alert humans
+├── 5 min ──► scout      fast dispatch; trivial tasks; delegate complex work
+├── 15 min ─► reviewer   GitHub triage; PR reviews; issue replies
+├── 4 h ────► artisan    deep work + research; end-to-end tasks
+└── 3.5 day ► refit      meta-learning; review patterns; propose improvements
+                         (scheduled only — not callable by other agents)
+
+Data flows (all via filesystem):
+  scout ──delegate──► artisan    runtime/handoff/scout-to-artisan/
+  artisan ──offload──► scout     runtime/handoff/artisan-to-scout/
+  reviewer ──queue──► artisan    tasks/queue/
+  watchdog ──alert──► human      runtime/handoff/scout-to-human/
+  refit ──propose──► human       tasks/queue/core-proposal-*.md
+  human ──task──► any agent      tasks/queue/
 ```
 
 ### Agent Roles
 
-| Agent | Interval | Model | Role |
-|-------|----------|-------|------|
-| **watchdog** | 2 min | gpt-5-mini | Infra health; restart services; alert humans |
-| **scout** | 5 min | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
-| **reviewer** | 15 min | gpt-5-mini | GitHub triage; PR reviews; issue replies |
-| **artisan** | 4 h | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
-| **refit** | twice a week | claude-opus-4.6 | Meta-learning; review performance; propose improvements |
-
-### Interaction Patterns
-
-- **scout** delegates complex work → `runtime/handoff/scout-to-artisan/`
-- **artisan** offloads quick checks → `runtime/handoff/artisan-to-scout/`
-- **reviewer** queues implementation tasks → `tasks/queue/` for artisan
-- **watchdog** alerts humans → `runtime/handoff/scout-to-human/`
-- **refit** analyzes all agent outputs and writes proposals → `tasks/queue/core-proposal-*.md`
-- All agents read `tasks/queue/` for new work
-- Human responds → `tasks/queue/` (new task) or `runtime/handoff/human-to-scout/`
+| Agent | Interval | Mode | Model | Role |
+|-------|----------|------|-------|------|
+| **watchdog** | 2 min | scheduled + callable | gpt-5-mini | Infra health; restart services; alert humans |
+| **scout** | 5 min | scheduled + callable | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
+| **reviewer** | 15 min | scheduled + callable | gpt-5-mini | GitHub triage; PR reviews; issue replies |
+| **artisan** | 4 h | scheduled + callable | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
+| **refit** | twice a week | scheduled only | claude-opus-4.6 | Meta-learning; review performance; propose improvements |
 
 ### Persistent TODO Queue
 

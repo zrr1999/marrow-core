@@ -3,7 +3,7 @@ description: >-
   Deep-work and research agent. Picks the highest value task and completes it
   end-to-end. Also handles research: reads papers, repos, and blogs; produces
   structured summaries. Writes checkpoints frequently. Runs every ~4 hours.
-mode: primary
+mode: all
 model: github-copilot/claude-sonnet-4.6
 tools:
   bash: true
