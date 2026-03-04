@@ -44,11 +44,13 @@ def _list_tasks(task_dir: Path) -> list[dict[str, Any]]:
     for f in sorted(task_dir.glob("*.md")):
         first_line = f.read_text(encoding="utf-8").split("\n", 1)[0]
         title = first_line.lstrip("# ").strip() if first_line.startswith("#") else f.stem
-        tasks.append({
-            "file": f.name,
-            "title": title,
-            "created": f.stat().st_ctime,
-        })
+        tasks.append(
+            {
+                "file": f.name,
+                "title": title,
+                "created": f.stat().st_ctime,
+            }
+        )
     return tasks
 
 
@@ -66,7 +68,9 @@ _STATUS_TEXT = {
 
 
 def _send(
-    writer: asyncio.StreamWriter, status: int, body: dict[str, Any] | str,
+    writer: asyncio.StreamWriter,
+    status: int,
+    body: dict[str, Any] | str,
 ) -> None:
     """Write an HTTP/1.1 JSON response."""
     reason = _STATUS_TEXT.get(status, "OK")
@@ -115,9 +119,7 @@ async def _handle(
         # Read body if present
         raw_body = ""
         if content_length > 0:
-            data = await asyncio.wait_for(
-                reader.readexactly(content_length), timeout=10
-            )
+            data = await asyncio.wait_for(reader.readexactly(content_length), timeout=10)
             raw_body = data.decode("utf-8", errors="replace")
 
         # Route

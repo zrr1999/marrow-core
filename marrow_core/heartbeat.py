@@ -170,9 +170,7 @@ async def heartbeat(
             if agent_state is not None:
                 agent_state.running = False
                 agent_state.tick_count += 1
-                agent_state.last_tick_duration = round(
-                    time.time() - agent_state.last_tick_at, 3
-                )
+                agent_state.last_tick_duration = round(time.time() - agent_state.last_tick_at, 3)
                 agent_state.next_tick_at = time.time() + interval
 
         if once:

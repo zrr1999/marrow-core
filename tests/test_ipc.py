@@ -109,7 +109,7 @@ async def _ipc_request(sock: str, method: str, path: str, body: str = "") -> dic
     await writer.wait_closed()
     text = resp.decode("utf-8", errors="replace")
     idx = text.find("\r\n\r\n")
-    json_str = text[idx + 4:] if idx >= 0 else text
+    json_str = text[idx + 4 :] if idx >= 0 else text
     return json.loads(json_str)
 
 
