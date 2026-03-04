@@ -1,4 +1,4 @@
-"""Sandbox — enforce core/evolution isolation.
+"""Workspace — setup and isolation helpers.
 
 Core principle: the agent (user marrow) can only write within its workspace.
 This module verifies the boundary and manages symlinks from core -> workspace.
@@ -71,6 +71,15 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
             # A real file exists — agent may have created it.
             # Back it up and replace with symlink.
             backup = dst.with_suffix(dst.suffix + ".agent-backup")
+            if backup.exists():
+                # Avoid clobbering an existing backup.
+                i = 1
+                while True:
+                    alt = dst.with_suffix(dst.suffix + f".agent-backup-{i}")
+                    if not alt.exists():
+                        backup = alt
+                        break
+                    i += 1
             logger.warning("backing up agent-modified {} -> {}", dst, backup)
             dst.rename(backup)
         dst.symlink_to(src)
