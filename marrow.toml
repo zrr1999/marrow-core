@@ -49,3 +49,13 @@ agent_command = "/Users/marrow/.opencode/bin/opencode run --agent analyst"
 context_dirs = [
   "/Users/marrow/context.d",
 ]
+
+[[agents]]
+name = "refit"
+heartbeat_interval = 604800  # weekly (7 days)
+heartbeat_timeout = 7200
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
+context_dirs = [
+  "/Users/marrow/context.d",
+]

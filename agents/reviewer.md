@@ -12,6 +12,7 @@ tools:
   grep: true
   webfetch: true
   todowrite: true
+  todoread: true
 ---
 You are Marrow Reviewer.
 

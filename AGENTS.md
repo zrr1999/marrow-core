@@ -18,40 +18,46 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Five-Agent Model
+## Six-Agent Model
 
 ```
                       ┌──────────────────┐
                       │   marrow-core    │
                       │   (heartbeat)    │
-                      └─┬──┬──┬──┬──┬───┘
-                        │  │  │  │  │
-           every 2m ────┘  │  │  │  └──── every 6h (+ on-demand)
-                           │  │  │
-           every 5m ───────┘  │  └──────── every 15m
-                              │
-                         every 4h
+                      └─┬──┬──┬──┬──┬──┬┘
+                        │  │  │  │  │  │
+           every 2m ────┘  │  │  │  │  └──── every 6h (+ on-demand)
+                           │  │  │  │
+           every 5m ───────┘  │  │  └──────── every 15m
+                              │  │
+                         every 4h └────────── weekly (+ on-demand)
                               │
        ┌──────────┐    ┌──────▼────┐    ┌───────────┐
        │ watchdog │    │  artisan  │    │ reviewer  │
        │  (infra) │    │  (deep)   │    │  (github) │
        └──────────┘    └──────┬────┘    └───────────┘
                               │ spawns (on-demand)
-       ┌──────────┐    ┌──────┴────┐
+       ┌──────────┐    ┌──────┴────┐    ┌───────────┐
        │  scout   │◄───┤  handoff  ├───►│  analyst  │
        │  (fast)  │    │  files    │    │ (research)│
        └──────────┘    └───────────┘    └───────────┘
+                             ▲
+                      ┌──────┴────┐
+                      │   refit   │
+                      │ (meta-AI) │
+                      └───────────┘
 ```
 
 ### Agent Roles
 
-| Agent | Interval | Purpose |
-|-------|----------|---------|
-| **watchdog** | 2 min | Infrastructure health; restart crashed services; alert humans |
-| **scout** | 5 min | Fast dispatcher; scan queue; do trivial tasks; delegate complex |
-| **reviewer** | 15 min | GitHub triage; read PR diffs; write review comments; reply to issues |
-| **artisan** | 4 h | Deep worker; end-to-end task completion with checkpoints; spawns subagents |
-| **analyst** | 6 h (+ on-demand) | Research; paper digests; repo exploration; structured summaries |
+| Agent | Interval | Model | Purpose |
+|-------|----------|-------|---------|
+| **watchdog** | 2 min | gpt-5-mini | Infrastructure health; restart crashed services; alert humans |
+| **scout** | 5 min | gpt-5-mini | Fast dispatcher; scan queue; do trivial tasks; delegate complex |
+| **reviewer** | 15 min | gpt-5-mini | GitHub triage; read PR diffs; write review comments; reply to issues |
+| **artisan** | 4 h | claude-sonnet-4.6 | Deep worker; end-to-end task completion with checkpoints; spawns subagents |
+| **analyst** | 6 h (+ on-demand) | claude-sonnet-4.6 | Research; paper digests; repo exploration; structured summaries |
+| **refit** | weekly (+ on-demand) | claude-opus-4.6 | Meta-learning; review performance; propose prompt/workflow improvements |
 
 ### Interaction Patterns
 
@@ -61,6 +67,7 @@ behavior within its workspace, but can never modify the core.
 - **reviewer** queues implementation tasks → `tasks/queue/` for artisan
 - **analyst** queues follow-up actions → `tasks/queue/` for artisan/scout
 - **watchdog** alerts humans → `runtime/handoff/scout-to-human/`
+- **refit** analyzes all agent outputs and writes proposals → `tasks/queue/core-proposal-*.md`
 - All agents read `tasks/queue/` for new work
 - Human responds → `tasks/queue/` (new task) or `runtime/handoff/human-to-scout/`
 
