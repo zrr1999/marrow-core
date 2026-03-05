@@ -178,14 +178,10 @@ wheels = [
 name = "marrow-core"
 source = { editable = "." }
 dependencies = [
+    { name = "agent-caster" },
     { name = "loguru" },
     { name = "pydantic" },
     { name = "typer" },
-]
-
-[package.optional-dependencies]
-cast = [
-    { name = "agent-caster" },
 ]
 
 [package.dev-dependencies]
@@ -205,12 +201,11 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-caster", marker = "extra == 'cast'", specifier = ">=0.0.2" },
+    { name = "agent-caster", specifier = ">=0.0.2" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pydantic", specifier = ">=2.12" },
     { name = "typer", specifier = ">=0.15" },
 ]
-provides-extras = ["cast"]
 
 [package.metadata.requires-dev]
 dev = [
