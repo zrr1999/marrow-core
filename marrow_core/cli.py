@@ -15,6 +15,7 @@ import typer
 from marrow_core.config import load_config
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
+from marrow_core.layers import discover as discover_layers
 from marrow_core.log import setup_logging
 from marrow_core.workspace import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
 
@@ -171,6 +172,11 @@ def validate(
         typer.echo(f"    command  : {agent.agent_command}")
         typer.echo(f"    workspace: {agent.workspace}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
+    layers = discover_layers()
+    typer.echo(f"\n  Layers ({len(layers)} discovered):")
+    for layer in layers:
+        desc = layer.get("description", "")
+        typer.echo(f"    [{layer['priority']:>3}] {layer['name']:<20} {desc}")
     typer.echo("\nVALIDATE OK")
 
 
