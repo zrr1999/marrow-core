@@ -71,7 +71,7 @@ This enables reliable multi-session execution of large tasks.
 │   ├── config.py           # TOML config + Pydantic validation
 │   ├── heartbeat.py        # Core scheduler loop
 │   ├── runner.py           # Agent subprocess execution
-│   ├── workspace.py          # Permission enforcement + symlinks
+│   ├── workspace.py            # Permission enforcement + symlinks
 │   ├── log.py              # Structured logging
 │   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
 ├── agents/                 # Base agent definitions (symlinked to workspace)
@@ -165,7 +165,7 @@ PR titles follow the same gitmoji format:
 
 ## Comparison with marrow-core
 
-| Aspect | marrow-core | marrow-core |
+| Aspect | genesis-core (old) | marrow-core (new) |
 |--------|-------------|-------------|
 | Plugin protocol | JSON stdin/stdout | Plain text stdout |
 | Agent definitions | Inside core repo | Symlinked from core |

@@ -3,7 +3,7 @@ description: >-
   PR and issue manager. Monitors GitHub notifications, reviews pull requests,
   writes review comments, and tracks open issues across all watched repos.
   Runs every ~15 minutes.
-mode: primary
+mode: all
 model: github-copilot/gpt-5-mini
 tools:
   bash: true

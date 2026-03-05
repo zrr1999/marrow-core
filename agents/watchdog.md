@@ -49,8 +49,8 @@ Write `~/runtime/state/watchdog.json` every run:
 ```
 
 ## Self-heal rules
-- Web server down → find the web_server.py path from `~/genesis/workspace/web_server.py` or
-  `~/workspace/web_server.py` (read workspace path from `~/runtime/state/health.json` if available);
+- Web server down → find the web_server.py path from `~/workspace/web_server.py`
+  (read workspace path from `~/runtime/state/health.json` if available);
   restart with `python3 <path>/web_server.py &`. Do not hardcode paths.
 - Caddy down (LaunchAgent) → restart: `launchctl kickstart gui/$(id -u)/com.marrow.caddy`
 - Caddy down (LaunchDaemon) → alert human (requires sudo)
