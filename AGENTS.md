@@ -163,13 +163,3 @@ PR titles follow the same gitmoji format:
 ✨ feat: add checkpoint auto-pruning for artisan
 ```
 
-## Comparison with marrow-core
-
-| Aspect | genesis-core (old) | marrow-core (new) |
-|--------|-------------|-------------|
-| Plugin protocol | JSON stdin/stdout | Plain text stdout |
-| Agent definitions | Inside core repo | Symlinked from core |
-| Permission boundary | Convention only | Filesystem enforced |
-| Core lines | ~800 | ~550 |
-| Config keys per agent | 9 | 6 |
-| Evolution | Unrestricted | Bounded by workspace |
