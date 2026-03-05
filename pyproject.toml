@@ -11,13 +11,9 @@ dependencies = [
   "loguru>=0.7.3",
   "pydantic>=2.12",
   "typer>=0.15",
-]
-dynamic = ["version"]
-
-[project.optional-dependencies]
-cast = [
   "agent-caster>=0.0.2",
 ]
+dynamic = ["version"]
 
 [project.scripts]
 marrow = "marrow_core.cli:app"
