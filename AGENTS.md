@@ -162,4 +162,3 @@ PR titles follow the same gitmoji format:
 ```
 ✨ feat: add checkpoint auto-pruning for artisan
 ```
-
