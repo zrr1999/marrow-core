@@ -18,29 +18,42 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Two-Tier Agent Model
+## Five-Agent Model
 
 ```
-              ┌──────────────────┐
-              │   marrow-core    │
-              │   (heartbeat)    │
-              └──┬───────────┬───┘
-                 │           │
-        every 5m │           │ every ~2.4h
-                 ▼           ▼
-          ┌──────────┐ ┌───────────┐
-          │  scout   │ │  artisan  │
-          │  (fast)  │ │  (deep)   │
-          └──────────┘ └───────────┘
-                 │           ▲
-                 │  handoff  │
-                 └───────────┘
+marrow-core heartbeat (scheduler)
+│
+├── 2 min ──► watchdog   monitor infra; restart services; alert humans
+├── 5 min ──► scout      fast dispatch; trivial tasks; delegate complex work
+├── 15 min ─► reviewer   GitHub triage; PR reviews; issue replies
+├── 4 h ────► artisan    deep work + research; end-to-end tasks
+└── 3.5 day ► refit      meta-learning; review patterns; propose improvements
+                         (scheduled only — not callable by other agents)
+
+Data flows (all via filesystem):
+  scout ──delegate──► artisan    runtime/handoff/scout-to-artisan/
+  artisan ──offload──► scout     runtime/handoff/artisan-to-scout/
+  reviewer ──queue──► artisan    tasks/queue/
+  watchdog ──alert──► human      runtime/handoff/scout-to-human/
+  refit ──propose──► human       tasks/queue/core-proposal-*.md
+  human ──task──► any agent      tasks/queue/
 ```
 
-- **scout** — Fast dispatcher (~3 min). Scans queue, does trivial work,
-  delegates complex tasks to artisan.
-- **artisan** — Deep worker (up to 2 hours). Picks highest-value task,
-  completes it end-to-end with checkpoints.
+### Agent Roles
+
+| Agent | Interval | Mode | Model | Role |
+|-------|----------|------|-------|------|
+| **watchdog** | 2 min | scheduled + callable | gpt-5-mini | Infra health; restart services; alert humans |
+| **scout** | 5 min | scheduled + callable | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
+| **reviewer** | 15 min | scheduled + callable | gpt-5-mini | GitHub triage; PR reviews; issue replies |
+| **artisan** | 4 h | scheduled + callable | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
+| **refit** | twice a week | scheduled only | claude-opus-4.6 | Meta-learning; review performance; propose improvements |
+
+### Persistent TODO Queue
+
+Artisan maintains a persistent TODO queue at `runtime/state/artisan-todo.json`.
+Items survive session boundaries — incomplete tasks are resumed in the next session.
+This enables reliable multi-session execution of large tasks.
 
 ## Heartbeat Cycle
 
@@ -58,7 +71,7 @@ behavior within its workspace, but can never modify the core.
 │   ├── config.py           # TOML config + Pydantic validation
 │   ├── heartbeat.py        # Core scheduler loop
 │   ├── runner.py           # Agent subprocess execution
-│   ├── sandbox.py          # Permission enforcement + symlinks
+│   ├── workspace.py            # Permission enforcement + symlinks
 │   ├── log.py              # Structured logging
 │   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
 ├── agents/                 # Base agent definitions (symlinked to workspace)
@@ -149,14 +162,3 @@ PR titles follow the same gitmoji format:
 ```
 ✨ feat: add checkpoint auto-pruning for artisan
 ```
-
-## Comparison with marrow-core
-
-| Aspect | marrow-core | marrow-core |
-|--------|-------------|-------------|
-| Plugin protocol | JSON stdin/stdout | Plain text stdout |
-| Agent definitions | Inside core repo | Symlinked from core |
-| Permission boundary | Convention only | Filesystem enforced |
-| Core lines | ~800 | ~550 |
-| Config keys per agent | 9 | 6 |
-| Evolution | Unrestricted | Bounded by workspace |
