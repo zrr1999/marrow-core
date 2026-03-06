@@ -1,5 +1,13 @@
 # refit.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
+#
+# Model tiers:
+#   reasoning — for deep-work, long-horizon, creative roles (artisan, refit)
+#   coding    — for fast, high-frequency, code-focused roles (scout, reviewer, watchdog)
+#
+# Current choices:
+#   reasoning = claude-opus-4.6  — best for creative and analytical day-level agents
+#   coding    = gpt-5.4          — strong code generation; preferred for minute-level agents
 
 [project]
 agents_dir = "roles"
@@ -8,5 +16,5 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-reasoning = "github-copilot/claude-sonnet-4.6"
-coding = "github-copilot/gpt-5-mini"
+reasoning = "github-copilot/claude-opus-4.6"
+coding = "github-copilot/gpt-5.4"

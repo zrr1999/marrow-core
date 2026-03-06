@@ -9,3 +9,7 @@ dist/
 htmlcov/
 coverage.xml
 marrow_core/_version.py
+# agent-caster generated output
+.agents/
+.opencode/
+
