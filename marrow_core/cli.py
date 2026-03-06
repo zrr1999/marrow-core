@@ -1,4 +1,4 @@
-"""CLI entry point — run, run-once, dry-run, validate, setup, status, task."""
+"""CLI entry point — run, run-once, dry-run, validate, setup, status, task, daemon."""
 
 from __future__ import annotations
 
@@ -267,3 +267,67 @@ def task_list(
         return
     for t in tasks:
         typer.echo(f"  {t.get('file', '?')}  {t.get('title', '?')}")
+
+
+# ---------------------------------------------------------------------------
+# Daemon subcommand group — install/uninstall/status background service
+# ---------------------------------------------------------------------------
+
+daemon_app = typer.Typer(help="Manage the marrow background daemon (launchd / systemd).")
+app.add_typer(daemon_app, name="daemon")
+
+
+@daemon_app.command("install")
+def daemon_install(
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
+    """Install and start marrow as a background service.
+
+    macOS : writes ~/Library/LaunchAgents/com.marrow.heartbeat.plist and loads it.
+    Linux : writes ~/.config/systemd/user/marrow.service and enables it.
+    """
+    from marrow_core.daemon import install_daemon
+
+    config_path = config.resolve()
+    if not config_path.is_file():
+        typer.echo(f"config not found: {config_path}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        dest = install_daemon(config_path)
+    except NotImplementedError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except Exception as exc:
+        typer.echo(f"install failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"✅ daemon installed: {dest}")
+    typer.echo("   marrow will now start automatically at login.")
+
+
+@daemon_app.command("uninstall")
+def daemon_uninstall() -> None:
+    """Stop and remove the background service."""
+    from marrow_core.daemon import uninstall_daemon
+
+    try:
+        uninstall_daemon()
+    except NotImplementedError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    except Exception as exc:
+        typer.echo(f"uninstall failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo("✅ daemon uninstalled.")
+
+
+@daemon_app.command("status")
+def daemon_status_cmd() -> None:
+    """Show whether the background service is running."""
+    from marrow_core.daemon import daemon_status
+
+    try:
+        out = daemon_status()
+    except NotImplementedError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(out)

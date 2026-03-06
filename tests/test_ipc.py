@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -82,8 +83,15 @@ def test_heartbeat_state_to_dict():
 
 @pytest.fixture
 async def ipc_server(tmp_path: Path):
-    """Start the IPC server on a temp socket and yield (socket_path, task_dir, state)."""
-    sock = str(tmp_path / "test.sock")
+    """Start the IPC server on a temp socket and yield (socket_path, task_dir, state).
+
+    On macOS the AF_UNIX path limit is 104 bytes, which pytest's tmp_path can
+    easily exceed (e.g. /private/var/folders/…/pytest-xx/test_healthN/test.sock).
+    We therefore use tempfile.mkdtemp() which always produces a short /tmp/… path,
+    staying well within the 104-char limit on both macOS and Linux.
+    """
+    sock_dir = tempfile.mkdtemp()
+    sock = str(Path(sock_dir) / "m.sock")
     task_dir = tmp_path / "tasks" / "queue"
     state = HeartbeatState()
     state.agents["scout"] = AgentState(name="scout", interval=300, tick_count=3)

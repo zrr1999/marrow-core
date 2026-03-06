@@ -28,12 +28,76 @@ marrow setup        # init workspace dirs and sync agent symlinks
 marrow validate     # check config and show summary
 ```
 
-Options available on every command:
+Options available on `run`, `run-once`, and `dry-run`:
 
 ```
 --config / -c   PATH   Path to marrow.toml  [default: marrow.toml]
 --verbose / -v         Enable debug logging
 --json-logs            Emit newline-delimited JSON log records
+--ipc / --no-ipc       Override IPC server flag from config
+```
+
+## Background daemon
+
+Run marrow as a persistent background service that survives reboots:
+
+```bash
+# Install and start (macOS: launchd, Linux: systemd)
+marrow daemon install --config /path/to/marrow.toml
+
+# Check status
+marrow daemon status
+
+# Stop and remove
+marrow daemon uninstall
+```
+
+**macOS** — writes `~/Library/LaunchAgents/com.marrow.heartbeat.plist` and loads it via
+`launchctl`. Logs go to `~/Library/Logs/marrow/`.
+
+**Linux** — writes `~/.config/systemd/user/marrow.service` and enables it via
+`systemctl --user`. Logs are available via `journalctl --user -u marrow`.
+
+## IPC server
+
+Enable the IPC server to submit and list tasks without editing files directly:
+
+```toml
+# marrow.toml
+[ipc]
+enabled = true
+# socket_path = "/Users/marrow/runtime/marrow.sock"  # optional override
+# task_dir    = "/Users/marrow/tasks/queue"           # optional override
+```
+
+Once the server is running:
+
+```bash
+# Submit a new task
+marrow task add "Fix the login bug" --body "Users can't log in on mobile"
+
+# List queued tasks
+marrow task list
+
+# Query heartbeat status
+marrow status
+```
+
+You can also use curl directly (no marrow CLI needed):
+
+```bash
+sock="/Users/marrow/runtime/marrow.sock"
+
+# Health check
+curl --unix-socket "$sock" http://localhost/health
+
+# Submit task
+curl --unix-socket "$sock" -X POST http://localhost/tasks \
+  -H 'Content-Type: application/json' \
+  -d '{"title": "Investigate memory leak", "body": "OOM in prod since v1.3"}'
+
+# List tasks
+curl --unix-socket "$sock" http://localhost/tasks
 ```
 
 ## Installation
@@ -65,6 +129,12 @@ heartbeat_timeout  = 8000
 agent_command      = "opencode run --agent artisan"
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
+
+# Optional: Unix domain socket IPC server
+[ipc]
+enabled     = true
+socket_path = "/Users/marrow/runtime/marrow.sock"
+task_dir    = "/Users/marrow/tasks/queue"
 ```
 
 ## Context providers
