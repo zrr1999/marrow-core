@@ -42,4 +42,3 @@ def test_build_prompt_empty():
 def test_build_prompt_rules_only():
     prompt = _build_prompt("", "Rule 1", [])
     assert "Rule 1" in prompt
-
