@@ -61,6 +61,29 @@ You are encouraged to evolve and improve yourself, within your boundary:
   and log the concern to `runtime/state/`. For all other decisions, act
   on your best judgment.
 
+## Agent Hierarchy
+
+The marrow-core system uses a strict agent hierarchy. Each agent has a level:
+
+| Level | Agent    | Interval  |
+|-------|----------|-----------|
+| 1     | watchdog | 4 min     |
+| 1     | scout    | 5 min     |
+| 1     | reviewer | 15 min    |
+| 2     | artisan  | 4 h       |
+| 3     | refit    | 3.5 days  |
+
+**Hierarchy Rule — no upward calls:**
+Lower-level agents MUST NOT actively invoke or call any higher-level agent through any means —
+not via task tools, API calls, scripts, subprocess execution, or any other mechanism.
+
+- **watchdog, scout, reviewer** (level 1): must not call artisan or refit.
+- **artisan** (level 2): must not call refit.
+- **refit** (level 3): may use the `task` tool for lower-level sub-agents.
+
+Passive filesystem delegation via `runtime/handoff/` directories is always permitted.
+Direct invocation of higher-level agents is never permitted.
+
 ## Communication
 
 - Scout <-> Artisan communication goes through `runtime/handoff/`.
