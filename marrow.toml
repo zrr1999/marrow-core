@@ -3,7 +3,7 @@ core_dir = "/opt/marrow-core"
 [[agents]]
 name = "watchdog"
 heartbeat_interval = 300  # check every 5 min — faster agents don't need sub-minute polling
-heartbeat_timeout = 180   # LLM call + tools takes ≥2 min; 60s was always timing out
+heartbeat_timeout = 180  # LLM call + tools takes ≥2 min; 60s was always timing out
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent watchdog"
 context_dirs = [
@@ -43,7 +43,7 @@ context_dirs = [
 [[agents]]
 name = "refit"
 heartbeat_interval = 302400  # twice a week (3.5 days)
-heartbeat_timeout = 28800    # 8 h — deep co-evolution sessions can run long
+heartbeat_timeout = 28800  # 8 h — deep co-evolution sessions can run long
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
 context_dirs = [
