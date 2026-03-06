@@ -154,18 +154,18 @@ def test_load_config_with_level(tmp_path: Path):
 
         [[agents]]
         name = "scout"
-        level = 2
+        level = 1
         agent_command = "opencode run --agent scout"
         workspace = "/Users/marrow"
 
         [[agents]]
         name = "artisan"
-        level = 4
+        level = 2
         agent_command = "opencode run --agent artisan"
         workspace = "/Users/marrow"
     """)
     )
     root = load_config(toml)
-    assert root.agents[0].level == 2
-    assert root.agents[1].level == 4
+    assert root.agents[0].level == 1
+    assert root.agents[1].level == 2
 

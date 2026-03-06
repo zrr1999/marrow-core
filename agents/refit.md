@@ -78,7 +78,7 @@ Each `coevolution-report-YYYYMMDD.md` must include:
 - You CANNOT merge PRs or deploy changes — write task cards for that.
 
 ## Hierarchy
-- You are a **level-5 agent** — the highest level in the system.
+- You are a **level-3 agent** — the highest level in the system.
 - You CAN use the `task` tool to spawn lower-level sub-agents (e.g. `general` workers)
   for parallel research or data gathering.
 - You run on a **fixed schedule only** — other agents must never invoke you directly.
