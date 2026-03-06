@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -81,16 +83,25 @@ def test_heartbeat_state_to_dict():
 
 
 @pytest.fixture
-async def ipc_server(tmp_path: Path):
-    """Start the IPC server on a temp socket and yield (socket_path, task_dir, state)."""
-    sock = str(tmp_path / "test.sock")
-    task_dir = tmp_path / "tasks" / "queue"
-    state = HeartbeatState()
-    state.agents["scout"] = AgentState(name="scout", interval=300, tick_count=3)
-    server = await start_ipc_server(sock, str(task_dir), state)
-    yield sock, task_dir, state
-    server.close()
-    await server.wait_closed()
+async def ipc_server():
+    """Start the IPC server on a temp socket and yield (socket_path, task_dir, state).
+
+    Uses tempfile.mkdtemp() in /tmp to guarantee a short path — macOS enforces
+    a 104-byte limit on AF_UNIX socket paths, which pytest's tmp_path can exceed
+    in deep CI runner environments.
+    """
+    tmpdir = Path(tempfile.mkdtemp(prefix="mw_"))
+    try:
+        sock = str(tmpdir / "t.sock")
+        task_dir = tmpdir / "tasks" / "queue"
+        state = HeartbeatState()
+        state.agents["scout"] = AgentState(name="scout", interval=300, tick_count=3)
+        server = await start_ipc_server(sock, str(task_dir), state)
+        yield sock, task_dir, state
+        server.close()
+        await server.wait_closed()
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 async def _ipc_request(sock: str, method: str, path: str, body: str = "") -> dict:
