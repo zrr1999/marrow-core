@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from marrow_core.workspace import (
     _agent_caster_available,
-    _install_agent_file,
+    _install_agent_content,
     ensure_workspace_dirs,
     load_rules,
     sync_agent_symlinks,
@@ -29,7 +29,7 @@ def test_ensure_workspace_dirs(tmp_path: Path):
 
 
 def test_sync_agent_symlinks(tmp_path: Path):
-    # Create fake core agents
+    # Create fake core agents (legacy agents/ dir for symlink fallback)
     core_dir = tmp_path / "core"
     (core_dir / "agents").mkdir(parents=True)
     (core_dir / "agents" / "scout.md").write_text("# Scout")
@@ -101,38 +101,31 @@ def test_load_rules_missing(tmp_path: Path):
 
 
 def test_agent_caster_not_available_when_missing():
-    """_agent_caster_available returns False when the binary is not found."""
-    with patch("marrow_core.workspace.subprocess.run", side_effect=FileNotFoundError):
+    """_agent_caster_available returns False when agent_caster is not importable."""
+    with patch("importlib.import_module", side_effect=ImportError("no module")):
         assert _agent_caster_available() is False
 
 
 def test_agent_caster_available_when_present():
-    """_agent_caster_available returns True when the binary exits 0."""
-    import subprocess
-
-    mock_result = subprocess.CompletedProcess(args=[], returncode=0)
-    with patch("marrow_core.workspace.subprocess.run", return_value=mock_result):
+    """_agent_caster_available returns True when agent_caster is importable."""
+    with patch("importlib.import_module", return_value=MagicMock()):
         assert _agent_caster_available() is True
 
 
-def test_install_agent_file_copies(tmp_path: Path):
-    """_install_agent_file copies file and overwrites symlinks."""
-    src = tmp_path / "scout.md"
-    src.write_text("# Scout generated")
+def test_install_agent_content_writes(tmp_path: Path):
+    """_install_agent_content writes content to the destination file."""
     dst = tmp_path / "agents" / "scout.md"
     dst.parent.mkdir()
 
-    _install_agent_file(src, dst)
+    _install_agent_content(dst, "# Scout generated")
 
     assert dst.is_file()
     assert not dst.is_symlink()
     assert dst.read_text() == "# Scout generated"
 
 
-def test_install_agent_file_replaces_symlink(tmp_path: Path):
-    """_install_agent_file removes existing symlink before copying."""
-    src = tmp_path / "scout.md"
-    src.write_text("new content")
+def test_install_agent_content_replaces_symlink(tmp_path: Path):
+    """_install_agent_content removes existing symlink before writing."""
     agents_dir = tmp_path / "agents"
     agents_dir.mkdir()
     dst = agents_dir / "scout.md"
@@ -141,7 +134,7 @@ def test_install_agent_file_replaces_symlink(tmp_path: Path):
     stale.write_text("old")
     dst.symlink_to(stale)
 
-    _install_agent_file(src, dst)
+    _install_agent_content(dst, "new content")
 
     assert dst.is_file()
     assert not dst.is_symlink()
@@ -149,7 +142,7 @@ def test_install_agent_file_replaces_symlink(tmp_path: Path):
 
 
 def test_sync_uses_agent_caster_when_available(tmp_path: Path):
-    """sync_agent_symlinks calls agent-caster when refit.toml and roles/ exist."""
+    """sync_agent_symlinks delegates to _cast_via_agent_caster when conditions are met."""
     core_dir = tmp_path / "core"
     (core_dir / "roles").mkdir(parents=True)
     (core_dir / "roles" / "scout.md").write_text("# Scout role")
@@ -158,20 +151,23 @@ def test_sync_uses_agent_caster_when_available(tmp_path: Path):
     ws = tmp_path / "workspace"
     ws.mkdir()
 
-    # Simulate agent-caster being available and writing the cast output
-    def fake_run(cmd, **kwargs):
-        import subprocess
+    cast_called_with: list[tuple] = []
 
-        # Write the "cast" output that agent-caster would produce
-        cast_out = core_dir / ".opencode" / "agents"
-        cast_out.mkdir(parents=True, exist_ok=True)
-        (cast_out / "scout.md").write_text("# Cast scout")
-        return subprocess.CompletedProcess(args=cmd, returncode=0)
+    def fake_cast(core_path: Path, workspace: str) -> None:
+        cast_called_with.append((core_path, workspace))
+        # Simulate what _cast_via_agent_caster would write
+        dst = Path(workspace) / ".opencode" / "agents" / "scout.md"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text("# Cast scout")
 
-    with patch("marrow_core.workspace.subprocess.run", side_effect=fake_run):
+    with (
+        patch("marrow_core.workspace._agent_caster_available", return_value=True),
+        patch("marrow_core.workspace._cast_via_agent_caster", side_effect=fake_cast),
+    ):
         sync_agent_symlinks(str(core_dir), str(ws))
 
-    # Result should be a regular file (copied from cast output), not a symlink
+    assert len(cast_called_with) == 1
+    # Result should be a regular file (written from cast output), not a symlink
     scout = ws / ".opencode" / "agents" / "scout.md"
     assert scout.is_file()
     assert scout.read_text() == "# Cast scout"
@@ -190,7 +186,7 @@ def test_sync_falls_back_to_symlinks_when_agent_caster_missing(tmp_path: Path):
     ws = tmp_path / "workspace"
     (ws / ".opencode" / "agents").mkdir(parents=True)
 
-    with patch("marrow_core.workspace.subprocess.run", side_effect=FileNotFoundError):
+    with patch("marrow_core.workspace._agent_caster_available", return_value=False):
         sync_agent_symlinks(str(core_dir), str(ws))
 
     scout = ws / ".opencode" / "agents" / "scout.md"

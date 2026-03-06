@@ -10,7 +10,6 @@ to direct symlinks for environments where agent-caster is not installed.
 from __future__ import annotations
 
 import os
-import shutil
 from pathlib import Path
 
 from loguru import logger
@@ -120,7 +119,7 @@ def _cast_via_agent_caster(core_path: Path, workspace: str) -> None:
 
         logger.info("deployed {} agents via agent-caster", len(outputs))
 
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("agent-caster cast failed: {}; falling back to symlinks", exc)
         _symlink_agents(core_path, workspace)
 
