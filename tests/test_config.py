@@ -105,6 +105,3 @@ def test_extra_forbid(tmp_path: Path):
     with pytest.raises(ValidationError):
         load_config(toml)
 
-
-
-
