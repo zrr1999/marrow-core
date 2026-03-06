@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
 from loguru import logger
@@ -54,14 +53,14 @@ def ensure_workspace_dirs(workspace: str) -> None:
 def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
     """Deploy base agent definitions from core into workspace .opencode/agents/.
 
-    Prefers agent-caster (``agent-caster cast --target opencode``) when
-    available, because it honours the canonical ``roles/`` definitions and
-    applies model-mapping from ``refit.toml``.  Falls back to direct symlinks
-    for environments where agent-caster is not installed.
+    Prefers agent-caster (library API) when available, because it honours the
+    canonical ``roles/`` definitions and applies model-mapping from
+    ``refit.toml``.  Falls back to direct symlinks for environments where
+    agent-caster is not installed.
     """
     core_path = Path(core_dir)
 
-    # --- Preferred: agent-caster cast ---
+    # --- Preferred: agent-caster library ---
     refit = core_path / "refit.toml"
     roles_dir = core_path / "roles"
     if refit.is_file() and roles_dir.is_dir() and _agent_caster_available():
@@ -73,49 +72,61 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
 
 
 def _agent_caster_available() -> bool:
-    """Return True if ``agent-caster`` is importable / on PATH."""
+    """Return True if ``agent-caster`` is importable as a library."""
     try:
-        result = subprocess.run(
-            ["agent-caster", "--version"],
-            capture_output=True,
-            timeout=5,
-        )
-        return result.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+        import importlib
+
+        importlib.import_module("agent_caster")
+        return True
+    except ImportError:
         return False
 
 
 def _cast_via_agent_caster(core_path: Path, workspace: str) -> None:
-    """Run ``agent-caster cast --target opencode`` in the core directory."""
-    result = subprocess.run(
-        ["agent-caster", "cast", "--target", "opencode", "--project-dir", str(core_path)],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
-    if result.returncode != 0:
-        logger.warning(
-            "agent-caster cast failed (rc={}): {}; falling back to symlinks",
-            result.returncode,
-            result.stderr.strip(),
-        )
+    """Cast agent definitions to opencode format using the agent-caster library."""
+    try:
+        from agent_caster.adapters import get_adapter
+        from agent_caster.config import load_config
+        from agent_caster.loader import load_agents
+    except ImportError as exc:
+        logger.warning("agent-caster import failed: {}; falling back to symlinks", exc)
         _symlink_agents(core_path, workspace)
         return
 
-    # agent-caster writes to core_path/.opencode/agents/*.md — copy to workspace
-    cast_agents = core_path / ".opencode" / "agents"
-    ws_agents = Path(workspace) / ".opencode" / "agents"
-    ws_agents.mkdir(parents=True, exist_ok=True)
+    try:
+        # Load agent definitions from roles/
+        agents_dir = core_path / "roles"
+        agents = load_agents(agents_dir)
 
-    for src in sorted(cast_agents.glob("*.md")):
-        dst = ws_agents / src.name
-        _install_agent_file(src, dst)
+        # Load refit.toml config and get opencode target config
+        project_config = load_config(core_path / "refit.toml")
+        target_cfg = project_config.targets.get("opencode")
+        if target_cfg is None:
+            logger.warning("no 'opencode' target in refit.toml; falling back to symlinks")
+            _symlink_agents(core_path, workspace)
+            return
 
-    logger.info("deployed {} agents via agent-caster", len(list(cast_agents.glob("*.md"))))
+        adapter = get_adapter("opencode")
+        outputs = adapter.cast(agents, target_cfg)
+
+        ws_agents = Path(workspace) / ".opencode" / "agents"
+        ws_agents.mkdir(parents=True, exist_ok=True)
+
+        for out in outputs:
+            # agent-caster outputs paths like ".opencode/agents/name.md"
+            dst = Path(workspace) / out.path
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            _install_agent_content(dst, out.content)
+
+        logger.info("deployed {} agents via agent-caster", len(outputs))
+
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("agent-caster cast failed: {}; falling back to symlinks", exc)
+        _symlink_agents(core_path, workspace)
 
 
-def _install_agent_file(src: Path, dst: Path) -> None:
-    """Copy src to dst, backing up any agent-modified file already at dst."""
+def _install_agent_content(dst: Path, content: str) -> None:
+    """Write content to dst, backing up any existing file first."""
     if dst.is_symlink():
         dst.unlink()
     elif dst.is_file():
@@ -131,8 +142,8 @@ def _install_agent_file(src: Path, dst: Path) -> None:
         logger.warning("backing up agent-modified {} -> {}", dst, backup)
         dst.rename(backup)
 
-    shutil.copy2(src, dst)
-    logger.info("installed {} -> {}", src.name, dst)
+    dst.write_text(content, encoding="utf-8")
+    logger.info("installed {}", dst.name)
 
 
 def _symlink_agents(core_path: Path, workspace: str) -> None:

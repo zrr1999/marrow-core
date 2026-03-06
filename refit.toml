@@ -1,13 +1,15 @@
 # refit.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
-# Model tiers:
-#   reasoning — for deep-work, long-horizon, creative roles (artisan, refit)
-#   coding    — for fast, high-frequency, code-focused roles (scout, reviewer, watchdog)
+# Model tiers (three levels):
+#   daily     — day-level deep work; creative, analytical (artisan, refit)
+#   minute    — minute-level fast work; strong code generation (scout, reviewer)
+#   watchdog  — lightweight, high-frequency monitoring (watchdog)
 #
 # Current choices:
-#   reasoning = claude-opus-4.6  — best for creative and analytical day-level agents
-#   coding    = gpt-5.4          — strong code generation; preferred for minute-level agents
+#   daily    = claude-opus-4.6  — best creativity and reasoning for long-horizon agents
+#   minute   = gpt-5.4          — strong code generation; preferred for frequent loops
+#   watchdog = gpt-5-mini       — efficient, low-cost model for rapid health checks
 
 [project]
 agents_dir = "roles"
@@ -16,5 +18,6 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-reasoning = "github-copilot/claude-opus-4.6"
-coding = "github-copilot/gpt-5.4"
+daily    = "github-copilot/claude-opus-4.6"
+minute   = "github-copilot/gpt-5.4"
+watchdog = "github-copilot/gpt-5-mini"
