@@ -26,7 +26,7 @@ class AgentConfig(BaseModel):
 
     name: str
     level: int = 0  # Hierarchy level; higher = more senior.
-    # Agents must not actively invoke agents with a higher level.
+    # Lower-level agents must not actively invoke higher-level agents.
     heartbeat_interval: int = 300
     heartbeat_timeout: int = 500
     agent_command: str

@@ -60,8 +60,11 @@ def test_hierarchy_rule_lists_higher_agents():
     assert "artisan" in rule
     assert "refit" in rule
     assert "watchdog" not in rule
-    # scout is named in the rule as the current agent, not as a forbidden target
+    # scout appears only as the current agent identifier, never as a forbidden target
     assert "(artisan, refit)" in rule
+    # Remove the first (and only expected) occurrence of 'scout' as the current agent name,
+    # then verify it's not listed as a forbidden target.
+    assert "scout" not in rule.replace("scout", "", 1)
     assert "MUST NOT" in rule
 
 

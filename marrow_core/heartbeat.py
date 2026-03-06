@@ -36,7 +36,10 @@ def _hierarchy_rule(cfg: AgentConfig, all_agents: list[AgentConfig]) -> str:
     """
     if cfg.level == 0:
         return ""
-    higher = [a.name for a in all_agents if a.level > cfg.level]
+    higher = sorted(
+        [a.name for a in all_agents if a.level > cfg.level],
+        key=lambda name: next(a.level for a in all_agents if a.name == name),
+    )
     if not higher:
         return ""
     names = ", ".join(higher)
