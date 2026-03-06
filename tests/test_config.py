@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, load_config
+from marrow_core.config import AgentConfig, RootConfig, load_config
 
 
 def test_minimal_agent_config():
@@ -104,3 +104,68 @@ def test_extra_forbid(tmp_path: Path):
     )
     with pytest.raises(ValidationError):
         load_config(toml)
+
+
+def test_level_default_zero():
+    cfg = AgentConfig(name="scout", agent_command="cmd", workspace="/tmp")
+    assert cfg.level == 0
+
+
+def test_level_accepts_positive():
+    cfg = AgentConfig(name="scout", level=3, agent_command="cmd", workspace="/tmp")
+    assert cfg.level == 3
+
+
+def test_level_negative_raises():
+    with pytest.raises(ValueError, match="level must be >= 0"):
+        AgentConfig(name="scout", level=-1, agent_command="cmd", workspace="/tmp")
+
+
+def test_level_uniqueness_warning():
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        RootConfig(
+            agents=[
+                AgentConfig(name="scout", level=2, agent_command="cmd", workspace="/tmp"),
+                AgentConfig(name="artisan", level=2, agent_command="cmd", workspace="/tmp"),
+            ]
+        )
+        assert any("level=2" in str(warning.message) for warning in w), w
+
+
+def test_level_uniqueness_no_warning_when_zero():
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        RootConfig(
+            agents=[
+                AgentConfig(name="scout", level=0, agent_command="cmd", workspace="/tmp"),
+                AgentConfig(name="artisan", level=0, agent_command="cmd", workspace="/tmp"),
+            ]
+        )
+        hierarchy_warnings = [x for x in w if "level" in str(x.message)]
+        assert not hierarchy_warnings
+
+
+def test_load_config_with_level(tmp_path: Path):
+    toml = tmp_path / "marrow.toml"
+    toml.write_text(
+        textwrap.dedent("""\
+        core_dir = "/opt/marrow-core"
+
+        [[agents]]
+        name = "scout"
+        level = 2
+        agent_command = "opencode run --agent scout"
+        workspace = "/Users/marrow"
+
+        [[agents]]
+        name = "artisan"
+        level = 4
+        agent_command = "opencode run --agent artisan"
+        workspace = "/Users/marrow"
+    """)
+    )
+    root = load_config(toml)
+    assert root.agents[0].level == 2
+    assert root.agents[1].level == 4
+

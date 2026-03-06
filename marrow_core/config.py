@@ -11,7 +11,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -25,6 +25,8 @@ class AgentConfig(BaseModel):
     """Single scheduled agent definition."""
 
     name: str
+    level: int = 0  # Hierarchy level; higher = more senior.
+    # Agents must not actively invoke agents with a higher level.
     heartbeat_interval: int = 300
     heartbeat_timeout: int = 500
     agent_command: str
@@ -40,6 +42,13 @@ class AgentConfig(BaseModel):
         if not s:
             raise ValueError("agent name must not be empty")
         return s
+
+    @field_validator("level")
+    @classmethod
+    def _check_level(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("level must be >= 0")
+        return v
 
     @field_validator("heartbeat_interval")
     @classmethod
@@ -83,6 +92,23 @@ class RootConfig(BaseModel):
     agents: list[AgentConfig] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _check_level_uniqueness(self) -> RootConfig:
+        """Warn if two agents share the same non-zero level (ambiguous hierarchy)."""
+        seen: dict[int, str] = {}
+        for agent in self.agents:
+            if agent.level == 0:
+                continue
+            if agent.level in seen:
+                warnings.warn(
+                    f"agents '{seen[agent.level]}' and '{agent.name}' share level={agent.level}; "
+                    "hierarchy is ambiguous",
+                    stacklevel=3,
+                )
+            else:
+                seen[agent.level] = agent.name
+        return self
 
 
 def load_config(path: Path) -> RootConfig:

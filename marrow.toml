@@ -2,6 +2,7 @@ core_dir = "/opt/marrow-core"
 
 [[agents]]
 name = "watchdog"
+level = 1
 heartbeat_interval = 120
 heartbeat_timeout = 60
 workspace = "/Users/marrow"
@@ -12,6 +13,7 @@ context_dirs = [
 
 [[agents]]
 name = "scout"
+level = 2
 heartbeat_interval = 300
 heartbeat_timeout = 500
 workspace = "/Users/marrow"
@@ -22,6 +24,7 @@ context_dirs = [
 
 [[agents]]
 name = "reviewer"
+level = 3
 heartbeat_interval = 900
 heartbeat_timeout = 600
 workspace = "/Users/marrow"
@@ -32,6 +35,7 @@ context_dirs = [
 
 [[agents]]
 name = "artisan"
+level = 4
 heartbeat_interval = 14400
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
@@ -42,6 +46,7 @@ context_dirs = [
 
 [[agents]]
 name = "refit"
+level = 5
 heartbeat_interval = 302400  # twice a week (3.5 days)
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
