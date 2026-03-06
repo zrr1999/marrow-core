@@ -1,4 +1,4 @@
-"""CLI entry point — run, run-once, dry-run, validate, setup."""
+"""CLI entry point — run, run-once, dry-run, validate, setup, init."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from marrow_core.log import setup_logging
 from marrow_core.workspace import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
+init_app = typer.Typer(help="Scaffold new marrow layer packages.")
+app.add_typer(init_app, name="init")
 
 # Shared option types
 ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
@@ -120,3 +122,31 @@ def validate(
         typer.echo(f"    workspace: {agent.workspace}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
     typer.echo("\nVALIDATE OK")
+
+
+# ---------------------------------------------------------------------------
+# init sub-commands
+# ---------------------------------------------------------------------------
+
+NameArg = Annotated[str, typer.Option("--name", "-n", help="Package / project name (e.g. nova)")]
+DestOpt = Annotated[
+    Path,
+    typer.Option("--dest", "-d", help="Parent directory for the new package (default: cwd)"),
+]
+
+
+@init_app.command(name="user")
+def init_user(
+    name: NameArg,
+    dest: DestOpt = Path("."),
+) -> None:
+    """Scaffold an L2 user-layer package (marrow init user --name <pkg>)."""
+    from marrow_core.scaffold import create_user_layer
+
+    root = create_user_layer(name=name, dest=dest.resolve())
+    typer.echo(f"Created user layer scaffold: {root}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    typer.echo(f"  cd {root.name}")
+    typer.echo("  uv add -e .")
+    typer.echo("  marrow validate")
