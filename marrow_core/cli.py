@@ -31,7 +31,7 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
         raise typer.Exit(code=1)
     tasks = [
         asyncio.create_task(
-            heartbeat(agent, root.core_dir, all_agents=root.agents, once=once, dry_run=dry_run),
+            heartbeat(agent, root.core_dir, once=once, dry_run=dry_run),
             name=agent.name,
         )
         for agent in root.agents

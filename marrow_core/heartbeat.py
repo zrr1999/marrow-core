@@ -28,31 +28,6 @@ BASE_PROMPT = (
 )
 
 
-def _hierarchy_rule(cfg: AgentConfig, all_agents: list[AgentConfig]) -> str:
-    """Build a per-agent prohibition string banning calls to higher-level agents.
-
-    Returns an empty string when no higher-level agents exist or hierarchy
-    information is unavailable (all levels are 0).
-    """
-    if cfg.level == 0:
-        return ""
-    higher = sorted(
-        [a.name for a in all_agents if a.level > cfg.level],
-        key=lambda name: next(a.level for a in all_agents if a.name == name),
-    )
-    if not higher:
-        return ""
-    names = ", ".join(higher)
-    return (
-        f"Agent Hierarchy Rule: You are a level-{cfg.level} agent ({cfg.name}). "
-        f"You MUST NOT actively invoke or call any higher-level agent "
-        f"({names}) through any means — not via task tools, API calls, "
-        f"scripts, subprocess execution, or any other mechanism. "
-        f"Passive filesystem delegation (writing to runtime/handoff/) is allowed; "
-        f"direct invocation is not."
-    )
-
-
 def _session_id(agent_name: str) -> str:
     t = time.time()
     ts = time.strftime("%Y%m%d-%H%M%S", time.localtime(t))
@@ -118,7 +93,6 @@ async def heartbeat(
     cfg: AgentConfig,
     core_dir: str,
     *,
-    all_agents: list[AgentConfig] | None = None,
     once: bool = False,
     dry_run: bool = False,
 ) -> None:
@@ -127,13 +101,12 @@ async def heartbeat(
     name = cfg.name
     interval = cfg.heartbeat_interval
     timeout = cfg.heartbeat_timeout
-    agents = all_agents or [cfg]
 
     logger.info("[{}] started (interval={}s, timeout={}s)", name, interval, timeout)
 
     while True:
         try:
-            await _tick(cfg, core_dir, rules, all_agents=agents, dry_run=dry_run)
+            await _tick(cfg, core_dir, rules, dry_run=dry_run)
         except Exception:
             logger.exception("[{}] tick failed", name)
 
@@ -147,7 +120,6 @@ async def _tick(
     core_dir: str,
     rules: str,
     *,
-    all_agents: list[AgentConfig] | None = None,
     dry_run: bool = False,
 ) -> None:
     name = cfg.name
@@ -158,11 +130,7 @@ async def _tick(
     # Gather context from all configured context dirs
     context_blocks = await _gather_context(cfg.context_dirs)
 
-    # Append per-agent hierarchy prohibition to the injected rules
-    hierarchy = _hierarchy_rule(cfg, all_agents or [cfg])
-    effective_rules = "\n\n".join(filter(None, [rules, hierarchy]))
-
-    prompt = _build_prompt(BASE_PROMPT, effective_rules, context_blocks)
+    prompt = _build_prompt(BASE_PROMPT, rules, context_blocks)
 
     if dry_run:
         print(f"--- DRY RUN [{name}] session={sid} ---")
