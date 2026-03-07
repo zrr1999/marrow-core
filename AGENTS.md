@@ -103,6 +103,49 @@ The agent is encouraged to evolve within its boundary:
 | Skills | Anywhere in workspace | Standard opencode skills |
 | Core changes | `tasks/queue/core-proposal-*.md` | Write proposal, human reviews |
 
+## Three-Layer Architecture
+
+marrow-core supports a plugin-based layer discovery system via Python entry points
+(see `marrow_core/layers.py`). This enables packages to extend marrow's behavior
+without modifying core.
+
+### Layer priorities
+
+| Layer | Priority | Who registers it | Purpose |
+|-------|----------|-----------------|---------|
+| **L1** | 0 | `marrow-core` (built-in) | Immutable core rules and defaults |
+| **L2** | 100 | User packages (e.g. `marrow-bot`) | Site-specific agents, skills, config |
+| **L3** | 200+ | Per-agent workspace packages | Agent-local overrides |
+
+### Registering a layer
+
+Any Python package can register a layer by adding to its `pyproject.toml`:
+
+```toml
+[project.entry-points."marrow.layer"]
+my-layer = "my_package.layer:layer_info"
+```
+
+where `layer_info` is a zero-argument callable returning a dict:
+
+```python
+def layer_info() -> dict:
+    return {
+        "name": "my-layer",
+        "priority": 100,
+        "path": "/path/to/layer/root",
+        "description": "My site extension layer",
+    }
+```
+
+### Viewing discovered layers
+
+```
+marrow validate
+```
+
+The `validate` command prints all discovered layers sorted by priority.
+
 ## CLI Commands
 
 | Command    | Description |
