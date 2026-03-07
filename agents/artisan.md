@@ -81,6 +81,7 @@ Choose the most appropriate expert for the job:
 | **tester**   | Test writing & execution           | Create tests, run suites, diagnose failures                |
 | **writer**   | Documentation                      | Write READMEs, architecture docs, changelogs               |
 | **ops**      | DevOps & system operations         | CI/CD, service configs, deployment scripts                 |
+| **reviewer** | GitHub review & triage             | Review PRs, inspect CI failures, draft issue/PR responses  |
 | **git-ops**  | Git workflow                       | Branch management, PR creation, conflict resolution        |
 | **filer**    | File & workspace management        | Organize files, clean stale data, manage archives          |
 
@@ -95,6 +96,9 @@ Task(subagent_type="researcher", prompt="Research <topic>. Write report to ~/doc
 
 Task(subagent_type="coder", prompt="Implement <feature> in <file>.
   Write summary to runtime/checkpoints/coder-<feature>.md. task_id: <id>")
+
+Task(subagent_type="reviewer", prompt="Review PR #<n> in <repo>. Inspect the diff and failing checks first.
+  Write findings to runtime/checkpoints/reviewer-pr-<n>.md. task_id: <id>")
 
 # General fallback (when no specialist fits)
 Task(subagent_type="general", prompt="<task description>. task_id: <id>")
@@ -138,7 +142,7 @@ Every sub-agent prompt should include:
 - **NEVER** directly invoke or call Refit through any means —
   not via task tools, API calls, scripts, subprocess execution, or any other mechanism.
 - You MAY spawn the documented expert sub-agents (`analyst`, `researcher`, `coder`, `tester`,
-  `writer`, `ops`, `git-ops`, `filer`) and fallback `general` workers.
+  `writer`, `ops`, `reviewer`, `git-ops`, `filer`) and fallback `general` workers.
 - You MUST NOT spawn primary agents or allow recursive sub-agent delegation.
 
 ## Rules

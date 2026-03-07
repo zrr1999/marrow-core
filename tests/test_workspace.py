@@ -111,6 +111,7 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
     (core_dir / "agents" / "tester.md").write_text("# Tester")
     (core_dir / "agents" / "writer.md").write_text("# Writer")
     (core_dir / "agents" / "ops.md").write_text("# Ops")
+    (core_dir / "agents" / "reviewer.md").write_text("# Reviewer")
     (core_dir / "agents" / "git-ops.md").write_text("# Git-Ops")
     (core_dir / "agents" / "filer.md").write_text("# Filer")
 
@@ -129,6 +130,7 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
         "git-ops.md",
         "ops.md",
         "researcher.md",
+        "reviewer.md",
         "scout.md",
         "tester.md",
         "writer.md",

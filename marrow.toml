@@ -21,16 +21,6 @@ context_dirs = [
 ]
 
 [[agents]]
-name = "reviewer"
-heartbeat_interval = 900
-heartbeat_timeout = 600
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent reviewer"
-context_dirs = [
-  "/Users/marrow/context.d",
-]
-
-[[agents]]
 name = "artisan"
 heartbeat_interval = 14400
 heartbeat_timeout = 7200

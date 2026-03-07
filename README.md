@@ -84,20 +84,6 @@ The agent is free to add, edit, or remove scripts under its own `context.d/`.
 
 See [AGENTS.md](AGENTS.md) for a full breakdown.
 
-## GitHub Copilot in GitHub Actions
-
-If a workflow needs to execute agents backed by `github-copilot/*` models, grant model access and
-pass the workflow token through to the agent environment:
-
-```yaml
-permissions:
-  contents: read
-  models: read
-
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
 ## License
 
 MIT

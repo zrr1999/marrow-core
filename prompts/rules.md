@@ -69,7 +69,6 @@ The marrow-core system uses a strict agent hierarchy. Each agent has a level:
 |-------|----------|-----------|---------------------|
 | 1     | watchdog | 4 min     | No                  |
 | 1     | scout    | 5 min     | No                  |
-| 1     | reviewer | 15 min    | No                  |
 | 2     | artisan  | 4 h       | Yes                 |
 | 3     | refit    | 3.5 days  | Yes                 |
 
@@ -77,7 +76,7 @@ The marrow-core system uses a strict agent hierarchy. Each agent has a level:
 Lower-level agents MUST NOT actively invoke or call any higher-level agent through any means —
 not via task tools, API calls, scripts, subprocess execution, or any other mechanism.
 
-- **watchdog, scout, reviewer** (level 1): must not call artisan or refit.
+- **watchdog, scout** (level 1): must not call artisan or refit.
 - **artisan** (level 2): must not call refit.
 - **refit** (level 3): may use the `task` tool for lower-level sub-agents.
 
@@ -97,6 +96,7 @@ Sub-agents run in fresh context windows and produce focused outputs.
 | **tester**   | Test writing and execution         | Read-write |
 | **writer**   | Documentation and technical writing | Read-write |
 | **ops**      | CI/CD, services, deployment        | Read-write |
+| **reviewer** | GitHub triage, PR review, issue replies | Read-write |
 | **git-ops**  | Git workflow, PRs, releases        | Read-write |
 | **filer**    | File organization, cleanup, archiving | Read-write |
 
@@ -107,7 +107,7 @@ Sub-agents run in fresh context windows and produce focused outputs.
 - Specialized sub-agents are for **focused execution**, not for handing off vague thinking.
 
 Sub-agents MUST NOT spawn further sub-agents (no recursive delegation).
-Sub-agents MUST NOT invoke any primary agent (watchdog, scout, reviewer, artisan, refit).
+Sub-agents MUST NOT invoke any primary agent (watchdog, scout, artisan, refit).
 
 ## Communication
 
