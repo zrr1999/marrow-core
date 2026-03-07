@@ -16,15 +16,12 @@ from pathlib import Path
 from loguru import logger
 
 from marrow_core.config import AgentConfig
-from marrow_core.runner import run_agent
+from marrow_core.runner import run_agent, run_agent_http
 from marrow_core.workspace import load_rules
 
 BASE_PROMPT = (
-    "You are a relentless autonomous agent. Execute one round of high-value work now. "
-    "If tasks are queued, attack the highest-priority one immediately. "
-    "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
-    "explore your environment, or create tasks for future value. "
-    "Never idle. Never ask questions. Produce tangible output every tick."
+    "Run one autonomous round of work. Follow context and rules. "
+    "Act decisively — never ask questions or present choices."
 )
 
 
@@ -138,15 +135,24 @@ async def _tick(
         print("--- END ---")
         return
 
-    argv = shlex.split(cfg.agent_command)
-    result = await run_agent(
-        argv,
-        message=prompt,
-        timeout=cfg.heartbeat_timeout,
-        cwd=cfg.workspace,
-        log_dir=log_dir,
-        session_id=sid,
-    )
+    if cfg.opencode_url:
+        result = await run_agent_http(
+            cfg.opencode_url,
+            message=prompt,
+            timeout=cfg.heartbeat_timeout,
+            log_dir=log_dir,
+            session_id=sid,
+        )
+    else:
+        argv = shlex.split(cfg.agent_command)
+        result = await run_agent(
+            argv,
+            message=prompt,
+            timeout=cfg.heartbeat_timeout,
+            cwd=cfg.workspace,
+            log_dir=log_dir,
+            session_id=sid,
+        )
 
     if result.timed_out:
         logger.warning("[{}] timed out after {}s", name, cfg.heartbeat_timeout)

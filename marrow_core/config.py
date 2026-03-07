@@ -30,6 +30,7 @@ class AgentConfig(BaseModel):
     agent_command: str
     workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
     context_dirs: list[str] = Field(default_factory=list)
+    opencode_url: str = ""  # When set, use opencode serve HTTP API instead of subprocess
 
     model_config = ConfigDict(extra="forbid")
 

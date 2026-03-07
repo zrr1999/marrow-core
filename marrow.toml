@@ -16,6 +16,7 @@ heartbeat_interval = 300
 heartbeat_timeout = 500
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent scout"
+opencode_url = "http://localhost:4096"
 context_dirs = [
   "/Users/marrow/context.d",
 ]
@@ -36,6 +37,7 @@ heartbeat_interval = 14400
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent artisan"
+opencode_url = "http://localhost:4096"
 context_dirs = [
   "/Users/marrow/context.d",
 ]

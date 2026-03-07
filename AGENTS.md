@@ -60,7 +60,8 @@ This enables reliable multi-session execution of large tasks.
 1. **Gather context** — Run executable scripts in `context_dirs`.
    Each script outputs plain text to stdout. No JSON protocol needed.
 2. **Build prompt** — Stack: core rules + base prompt + context blocks.
-3. **Run agent** — Execute `agent_command` with the assembled prompt.
+3. **Run agent** — Send prompt via opencode serve HTTP API (preferred)
+   or execute `agent_command` subprocess (fallback).
 4. **Sleep** — Wait for `heartbeat_interval`, repeat.
 
 ## Filesystem Layout
@@ -70,7 +71,7 @@ This enables reliable multi-session execution of large tasks.
 ├── marrow_core/            # Python package
 │   ├── config.py           # TOML config + Pydantic validation
 │   ├── heartbeat.py        # Core scheduler loop
-│   ├── runner.py           # Agent subprocess execution
+│   ├── runner.py           # Agent execution (HTTP serve API + subprocess fallback)
 │   ├── workspace.py            # Permission enforcement + symlinks
 │   ├── log.py              # Structured logging
 │   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
@@ -121,7 +122,8 @@ See `marrow.toml`. Key fields per agent:
 - `heartbeat_interval` — Seconds between ticks
 - `heartbeat_timeout` — Max seconds per agent execution
 - `workspace` — Agent's writable workspace root
-- `agent_command` — Command to invoke the agent
+- `agent_command` — Command to invoke the agent (subprocess fallback)
+- `opencode_url` — URL of opencode serve instance (preferred, HTTP mode)
 - `context_dirs` — Directories to scan for context scripts
 
 ## Commit & PR Conventions

@@ -22,6 +22,7 @@ def test_minimal_agent_config():
     assert cfg.heartbeat_interval == 300
     assert cfg.heartbeat_timeout == 500
     assert cfg.context_dirs == []
+    assert cfg.opencode_url == ""
 
 
 def test_name_strip():
@@ -104,3 +105,21 @@ def test_extra_forbid(tmp_path: Path):
     )
     with pytest.raises(ValidationError):
         load_config(toml)
+
+
+def test_load_config_with_opencode_url(tmp_path: Path):
+    toml = tmp_path / "marrow.toml"
+    toml.write_text(
+        textwrap.dedent("""\
+        core_dir = "/opt/marrow-core"
+
+        [[agents]]
+        name = "scout"
+        agent_command = "opencode run --agent scout"
+        opencode_url = "http://localhost:4096"
+        workspace = "/Users/marrow"
+        context_dirs = ["/Users/marrow/context.d"]
+    """)
+    )
+    root = load_config(toml)
+    assert root.agents[0].opencode_url == "http://localhost:4096"
