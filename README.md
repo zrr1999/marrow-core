@@ -55,6 +55,7 @@ name              = "scout"
 heartbeat_interval = 300       # seconds
 heartbeat_timeout  = 300
 agent_command      = "opencode run --agent scout"
+opencode_url       = "http://localhost:4096"   # opencode serve mode (preferred)
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
 
@@ -63,8 +64,26 @@ name              = "artisan"
 heartbeat_interval = 8640      # ~2.4 hours
 heartbeat_timeout  = 8000
 agent_command      = "opencode run --agent artisan"
+opencode_url       = "http://localhost:4096"   # opencode serve mode (preferred)
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
+```
+
+### Execution modes
+
+marrow-core supports two modes for running opencode agents:
+
+| Mode | Config | Description |
+|------|--------|-------------|
+| **Serve (HTTP)** | `opencode_url = "http://localhost:4096"` | Preferred. Talks to a running `opencode serve` instance via HTTP API. |
+| **Subprocess** | `agent_command = "opencode run --agent scout"` | Fallback. Spawns opencode as a subprocess each tick. |
+
+When `opencode_url` is set, the HTTP mode is used and `agent_command` is ignored.
+
+To start the opencode server:
+
+```bash
+opencode serve --hostname 127.0.0.1 --port 4096
 ```
 
 ## Context providers

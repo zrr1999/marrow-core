@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from marrow_core.runner import RunResult, _read_tail, run_agent
+from marrow_core.runner import RunResult, _read_tail, run_agent, run_agent_http
 
 
 def test_run_result_properties():
@@ -97,3 +97,16 @@ async def test_run_agent_nonzero_writes_stderr_log(tmp_path: Path):
     stderr_log = tmp_path / "logs" / "test-004.stderr.log"
     assert stderr_log.exists()
     assert "err msg" in stderr_log.read_text()
+
+
+async def test_run_agent_http_connection_error(tmp_path: Path):
+    """HTTP runner returns error result when server is not running."""
+    result = await run_agent_http(
+        "http://127.0.0.1:19999",  # nothing listening here
+        message="test",
+        timeout=5,
+        log_dir=tmp_path / "logs",
+        session_id="test-http-001",
+    )
+    assert not result.ok
+    assert result.error
