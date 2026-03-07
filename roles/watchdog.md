@@ -6,7 +6,7 @@ description: >-
   Runs every ~4 minutes.
 role: subagent
 model:
-  tier: watchdog
+  tier: lite
   temperature: 0.0
 capabilities:
   - read

@@ -7,7 +7,7 @@ description: >-
   fixed schedule.
 role: primary
 model:
-  tier: daily
+  tier: deep
   temperature: 0.3
 capabilities:
   - read

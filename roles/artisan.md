@@ -5,7 +5,7 @@ description: >-
   Writes checkpoints frequently. Runs every ~2.4 hours.
 role: primary
 model:
-  tier: daily
+  tier: deep
   temperature: 0.2
 capabilities:
   - read

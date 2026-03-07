@@ -1,15 +1,25 @@
 # refit.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
-# Model tiers (three levels):
-#   daily     — day-level deep work; creative, analytical (artisan, refit)
-#   minute    — minute-level fast work; strong code generation (scout, reviewer)
-#   watchdog  — lightweight, high-frequency monitoring (watchdog)
+# Model tiers — three levels of capability and cost:
 #
-# Current choices:
-#   daily    = claude-opus-4.6  — best creativity and reasoning for long-horizon agents
-#   minute   = gpt-5.4          — strong code generation; preferred for frequent loops
-#   watchdog = gpt-5-mini       — efficient, low-cost model for rapid health checks
+#   deep      Maximum capability for long-horizon reasoning, creative and analytical work.
+#             Sessions last hours. Suitable for artisan-class and meta-learning agents.
+#             Examples: artisan (every ~2.4 h), refit (twice a week).
+#
+#   standard  Balanced capability for routine complex tasks, code generation and triage.
+#             Sessions last minutes. Suitable for agents that run frequently and need
+#             reliable code output.
+#             Examples: scout (every ~5 min), reviewer (on-demand).
+#
+#   lite      Efficient, low-cost model for high-frequency monitoring and simple scripting.
+#             Sessions are sub-minute. Accuracy matters more than creativity.
+#             Examples: watchdog (every ~2 min).
+#
+# Tier-to-model mapping (change here to swap models globally):
+#   deep     = claude-opus-4.6  — strongest reasoning; best for long-horizon creative work
+#   standard = gpt-5.4          — strong code generation; preferred for frequent loops
+#   lite     = gpt-5-mini       — fast and efficient; minimal cost for health checks
 
 [project]
 agents_dir = "roles"
@@ -18,6 +28,6 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-daily = "github-copilot/claude-opus-4.6"
-minute = "github-copilot/gpt-5.4"
-watchdog = "github-copilot/gpt-5-mini"
+deep = "github-copilot/claude-opus-4.6"
+standard = "github-copilot/gpt-5.4"
+lite = "github-copilot/gpt-5-mini"
