@@ -100,6 +100,12 @@ Sub-agents run in fresh context windows and produce focused outputs.
 | **git-ops**  | Git workflow, PRs, releases        | Read-write |
 | **filer**    | File organization, cleanup, archiving | Read-write |
 
+**Sub-agent invocation contract:**
+- Choose the most specialized sub-agent that clearly fits the work. Use `general` only as a fallback.
+- Provide a self-contained prompt: objective, scope, deliverable path, constraints, and success criteria.
+- Parent agents remain accountable for validating and integrating sub-agent output.
+- Specialized sub-agents are for **focused execution**, not for handing off vague thinking.
+
 Sub-agents MUST NOT spawn further sub-agents (no recursive delegation).
 Sub-agents MUST NOT invoke any primary agent (watchdog, scout, reviewer, artisan, refit).
 

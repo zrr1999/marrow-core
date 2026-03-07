@@ -26,6 +26,7 @@ marrow run-once     # one tick per agent then exit
 marrow dry-run      # print assembled prompts, don't run agents
 marrow setup        # init workspace dirs and sync agent symlinks
 marrow validate     # check config and show summary
+marrow doctor       # verify workspace, context dirs, and agent command availability
 ```
 
 Options available on every command:
@@ -82,6 +83,23 @@ The agent is free to add, edit, or remove scripts under its own `context.d/`.
 ## Architecture
 
 See [AGENTS.md](AGENTS.md) for a full breakdown.
+
+## GitHub Copilot in GitHub Actions
+
+If a workflow needs to execute agents backed by `github-copilot/*` models, grant model access and
+pass the workflow token through to the agent environment:
+
+```yaml
+permissions:
+  contents: read
+  models: read
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+See `.github/workflows/github-copilot-env.yml` for a minimal environment validation workflow that
+installs `opencode`, verifies token wiring, and runs `marrow validate/setup/doctor/dry-run`.
 
 ## License
 

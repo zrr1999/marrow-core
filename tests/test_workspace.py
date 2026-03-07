@@ -122,9 +122,16 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
 
     ws_agents = ws / ".opencode" / "agents"
     expected = [
-        "analyst.md", "artisan.md", "coder.md", "filer.md",
-        "git-ops.md", "ops.md", "researcher.md", "scout.md",
-        "tester.md", "writer.md",
+        "analyst.md",
+        "artisan.md",
+        "coder.md",
+        "filer.md",
+        "git-ops.md",
+        "ops.md",
+        "researcher.md",
+        "scout.md",
+        "tester.md",
+        "writer.md",
     ]
     for name in expected:
         link = ws_agents / name
