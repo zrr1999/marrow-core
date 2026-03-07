@@ -61,7 +61,9 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
 
     # --- Preferred: agent-caster library ---
     roles_dir = core_path / "roles"
-    config_file = (core_path / "roles.toml") if (core_path / "roles.toml").is_file() else (core_path / "refit.toml")
+    roles_toml = core_path / "roles.toml"
+    refit_toml = core_path / "refit.toml"
+    config_file = roles_toml if roles_toml.is_file() else refit_toml
     if config_file.is_file() and roles_dir.is_dir() and _agent_caster_available():
         _cast_via_agent_caster(core_path, workspace)
         return
