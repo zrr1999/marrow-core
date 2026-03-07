@@ -13,6 +13,8 @@
     <string>--config</string>
     <string>/opt/marrow-core/marrow.toml</string>
     <string>--json-logs</string>
+    <string>--log-file</string>
+    <string>/Users/marrow/runtime/logs/marrow.log</string>
   </array>
 
   <key>WorkingDirectory</key>
@@ -25,8 +27,8 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/marrow/runtime/logs/heart.stdout.log</string>
+  <string>/dev/null</string>
   <key>StandardErrorPath</key>
-  <string>/Users/marrow/runtime/logs/heart.stderr.log</string>
+  <string>/dev/null</string>
 </dict>
 </plist>

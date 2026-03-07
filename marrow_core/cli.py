@@ -19,6 +19,17 @@ app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent s
 ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
 VerboseOpt = Annotated[bool, typer.Option("--verbose", "-v", help="Enable debug logging")]
 JsonLogsOpt = Annotated[bool, typer.Option("--json-logs", help="Emit JSON log records")]
+LogFileOpt = Annotated[
+    Path | None,
+    typer.Option(
+        "--log-file",
+        help=(
+            "Write logs to this rotating file (50 MB rotation, 7-day retention). "
+            "Recommended when running as a daemon so that the host stderr redirect "
+            "can point to /dev/null."
+        ),
+    ),
+]
 
 
 async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> None:
@@ -43,12 +54,13 @@ def _run_heartbeat(
     config: Path,
     verbose: bool,
     json_logs: bool,
+    log_file: Path | None = None,
     *,
     once: bool = False,
     dry_run: bool = False,
 ) -> None:
     """Shared logic for run / run-once / dry-run commands."""
-    setup_logging(verbose=verbose, json_logs=json_logs)
+    setup_logging(verbose=verbose, json_logs=json_logs, log_file=log_file)
     asyncio.run(_run(config, once=once, dry_run=dry_run))
 
 
@@ -57,9 +69,10 @@ def run(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
+    log_file: LogFileOpt = None,
 ) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    _run_heartbeat(config, verbose, json_logs)
+    _run_heartbeat(config, verbose, json_logs, log_file)
 
 
 @app.command(name="run-once")
@@ -67,9 +80,10 @@ def run_once(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
+    log_file: LogFileOpt = None,
 ) -> None:
     """Execute one tick per agent then exit."""
-    _run_heartbeat(config, verbose, json_logs, once=True)
+    _run_heartbeat(config, verbose, json_logs, log_file, once=True)
 
 
 @app.command(name="dry-run")
@@ -77,9 +91,10 @@ def dry_run(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
+    log_file: LogFileOpt = None,
 ) -> None:
     """Build and print prompts without running agents."""
-    _run_heartbeat(config, verbose, json_logs, once=True, dry_run=True)
+    _run_heartbeat(config, verbose, json_logs, log_file, once=True, dry_run=True)
 
 
 @app.command()
