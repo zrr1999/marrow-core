@@ -149,8 +149,10 @@ def setup(
 @app.command()
 def validate(
     config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
 ) -> None:
     """Check config and show summary."""
+    setup_logging(verbose=verbose)
     try:
         root = load_config(config)
     except Exception as exc:
