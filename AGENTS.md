@@ -26,7 +26,8 @@ marrow-core heartbeat (scheduler)
 ├── 2 min ──► watchdog   monitor infra; restart services; alert humans
 ├── 5 min ──► scout      fast dispatch; trivial tasks; delegate complex work
 ├── 4 h ────► artisan    deep work + research; end-to-end tasks
-└── 3.5 day ► refit      meta-learning; review patterns; propose improvements
+└── 3.5 day ► refit      meta-learning orchestration; inventory unfinished work;
+                         dispatch/supervise weekly backlog closure; synthesize improvements
                          (scheduled only — not callable by other agents)
 
 On-demand expert sub-agents:
@@ -36,7 +37,8 @@ Data flows (all via filesystem):
   scout ──delegate──► artisan    runtime/handoff/scout-to-artisan/
   artisan ──offload──► scout     runtime/handoff/artisan-to-scout/
   watchdog ──alert──► human      runtime/handoff/scout-to-human/
-  refit ──propose──► human       tasks/queue/core-proposal-*.md
+  refit ──coordinate──► sub-agents   task tool (parallel lower-level workers)
+  refit ──propose────► human         tasks/queue/core-proposal-*.md
   human ──task──► any agent      tasks/queue/
 ```
 
@@ -47,7 +49,7 @@ Data flows (all via filesystem):
 | **watchdog** | 2 min | scheduled + callable | gpt-5-mini | Infra health; restart services; alert humans |
 | **scout** | 5 min | scheduled + callable | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
 | **artisan** | 4 h | scheduled + callable | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
-| **refit** | twice a week | scheduled only | claude-opus-4.6 | Meta-learning; review performance; propose improvements |
+| **refit** | twice a week | scheduled only | claude-opus-4.6 | Meta-learning orchestrator; review performance, inventory backlog, supervise lower-level execution, propose improvements |
 
 ### Expert Sub-agents
 
