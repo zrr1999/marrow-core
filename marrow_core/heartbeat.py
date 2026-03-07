@@ -30,6 +30,33 @@ BASE_PROMPT = (
     "Never idle. Never ask questions. Produce tangible output every tick."
 )
 
+# Number of consecutive failed ticks before the circuit opens for one cycle.
+_MAX_CONSECUTIVE_FAILURES = 3
+
+
+class _CircuitBreaker:
+    """Track consecutive failures; open (skip) one cycle when threshold is reached."""
+
+    def __init__(self, max_failures: int, name: str) -> None:
+        self._max = max_failures
+        self._name = name
+        self._count = 0
+
+    def record(self, ok: bool) -> None:
+        self._count = 0 if ok else self._count + 1
+
+    @property
+    def is_open(self) -> bool:
+        if self._count >= self._max:
+            logger.warning(
+                "[{}] circuit open — {} consecutive failures, skipping one cycle",
+                self._name,
+                self._count,
+            )
+            self._count = 0
+            return True
+        return False
+
 
 @dataclass
 class AgentState:
@@ -146,6 +173,7 @@ async def heartbeat(
     name = cfg.name
     interval = cfg.heartbeat_interval
     timeout = cfg.heartbeat_timeout
+    circuit = _CircuitBreaker(_MAX_CONSECUTIVE_FAILURES, name)
 
     # Register agent state
     agent_state: AgentState | None = None
@@ -156,23 +184,30 @@ async def heartbeat(
     logger.info("[{}] started (interval={}s, timeout={}s)", name, interval, timeout)
 
     while True:
-        if agent_state is not None:
-            agent_state.running = True
-            agent_state.last_tick_at = time.time()
-        try:
-            await _tick(cfg, core_dir, rules, dry_run=dry_run)
+        if circuit.is_open:
+            pass  # circuit open — skip this cycle, circuit.is_open already logged
+        else:
             if agent_state is not None:
-                agent_state.last_error = ""
-        except Exception:
-            logger.exception("[{}] tick failed", name)
-            if agent_state is not None:
-                agent_state.last_error = "tick failed"
-        finally:
-            if agent_state is not None:
-                agent_state.running = False
-                agent_state.tick_count += 1
-                agent_state.last_tick_duration = round(time.time() - agent_state.last_tick_at, 3)
-                agent_state.next_tick_at = time.time() + interval
+                agent_state.running = True
+                agent_state.last_tick_at = time.time()
+            try:
+                ok = await _tick(cfg, core_dir, rules, dry_run=dry_run)
+                circuit.record(ok)
+                if agent_state is not None:
+                    agent_state.last_error = "" if ok else "tick returned failure"
+            except Exception:
+                logger.exception("[{}] tick failed", name)
+                circuit.record(False)
+                if agent_state is not None:
+                    agent_state.last_error = "tick raised exception"
+            finally:
+                if agent_state is not None:
+                    agent_state.running = False
+                    agent_state.tick_count += 1
+                    agent_state.last_tick_duration = round(
+                        time.time() - agent_state.last_tick_at, 3
+                    )
+                    agent_state.next_tick_at = time.time() + interval
 
         if once:
             return
@@ -185,7 +220,7 @@ async def _tick(
     rules: str,
     *,
     dry_run: bool = False,
-) -> None:
+) -> bool:
     name = cfg.name
     sid = _session_id(name)
     workspace = Path(cfg.workspace)
@@ -200,7 +235,7 @@ async def _tick(
         print(f"--- DRY RUN [{name}] session={sid} ---")
         print(prompt)
         print("--- END ---")
-        return
+        return True
 
     argv = shlex.split(cfg.agent_command)
     result = await run_agent(
@@ -226,3 +261,5 @@ async def _tick(
             max_age_days=cfg.log_retention_days,
             max_count=cfg.log_max_count,
         )
+
+    return result.ok

@@ -1,9 +1,12 @@
-"""CLI entry point — run, run-once, dry-run, validate, setup, status, task."""
+"""CLI entry point — run, run-once, dry-run, validate, setup, doctor, status, task."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import os
+import shlex
+import shutil
 from pathlib import Path
 from typing import Annotated
 
@@ -169,6 +172,68 @@ def validate(
         typer.echo(f"    workspace: {agent.workspace}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
     typer.echo("\nVALIDATE OK")
+
+
+@app.command()
+def doctor(
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
+    """Check workspace, context scripts, and agent command availability."""
+    try:
+        root = load_config(config)
+    except Exception as exc:
+        typer.echo(f"FAIL config: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    issues: list[str] = []
+
+    for agent in root.agents:
+        typer.echo(f"\n[{agent.name}]")
+
+        # Workspace
+        ws = Path(agent.workspace)
+        if not ws.is_dir():
+            issues.append(f"{agent.name}: workspace missing: {ws}")
+            typer.echo(f"  ✗ workspace: {ws} (missing)")
+        elif not os.access(ws, os.W_OK):
+            issues.append(f"{agent.name}: workspace not writable: {ws}")
+            typer.echo(f"  ✗ workspace: {ws} (not writable)")
+        else:
+            typer.echo(f"  ✓ workspace: {ws}")
+
+        # Context dirs and scripts
+        for d in agent.context_dirs:
+            dp = Path(d)
+            if not dp.is_dir():
+                issues.append(f"{agent.name}: context dir missing: {d}")
+                typer.echo(f"  ✗ context dir: {d} (missing)")
+                continue
+            typer.echo(f"  ✓ context dir: {d}")
+            for script in sorted(dp.iterdir()):
+                if script.is_file() and not os.access(script, os.X_OK):
+                    issues.append(f"{agent.name}: not executable: {script.name}")
+                    typer.echo(f"    ✗ {script.name} (not executable)")
+                elif script.is_file():
+                    typer.echo(f"    ✓ {script.name}")
+
+        # Agent command binary
+        cmd_parts = shlex.split(agent.agent_command)
+        if cmd_parts:
+            binary = cmd_parts[0]
+            found = shutil.which(binary) or Path(binary).is_file()
+            if not found:
+                issues.append(f"{agent.name}: command not found: {binary}")
+                typer.echo(f"  ✗ command: {binary} (not found)")
+            else:
+                typer.echo(f"  ✓ command: {binary}")
+
+    typer.echo("")
+    if issues:
+        typer.echo(f"DOCTOR: {len(issues)} issue(s) found:", err=True)
+        for issue in issues:
+            typer.echo(f"  - {issue}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("DOCTOR OK")
 
 
 # ---------------------------------------------------------------------------
