@@ -32,4 +32,4 @@ output_dir = "."
 [targets.opencode.model_map]
 visionary = "github-copilot/claude-opus-4.6"
 craftsman = "github-copilot/claude-sonnet-4.6"
-sentinel  = "github-copilot/gpt-5-mini"
+sentinel = "github-copilot/gpt-5-mini"
