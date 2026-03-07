@@ -1,25 +1,19 @@
 # refit.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
-# Model tiers — three levels of capability and cost:
+# Model tiers follow agent-caster's two-tier system:
 #
-#   deep      Maximum capability for long-horizon reasoning, creative and analytical work.
-#             Sessions last hours. Suitable for artisan-class and meta-learning agents.
-#             Examples: artisan (every ~2.4 h), refit (twice a week).
+#   reasoning  Maximum capability for long-horizon reasoning, creative and analytical work.
+#              Sessions last hours. Used by agents doing deep/meta-level work.
+#              Examples: artisan (every ~2.4 h), refit (twice a week).
 #
-#   standard  Balanced capability for routine complex tasks, code generation and triage.
-#             Sessions last minutes. Suitable for agents that run frequently and need
-#             reliable code output.
-#             Examples: scout (every ~5 min), reviewer (on-demand).
-#
-#   lite      Efficient, low-cost model for high-frequency monitoring and simple scripting.
-#             Sessions are sub-minute. Accuracy matters more than creativity.
-#             Examples: watchdog (every ~2 min).
+#   coding     Balanced capability for routine tasks, code generation, triage, and monitoring.
+#              Sessions last seconds to minutes. Used by agents running frequently.
+#              Examples: scout (every ~5 min), reviewer (~15 min), watchdog (~4 min).
 #
 # Tier-to-model mapping (change here to swap models globally):
-#   deep     = claude-opus-4.6  — strongest reasoning; best for long-horizon creative work
-#   standard = gpt-5.4          — strong code generation; preferred for frequent loops
-#   lite     = gpt-5-mini       — fast and efficient; minimal cost for health checks
+#   reasoning = claude-opus-4.6  — strongest reasoning; best for long-horizon creative work
+#   coding    = gpt-5.4          — strong code generation; preferred for frequent loops
 
 [project]
 agents_dir = "roles"
@@ -28,6 +22,5 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-deep = "github-copilot/claude-opus-4.6"
-standard = "github-copilot/gpt-5.4"
-lite = "github-copilot/gpt-5-mini"
+reasoning = "github-copilot/claude-opus-4.6"
+coding = "github-copilot/gpt-5.4"

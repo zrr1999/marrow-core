@@ -6,7 +6,7 @@ description: >-
   Runs every ~4 minutes.
 role: subagent
 model:
-  tier: lite
+  tier: coding
   temperature: 0.0
 capabilities:
   - read

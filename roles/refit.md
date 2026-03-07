@@ -7,7 +7,7 @@ description: >-
   fixed schedule.
 role: primary
 model:
-  tier: deep
+  tier: reasoning
   temperature: 0.3
 capabilities:
   - read
