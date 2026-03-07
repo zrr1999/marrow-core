@@ -98,9 +98,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-See `.github/workflows/github-copilot-env.yml` for a minimal environment validation workflow that
-installs `opencode`, verifies token wiring, and runs `marrow validate/setup/doctor/dry-run`.
-
 ## License
 
 MIT
