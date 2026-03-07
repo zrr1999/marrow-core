@@ -1,19 +1,27 @@
 # refit.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
-# Model tiers follow agent-caster's two-tier system:
+# Three model tiers, aligned with the agent hierarchy and session horizon:
 #
-#   reasoning  Maximum capability for long-horizon reasoning, creative and analytical work.
-#              Sessions last hours. Used by agents doing deep/meta-level work.
-#              Example: refit (twice a week).
+#   visionary  Long-horizon meta-reasoning and creative synthesis.
+#              Sessions span days to weeks. Used by refit for strategic analysis
+#              and systemic improvement proposals.
+#              → claude-opus-4.6 (maximum reasoning + creativity)
 #
-#   coding     Balanced capability for routine tasks, code generation, triage, and monitoring.
-#              Sessions last seconds to minutes. Used by agents running frequently.
-#              Examples: artisan (~4 h), scout (~5 min), reviewer (~15 min), watchdog (~2 h).
+#   craftsman  Sustained execution: code generation, research, and complex triage.
+#              Sessions last minutes to hours. Used by artisan for deep implementation
+#              work that requires full context retention.
+#              → claude-sonnet-4.6 (balanced capability + cost)
 #
-# Tier-to-model mapping (change here to swap models globally):
-#   reasoning = claude-opus-4.6  — strongest reasoning; best for long-horizon meta-learning work
-#   coding    = gpt-5.4          — strong code generation; preferred for work and frequent loops
+#   sentinel   Reactive monitoring and fast dispatch.
+#              Sessions last seconds. Used by watchdog, scout, and reviewer for
+#              health checks, queue triage, and lightweight GitHub interactions.
+#              → gpt-5-mini (low latency, cost-efficient, high call frequency)
+#
+# Tier-to-model mapping — edit here to swap models globally across all agents:
+#   visionary = claude-opus-4.6   strongest reasoning; refit meta-learning
+#   craftsman = claude-sonnet-4.6 execution workhorse; artisan deep sessions
+#   sentinel  = gpt-5-mini        fast and cheap; watchdog / scout / reviewer
 
 [project]
 agents_dir = "roles"
@@ -22,5 +30,6 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-reasoning = "github-copilot/claude-opus-4.6"
-coding = "github-copilot/gpt-5.4"
+visionary = "github-copilot/claude-opus-4.6"
+craftsman = "github-copilot/claude-sonnet-4.6"
+sentinel  = "github-copilot/gpt-5-mini"

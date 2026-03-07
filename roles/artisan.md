@@ -5,7 +5,7 @@ description: >-
   Writes checkpoints frequently. Runs every ~4 hours.
 role: primary
 model:
-  tier: coding
+  tier: craftsman
   temperature: 0.2
 capabilities:
   - read
