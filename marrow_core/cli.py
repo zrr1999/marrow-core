@@ -1,15 +1,17 @@
-"""CLI entry point — run, run-once, dry-run, validate, setup."""
+"""CLI entry point — run, run-once, dry-run, validate, setup, status, task."""
 
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
 from marrow_core.config import load_config
-from marrow_core.heartbeat import heartbeat
+from marrow_core.heartbeat import HeartbeatState, heartbeat
+from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
 from marrow_core.workspace import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
 
@@ -19,9 +21,32 @@ app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent s
 ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
 VerboseOpt = Annotated[bool, typer.Option("--verbose", "-v", help="Enable debug logging")]
 JsonLogsOpt = Annotated[bool, typer.Option("--json-logs", help="Emit JSON log records")]
+IpcOpt = Annotated[
+    bool | None, typer.Option("--ipc/--no-ipc", help="Override IPC server (default: from config)")
+]
 
 
-async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> None:
+def _resolve_socket_path(root) -> str:
+    """Derive socket path from config, falling back to first agent's workspace."""
+    if root.ipc.socket_path:
+        return root.ipc.socket_path
+    if root.agents:
+        return str(Path(root.agents[0].workspace) / "runtime" / "marrow.sock")
+    return "/tmp/marrow.sock"
+
+
+def _resolve_task_dir(root) -> str:
+    """Derive task queue dir from config, falling back to first agent's workspace."""
+    if root.ipc.task_dir:
+        return root.ipc.task_dir
+    if root.agents:
+        return str(Path(root.agents[0].workspace) / "tasks" / "queue")
+    return "/tmp/marrow-tasks"
+
+
+async def _run(
+    config: Path, *, once: bool = False, dry_run: bool = False, ipc: bool | None = None
+) -> None:
     if not config.is_file():
         typer.echo(f"config not found: {config}", err=True)
         raise typer.Exit(code=1)
@@ -29,14 +54,34 @@ async def _run(config: Path, *, once: bool = False, dry_run: bool = False) -> No
     if not root.agents:
         typer.echo("no agents configured", err=True)
         raise typer.Exit(code=1)
+
+    state = HeartbeatState()
+
+    # Determine whether to start IPC server
+    ipc_enabled = ipc if ipc is not None else root.ipc.enabled
+    server = None
+    if ipc_enabled and not dry_run:
+        socket_path = _resolve_socket_path(root)
+        task_dir = _resolve_task_dir(root)
+        server = await start_ipc_server(socket_path, task_dir, state)
+
     tasks = [
         asyncio.create_task(
-            heartbeat(agent, root.core_dir, once=once, dry_run=dry_run),
+            heartbeat(agent, root.core_dir, once=once, dry_run=dry_run, state=state),
             name=agent.name,
         )
         for agent in root.agents
     ]
-    await asyncio.gather(*tasks)
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        if server is not None:
+            server.close()
+            await server.wait_closed()
+            # Clean up socket file
+            sock = Path(_resolve_socket_path(root))
+            if sock.exists():
+                sock.unlink()
 
 
 def _run_heartbeat(
@@ -46,10 +91,11 @@ def _run_heartbeat(
     *,
     once: bool = False,
     dry_run: bool = False,
+    ipc: bool | None = None,
 ) -> None:
     """Shared logic for run / run-once / dry-run commands."""
     setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config, once=once, dry_run=dry_run))
+    asyncio.run(_run(config, once=once, dry_run=dry_run, ipc=ipc))
 
 
 @app.command()
@@ -57,9 +103,10 @@ def run(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
+    ipc: IpcOpt = None,
 ) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    _run_heartbeat(config, verbose, json_logs)
+    _run_heartbeat(config, verbose, json_logs, ipc=ipc)
 
 
 @app.command(name="run-once")
@@ -120,3 +167,103 @@ def validate(
         typer.echo(f"    workspace: {agent.workspace}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
     typer.echo("\nVALIDATE OK")
+
+
+# ---------------------------------------------------------------------------
+# IPC client helpers — used by `marrow status` and `marrow task` commands
+# ---------------------------------------------------------------------------
+
+
+async def _ipc_request(socket_path: str, method: str, path: str, body: str = "") -> dict:
+    """Send an HTTP request to the IPC socket and return parsed JSON."""
+    reader, writer = await asyncio.open_unix_connection(socket_path)
+    req = f"{method} {path} HTTP/1.1\r\nHost: localhost\r\n"
+    if body:
+        req += f"Content-Length: {len(body)}\r\n"
+    req += "\r\n"
+    if body:
+        req += body
+    writer.write(req.encode())
+    await writer.drain()
+    resp = await asyncio.wait_for(reader.read(65536), timeout=5)
+    writer.close()
+    await writer.wait_closed()
+    text = resp.decode("utf-8", errors="replace")
+    # Extract JSON body after the blank line
+    idx = text.find("\r\n\r\n")
+    json_str = text[idx + 4 :] if idx >= 0 else text
+    return json.loads(json_str)
+
+
+def _get_socket(config: Path) -> str:
+    """Resolve the IPC socket path from config."""
+    root = load_config(config)
+    return _resolve_socket_path(root)
+
+
+@app.command()
+def status(
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
+    """Query heartbeat status via IPC socket."""
+    sock = _get_socket(config)
+    if not Path(sock).exists():
+        typer.echo(f"socket not found: {sock} (is marrow running with --ipc?)", err=True)
+        raise typer.Exit(code=1)
+    try:
+        data = asyncio.run(_ipc_request(sock, "GET", "/status"))
+    except Exception as exc:
+        typer.echo(f"failed to connect: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(data, indent=2))
+
+
+# Task subcommand group
+task_app = typer.Typer(help="Manage tasks via IPC.")
+app.add_typer(task_app, name="task")
+
+
+@task_app.command("add")
+def task_add(
+    title: Annotated[str, typer.Argument(help="Task title")],
+    body: Annotated[str, typer.Option("--body", "-b", help="Task description")] = "",
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
+    """Submit a new task to the queue."""
+    sock = _get_socket(config)
+    if not Path(sock).exists():
+        typer.echo(f"socket not found: {sock} (is marrow running with --ipc?)", err=True)
+        raise typer.Exit(code=1)
+    payload = json.dumps({"title": title, "body": body})
+    try:
+        data = asyncio.run(_ipc_request(sock, "POST", "/tasks", payload))
+    except Exception as exc:
+        typer.echo(f"failed to connect: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    if data.get("ok"):
+        typer.echo(f"✅ task submitted: {data.get('file', '')}")
+    else:
+        typer.echo(f"❌ {data.get('error', 'unknown error')}", err=True)
+        raise typer.Exit(code=1)
+
+
+@task_app.command("list")
+def task_list(
+    config: ConfigOpt = Path("marrow.toml"),
+) -> None:
+    """List tasks in the queue."""
+    sock = _get_socket(config)
+    if not Path(sock).exists():
+        typer.echo(f"socket not found: {sock} (is marrow running with --ipc?)", err=True)
+        raise typer.Exit(code=1)
+    try:
+        data = asyncio.run(_ipc_request(sock, "GET", "/tasks"))
+    except Exception as exc:
+        typer.echo(f"failed to connect: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    tasks = data.get("tasks", [])
+    if not tasks:
+        typer.echo("(no tasks in queue)")
+        return
+    for t in tasks:
+        typer.echo(f"  {t.get('file', '?')}  {t.get('title', '?')}")

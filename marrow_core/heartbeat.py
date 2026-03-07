@@ -11,7 +11,9 @@ import asyncio
 import os
 import shlex
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -26,6 +28,47 @@ BASE_PROMPT = (
     "explore your environment, or create tasks for future value. "
     "Never idle. Never ask questions. Produce tangible output every tick."
 )
+
+
+@dataclass
+class AgentState:
+    """Runtime state for a single agent — updated by the heartbeat loop."""
+
+    name: str
+    interval: int
+    last_tick_at: float = 0.0
+    last_tick_duration: float = 0.0
+    next_tick_at: float = 0.0
+    tick_count: int = 0
+    running: bool = False
+    last_error: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "interval": self.interval,
+            "last_tick_at": self.last_tick_at,
+            "last_tick_duration": self.last_tick_duration,
+            "next_tick_at": self.next_tick_at,
+            "tick_count": self.tick_count,
+            "running": self.running,
+            "last_error": self.last_error,
+        }
+
+
+@dataclass
+class HeartbeatState:
+    """Shared state across all agents — read by the IPC server."""
+
+    started_at: float = field(default_factory=time.time)
+    agents: dict[str, AgentState] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "started_at": self.started_at,
+            "uptime": round(time.time() - self.started_at, 1),
+            "agents": {n: a.to_dict() for n, a in self.agents.items()},
+        }
 
 
 def _session_id(agent_name: str) -> str:
@@ -95,6 +138,7 @@ async def heartbeat(
     *,
     once: bool = False,
     dry_run: bool = False,
+    state: HeartbeatState | None = None,
 ) -> None:
     """Run the heartbeat loop for a single agent."""
     rules = load_rules(core_dir)
@@ -102,13 +146,32 @@ async def heartbeat(
     interval = cfg.heartbeat_interval
     timeout = cfg.heartbeat_timeout
 
+    # Register agent state
+    agent_state: AgentState | None = None
+    if state is not None:
+        agent_state = AgentState(name=name, interval=interval)
+        state.agents[name] = agent_state
+
     logger.info("[{}] started (interval={}s, timeout={}s)", name, interval, timeout)
 
     while True:
+        if agent_state is not None:
+            agent_state.running = True
+            agent_state.last_tick_at = time.time()
         try:
             await _tick(cfg, core_dir, rules, dry_run=dry_run)
+            if agent_state is not None:
+                agent_state.last_error = ""
         except Exception:
             logger.exception("[{}] tick failed", name)
+            if agent_state is not None:
+                agent_state.last_error = "tick failed"
+        finally:
+            if agent_state is not None:
+                agent_state.running = False
+                agent_state.tick_count += 1
+                agent_state.last_tick_duration = round(time.time() - agent_state.last_tick_at, 3)
+                agent_state.next_tick_at = time.time() + interval
 
         if once:
             return

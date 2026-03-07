@@ -76,11 +76,22 @@ class AgentConfig(BaseModel):
         return v
 
 
+class IpcConfig(BaseModel):
+    """Optional IPC server configuration (Unix domain socket)."""
+
+    enabled: bool = False
+    socket_path: str = ""  # If empty, derived from first agent's workspace
+    task_dir: str = ""  # If empty, derived from first agent's workspace
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
     core_dir: str = "/opt/marrow-core"
     agents: list[AgentConfig] = Field(default_factory=list)
+    ipc: IpcConfig = Field(default_factory=IpcConfig)
 
     model_config = ConfigDict(extra="forbid")
 
