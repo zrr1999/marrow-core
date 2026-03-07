@@ -146,7 +146,7 @@ def test_sync_uses_agent_caster_when_available(tmp_path: Path):
     core_dir = tmp_path / "core"
     (core_dir / "roles").mkdir(parents=True)
     (core_dir / "roles" / "scout.md").write_text("# Scout role")
-    (core_dir / "refit.toml").write_text("[project]\nagents_dir = 'roles'\n")
+    (core_dir / "roles.toml").write_text("[project]\nagents_dir = 'roles'\n")
 
     ws = tmp_path / "workspace"
     ws.mkdir()
@@ -173,12 +173,39 @@ def test_sync_uses_agent_caster_when_available(tmp_path: Path):
     assert scout.read_text() == "# Cast scout"
 
 
+def test_sync_uses_agent_caster_with_legacy_refit_toml(tmp_path: Path):
+    """sync_agent_symlinks also works with legacy refit.toml (backward compat)."""
+    core_dir = tmp_path / "core"
+    (core_dir / "roles").mkdir(parents=True)
+    (core_dir / "roles" / "scout.md").write_text("# Scout role")
+    (core_dir / "refit.toml").write_text("[project]\nagents_dir = 'roles'\n")
+
+    ws = tmp_path / "workspace"
+    ws.mkdir()
+
+    cast_called_with: list[tuple] = []
+
+    def fake_cast(core_path: Path, workspace: str) -> None:
+        cast_called_with.append((core_path, workspace))
+        dst = Path(workspace) / ".opencode" / "agents" / "scout.md"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.write_text("# Cast scout")
+
+    with (
+        patch("marrow_core.workspace._agent_caster_available", return_value=True),
+        patch("marrow_core.workspace._cast_via_agent_caster", side_effect=fake_cast),
+    ):
+        sync_agent_symlinks(str(core_dir), str(ws))
+
+    assert len(cast_called_with) == 1
+
+
 def test_sync_falls_back_to_symlinks_when_agent_caster_missing(tmp_path: Path):
     """sync_agent_symlinks falls back to symlinks when agent-caster is absent."""
     core_dir = tmp_path / "core"
     (core_dir / "roles").mkdir(parents=True)
     (core_dir / "roles" / "scout.md").write_text("# Scout role")
-    (core_dir / "refit.toml").write_text("[project]\nagents_dir = 'roles'\n")
+    (core_dir / "roles.toml").write_text("[project]\nagents_dir = 'roles'\n")
     # Also provide legacy agents/ dir for the symlink fallback
     (core_dir / "agents").mkdir(parents=True)
     (core_dir / "agents" / "scout.md").write_text("# Scout legacy")

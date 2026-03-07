@@ -54,15 +54,15 @@ def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
 
     Prefers agent-caster (library API) when available, because it honours the
     canonical ``roles/`` definitions and applies model-mapping from
-    ``refit.toml``.  Falls back to direct symlinks for environments where
-    agent-caster is not installed.
+    ``roles.toml`` (or the legacy ``refit.toml``).
+    Falls back to direct symlinks for environments where agent-caster is not installed.
     """
     core_path = Path(core_dir)
 
     # --- Preferred: agent-caster library ---
-    refit = core_path / "refit.toml"
     roles_dir = core_path / "roles"
-    if refit.is_file() and roles_dir.is_dir() and _agent_caster_available():
+    config_file = (core_path / "roles.toml") if (core_path / "roles.toml").is_file() else (core_path / "refit.toml")
+    if config_file.is_file() and roles_dir.is_dir() and _agent_caster_available():
         _cast_via_agent_caster(core_path, workspace)
         return
 
@@ -85,7 +85,7 @@ def _cast_via_agent_caster(core_path: Path, workspace: str) -> None:
     """Cast agent definitions to opencode format using the agent-caster library."""
     try:
         from agent_caster.adapters import get_adapter
-        from agent_caster.config import load_config
+        from agent_caster.config import find_config, load_config
         from agent_caster.loader import load_agents
     except ImportError as exc:
         logger.warning("agent-caster import failed: {}; falling back to symlinks", exc)
@@ -97,11 +97,16 @@ def _cast_via_agent_caster(core_path: Path, workspace: str) -> None:
         agents_dir = core_path / "roles"
         agents = load_agents(agents_dir)
 
-        # Load refit.toml config and get opencode target config
-        project_config = load_config(core_path / "refit.toml")
+        # Load roles.toml (or legacy refit.toml) config and get opencode target config
+        config_path = find_config(core_path)
+        if config_path is None:
+            logger.warning("no roles.toml (or refit.toml) found; falling back to symlinks")
+            _symlink_agents(core_path, workspace)
+            return
+        project_config = load_config(config_path)
         target_cfg = project_config.targets.get("opencode")
         if target_cfg is None:
-            logger.warning("no 'opencode' target in refit.toml; falling back to symlinks")
+            logger.warning("no 'opencode' target in roles.toml; falling back to symlinks")
             _symlink_agents(core_path, workspace)
             return
 

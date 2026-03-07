@@ -1,4 +1,4 @@
-# refit.toml — agent-caster project configuration
+# roles.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
 # Three model tiers, aligned with the agent hierarchy and session horizon:
