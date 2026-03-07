@@ -30,6 +30,8 @@ class AgentConfig(BaseModel):
     agent_command: str
     workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
     context_dirs: list[str] = Field(default_factory=list)
+    log_retention_days: int = 7  # exec-log age-based pruning (0 = disabled)
+    log_max_count: int = 200  # exec-log count-based pruning (0 = disabled)
 
     model_config = ConfigDict(extra="forbid")
 

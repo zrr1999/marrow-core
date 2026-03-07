@@ -16,6 +16,7 @@ from pathlib import Path
 from loguru import logger
 
 from marrow_core.config import AgentConfig
+from marrow_core.log_pruner import prune_exec_logs
 from marrow_core.runner import run_agent
 from marrow_core.workspace import load_rules
 
@@ -154,3 +155,11 @@ async def _tick(
         logger.warning("[{}] exited with code {}", name, result.returncode)
 
     logger.debug("[{}] tick done (session={}, duration={})", name, sid, result.duration)
+
+    # Prune stale exec logs after every tick.
+    if cfg.log_retention_days > 0 or cfg.log_max_count > 0:
+        prune_exec_logs(
+            log_dir,
+            max_age_days=cfg.log_retention_days,
+            max_count=cfg.log_max_count,
+        )
