@@ -95,3 +95,38 @@ def test_load_rules(tmp_path: Path):
 
 def test_load_rules_missing(tmp_path: Path):
     assert load_rules(str(tmp_path)) == ""
+
+
+def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
+    """All agent definitions (primary + sub-agents) are symlinked to workspace."""
+    core_dir = tmp_path / "core"
+    (core_dir / "agents").mkdir(parents=True)
+    # Primary agents
+    (core_dir / "agents" / "scout.md").write_text("# Scout")
+    (core_dir / "agents" / "artisan.md").write_text("# Artisan")
+    # Sub-agents
+    (core_dir / "agents" / "analyst.md").write_text("# Analyst")
+    (core_dir / "agents" / "researcher.md").write_text("# Researcher")
+    (core_dir / "agents" / "coder.md").write_text("# Coder")
+    (core_dir / "agents" / "tester.md").write_text("# Tester")
+    (core_dir / "agents" / "writer.md").write_text("# Writer")
+    (core_dir / "agents" / "ops.md").write_text("# Ops")
+    (core_dir / "agents" / "git-ops.md").write_text("# Git-Ops")
+    (core_dir / "agents" / "filer.md").write_text("# Filer")
+
+    ws = tmp_path / "workspace"
+    ws.mkdir()
+    (ws / ".opencode" / "agents").mkdir(parents=True)
+
+    sync_agent_symlinks(str(core_dir), str(ws))
+
+    ws_agents = ws / ".opencode" / "agents"
+    expected = [
+        "analyst.md", "artisan.md", "coder.md", "filer.md",
+        "git-ops.md", "ops.md", "researcher.md", "scout.md",
+        "tester.md", "writer.md",
+    ]
+    for name in expected:
+        link = ws_agents / name
+        assert link.is_symlink(), f"{name} should be symlinked"
+        assert link.resolve() == (core_dir / "agents" / name).resolve()
