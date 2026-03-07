@@ -2,10 +2,10 @@
 name: artisan
 description: >-
   Deep-work agent. Picks the highest value task and completes it end-to-end.
-  Writes checkpoints frequently. Runs every ~2.4 hours.
+  Writes checkpoints frequently. Runs every ~4 hours.
 role: primary
 model:
-  tier: reasoning
+  tier: coding
   temperature: 0.2
 capabilities:
   - read

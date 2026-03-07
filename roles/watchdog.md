@@ -3,7 +3,7 @@ name: watchdog
 description: >-
   Infrastructure watchdog. Monitors services, checks health, restarts
   crashed processes, and alerts humans via the scout-to-human handoff.
-  Runs every ~4 minutes.
+  Runs every ~2 hours.
 role: subagent
 model:
   tier: coding

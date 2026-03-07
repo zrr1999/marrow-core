@@ -2,7 +2,7 @@ core_dir = "/opt/marrow-core"
 
 [[agents]]
 name = "watchdog"
-heartbeat_interval = 240
+heartbeat_interval = 7200
 heartbeat_timeout = 60
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent watchdog"

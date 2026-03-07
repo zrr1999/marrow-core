@@ -5,15 +5,15 @@
 #
 #   reasoning  Maximum capability for long-horizon reasoning, creative and analytical work.
 #              Sessions last hours. Used by agents doing deep/meta-level work.
-#              Examples: artisan (every ~2.4 h), refit (twice a week).
+#              Example: refit (twice a week).
 #
 #   coding     Balanced capability for routine tasks, code generation, triage, and monitoring.
 #              Sessions last seconds to minutes. Used by agents running frequently.
-#              Examples: scout (every ~5 min), reviewer (~15 min), watchdog (~4 min).
+#              Examples: artisan (~4 h), scout (~5 min), reviewer (~15 min), watchdog (~2 h).
 #
 # Tier-to-model mapping (change here to swap models globally):
-#   reasoning = claude-opus-4.6  — strongest reasoning; best for long-horizon creative work
-#   coding    = gpt-5.4          — strong code generation; preferred for frequent loops
+#   reasoning = claude-opus-4.6  — strongest reasoning; best for long-horizon meta-learning work
+#   coding    = gpt-5.4          — strong code generation; preferred for work and frequent loops
 
 [project]
 agents_dir = "roles"
