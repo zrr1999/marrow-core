@@ -5,7 +5,7 @@ description: >-
   delegates complex tasks to artisan. Runs every ~5 minutes.
 role: primary
 model:
-  tier: sentinel
+  tier: lite
   temperature: 0.1
 capabilities:
   - read

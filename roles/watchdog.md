@@ -6,7 +6,7 @@ description: >-
   Runs every ~2 hours.
 role: subagent
 model:
-  tier: sentinel
+  tier: lite
   temperature: 0.0
 capabilities:
   - read

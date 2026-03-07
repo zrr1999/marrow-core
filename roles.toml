@@ -1,27 +1,27 @@
 # roles.toml — agent-caster project configuration
 # Maps abstract model tiers to concrete models and configures cast targets.
 #
-# Three model tiers, aligned with the agent hierarchy and session horizon:
+# Three model tiers, describing capability depth and cost profile:
 #
-#   visionary  Long-horizon meta-reasoning and creative synthesis.
-#              Sessions span days to weeks. Used by refit for strategic analysis
-#              and systemic improvement proposals.
-#              → claude-opus-4.6 (maximum reasoning + creativity)
+#   deep      Highest capability; longest context; highest cost.
+#             For sustained meta-reasoning and strategic synthesis.
+#             Sessions span multiple hours to days (refit: twice a week).
+#             → claude-opus-4.6 (maximum reasoning + creative synthesis)
 #
-#   craftsman  Sustained execution: code generation, research, and complex triage.
-#              Sessions last minutes to hours. Used by artisan for deep implementation
-#              work that requires full context retention.
-#              → claude-sonnet-4.6 (balanced capability + cost)
+#   standard  Balanced capability; multi-turn context; moderate cost.
+#             For deep implementation work requiring sustained focus.
+#             Sessions last minutes to hours (artisan: 4 h slots).
+#             → claude-sonnet-4.6 (capable + cost-efficient for long sessions)
 #
-#   sentinel   Reactive monitoring and fast dispatch.
-#              Sessions last seconds. Used by watchdog, scout, and reviewer for
-#              health checks, queue triage, and lightweight GitHub interactions.
-#              → gpt-5-mini (low latency, cost-efficient, high call frequency)
+#   lite      Fast, low-cost, high call frequency.
+#             For monitoring, dispatch, triage, and quick GitHub interactions.
+#             Sessions last seconds (watchdog: 2 min, scout: 5 min, reviewer: 15 min).
+#             → gpt-5-mini (low latency, cost-efficient, frequent calls)
 #
 # Tier-to-model mapping — edit here to swap models globally across all agents:
-#   visionary = claude-opus-4.6   strongest reasoning; refit meta-learning
-#   craftsman = claude-sonnet-4.6 execution workhorse; artisan deep sessions
-#   sentinel  = gpt-5-mini        fast and cheap; watchdog / scout / reviewer
+#   deep     = claude-opus-4.6   meta-learning; long-horizon reasoning (refit)
+#   standard = claude-sonnet-4.6 execution workhorse; deep sessions (artisan)
+#   lite     = gpt-5-mini        fast and cheap; monitoring + dispatch (scout/reviewer/watchdog)
 
 [project]
 agents_dir = "roles"
@@ -30,6 +30,6 @@ agents_dir = "roles"
 output_dir = "."
 
 [targets.opencode.model_map]
-visionary = "github-copilot/claude-opus-4.6"
-craftsman = "github-copilot/claude-sonnet-4.6"
-sentinel = "github-copilot/gpt-5-mini"
+deep = "github-copilot/claude-opus-4.6"
+standard = "github-copilot/claude-sonnet-4.6"
+lite = "github-copilot/gpt-5-mini"
