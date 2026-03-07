@@ -1,0 +1,48 @@
+name: macOS Integration Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-e2e:
+    name: macOS CLI Integration
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --group test
+
+      - name: Create test config
+        run: |
+          cat > /tmp/marrow-ci.toml << 'EOF'
+          core_dir = "${{ github.workspace }}"
+
+          [[agents]]
+          name = "scout"
+          heartbeat_interval = 300
+          heartbeat_timeout = 500
+          workspace = "/tmp/marrow-ci"
+          agent_command = "opencode run --agent scout"
+          context_dirs = ["/tmp/marrow-ci/context.d"]
+          EOF
+
+      - name: marrow validate
+        run: uv run marrow validate --config /tmp/marrow-ci.toml --verbose
+
+      - name: marrow setup
+        run: uv run marrow setup --config /tmp/marrow-ci.toml --verbose
+
+      - name: marrow dry-run
+        run: uv run marrow dry-run --config /tmp/marrow-ci.toml --verbose
