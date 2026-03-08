@@ -14,44 +14,15 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from marrow_core.task_queue import create_task_file, list_tasks
+
 if TYPE_CHECKING:
     from marrow_core.heartbeat import HeartbeatState
-
-
-def _create_task_file(task_dir: Path, title: str, body: str) -> Path:
-    """Write a task markdown file into the queue directory."""
-    task_dir.mkdir(parents=True, exist_ok=True)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    safe = "".join(c if c.isalnum() or c in "-_ " else "" for c in title)[:50].strip()
-    safe = safe.replace(" ", "-") or "task"
-    path = task_dir / f"{ts}-{safe}.md"
-    content = f"# {title}\n\n{body}\n" if body else f"# {title}\n"
-    path.write_text(content, encoding="utf-8")
-    return path
-
-
-def _list_tasks(task_dir: Path) -> list[dict[str, Any]]:
-    """List task files in queue directory."""
-    if not task_dir.is_dir():
-        return []
-    tasks: list[dict[str, Any]] = []
-    for f in sorted(task_dir.glob("*.md")):
-        first_line = f.read_text(encoding="utf-8").split("\n", 1)[0]
-        title = first_line.lstrip("# ").strip() if first_line.startswith("#") else f.stem
-        tasks.append(
-            {
-                "file": f.name,
-                "title": title,
-                "created": f.stat().st_ctime,
-            }
-        )
-    return tasks
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +101,7 @@ async def _handle(
             _send(writer, 200, state.to_dict())
 
         elif path == "/tasks" and method == "GET":
-            _send(writer, 200, {"tasks": _list_tasks(task_dir)})
+            _send(writer, 200, {"tasks": list_tasks(task_dir)})
 
         elif path == "/tasks" and method == "POST":
             try:
@@ -143,7 +114,7 @@ async def _handle(
                 _send(writer, 400, {"error": "title is required"})
                 return
             body_text = req.get("body", "").strip() if isinstance(req, dict) else ""
-            fp = _create_task_file(task_dir, title, body_text)
+            fp = create_task_file(task_dir, title, body_text)
             logger.info("task submitted via ipc: {}", fp.name)
             _send(writer, 200, {"ok": True, "file": fp.name})
 

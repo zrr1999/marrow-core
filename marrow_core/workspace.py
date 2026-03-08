@@ -1,8 +1,4 @@
-"""Workspace — setup and isolation helpers.
-
-Core principle: the agent (user marrow) can only write within its workspace.
-This module verifies the boundary and manages symlinks from core -> workspace.
-"""
+"""Workspace — setup and isolation helpers."""
 
 from __future__ import annotations
 
@@ -11,20 +7,7 @@ from pathlib import Path
 
 from loguru import logger
 
-# Standard workspace subdirectories — single source of truth.
-# setup.sh should mirror this list.
-WORKSPACE_DIRS = (
-    "runtime/state",
-    "runtime/handoff/scout-to-conductor",
-    "runtime/handoff/conductor-to-scout",
-    "runtime/checkpoints",
-    "runtime/logs/exec",
-    "tasks/queue",
-    "tasks/delegated",
-    "tasks/done",
-    "context.d",
-    ".opencode/agents",
-)
+from marrow_core.contracts import ROLE_DIR, WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:
@@ -46,44 +29,12 @@ def ensure_workspace_dirs(workspace: str) -> None:
         (base / d).mkdir(parents=True, exist_ok=True)
 
 
-def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
-    """Symlink base agent definitions from core into workspace .opencode/agents/.
-
-    Core-owned .md files become read-only symlinks in the agent's config.
-    The agent can see them but cannot modify them (targets are root-owned).
-    """
-    core_agents = Path(core_dir) / "agents"
-    ws_agents = Path(workspace) / ".opencode" / "agents"
-    ws_agents.mkdir(parents=True, exist_ok=True)
-
-    if not core_agents.is_dir():
-        logger.warning("core agents dir not found: {}", core_agents)
-        return
-
-    for src in sorted(core_agents.glob("*.md")):
-        dst = ws_agents / src.name
-        # If dst is a symlink, remove and re-create to ensure correct target.
-        if dst.is_symlink():
-            if dst.resolve() == src.resolve():
-                continue
-            dst.unlink()
-        elif dst.exists():
-            # A real file exists — agent may have created it.
-            # Back it up and replace with symlink.
-            backup = dst.with_suffix(dst.suffix + ".agent-backup")
-            if backup.exists():
-                # Avoid clobbering an existing backup.
-                i = 1
-                while True:
-                    alt = dst.with_suffix(dst.suffix + f".agent-backup-{i}")
-                    if not alt.exists():
-                        backup = alt
-                        break
-                    i += 1
-            logger.warning("backing up agent-modified {} -> {}", dst, backup)
-            dst.rename(backup)
-        dst.symlink_to(src)
-        logger.info("symlinked {} -> {}", dst, src)
+def _core_definition_files(core_dir: str) -> list[Path]:
+    core_path = Path(core_dir)
+    role_dir = core_path / ROLE_DIR
+    if role_dir.is_dir():
+        return sorted(path for path in role_dir.rglob("*.md") if path.is_file())
+    return []
 
 
 def load_rules(core_dir: str) -> str:

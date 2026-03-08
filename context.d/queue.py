@@ -30,17 +30,17 @@ def main() -> None:
         print(f.resolve())
 
     # Show delegation status
-    s2a = HANDOFF_DIR / "scout-to-artisan"
-    if s2a.is_dir():
-        pending = sorted(s2a.iterdir())
+    scout_to_conductor = HANDOFF_DIR / "scout-to-conductor"
+    if scout_to_conductor.is_dir():
+        pending = sorted(scout_to_conductor.iterdir())
         if pending:
-            print(f"\nDelegated to artisan (pending): {', '.join(p.name for p in pending)}")
+            print(f"\nDelegated to conductor (pending): {', '.join(p.name for p in pending)}")
 
-    a2s = HANDOFF_DIR / "artisan-to-scout"
-    if a2s.is_dir():
-        msgs = sorted(a2s.iterdir())
+    conductor_to_scout = HANDOFF_DIR / "conductor-to-scout"
+    if conductor_to_scout.is_dir():
+        msgs = sorted(conductor_to_scout.iterdir())
         if msgs:
-            print(f"\nMessages from artisan: {', '.join(p.name for p in msgs)}")
+            print(f"\nMessages from conductor: {', '.join(p.name for p in msgs)}")
 
 
 if __name__ == "__main__":

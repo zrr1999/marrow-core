@@ -88,12 +88,42 @@ class IpcConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class SyncConfig(BaseModel):
+    """Periodic sync supervisor configuration."""
+
+    enabled: bool = True
+    interval_seconds: int = 3600
+    failure_backoff_seconds: int = 300
+    state_file: str = ""
+    lock_file: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("interval_seconds")
+    @classmethod
+    def _clamp_interval(cls, v: int) -> int:
+        return _clamp(v, 60, 604800, "sync.interval_seconds")
+
+    @field_validator("failure_backoff_seconds")
+    @classmethod
+    def _clamp_backoff(cls, v: int) -> int:
+        return _clamp(v, 5, 86400, "sync.failure_backoff_seconds")
+
+    @field_validator("state_file", "lock_file")
+    @classmethod
+    def _abs_optional_path(cls, v: str) -> str:
+        if v and not Path(v).is_absolute():
+            raise ValueError(f"sync path must be absolute: {v}")
+        return v
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
     core_dir: str = "/opt/marrow-core"
     agents: list[AgentConfig] = Field(default_factory=list)
     ipc: IpcConfig = Field(default_factory=IpcConfig)
+    sync: SyncConfig = Field(default_factory=SyncConfig)
 
     model_config = ConfigDict(extra="forbid")
 

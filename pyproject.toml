@@ -10,32 +10,20 @@ authors = [
 dependencies = [
   "loguru>=0.7.3",
   "pydantic>=2.12",
+  "role-forge @ git+https://github.com/zrr1999/role-forge.git@main",
   "typer>=0.15",
 ]
 dynamic = ["version"]
 
+[project.urls]
+Issues = "https://github.com/zrr1999/marrow-core/issues"
+Repository = "https://github.com/zrr1999/marrow-core"
+
 [project.scripts]
 marrow = "marrow_core.cli:app"
 
-[project.urls]
-Homepage = "https://github.com/zrr1999/marrow-core"
-Repository = "https://github.com/zrr1999/marrow-core"
-
-[build-system]
-requires = ["hatch-vcs", "hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "vcs"
-
-[tool.hatch.build.hooks.vcs]
-version-file = "marrow_core/_version.py"
-
 [dependency-groups]
 dev = [
-  "prek>=0.3.4",
-  "ruff>=0.11",
-  "ty>=0.0.19",
   { include-group = "test" },
 ]
 test = [
@@ -44,10 +32,9 @@ test = [
   "pytest-cov>=6.0",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-addopts = ["--strict-markers", "--tb=short"]
+[build-system]
+requires = ["hatch-vcs", "hatchling"]
+build-backend = "hatchling.build"
 
 [tool.coverage.run]
 branch = true
@@ -67,6 +54,21 @@ exclude_lines = [
   "@abstractmethod",
   "\\.\\.\\.",
 ]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.hooks.vcs]
+version-file = "marrow_core/_version.py"
+
+[tool.pytest]
+addopts = ["--strict-markers", "--tb=short"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 100

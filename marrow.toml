@@ -1,5 +1,10 @@
 core_dir = "/opt/marrow-core"
 
+[sync]
+enabled = true
+interval_seconds = 3600
+failure_backoff_seconds = 300
+
 [[agents]]
 name = "scout"
 heartbeat_interval = 300
