@@ -1,0 +1,5 @@
+[targets.opencode.model_map]
+strategic = "github-copilot/claude-opus-4.6"
+operational = "github-copilot/gpt-5.4"
+specialist = "github-copilot/gpt-5.4"
+routine = "github-copilot/gpt-5-mini"

@@ -15,8 +15,8 @@ from loguru import logger
 # setup.sh should mirror this list.
 WORKSPACE_DIRS = (
     "runtime/state",
-    "runtime/handoff/scout-to-artisan",
-    "runtime/handoff/artisan-to-scout",
+    "runtime/handoff/scout-to-conductor",
+    "runtime/handoff/conductor-to-scout",
     "runtime/checkpoints",
     "runtime/logs/exec",
     "tasks/queue",

@@ -18,48 +18,53 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Four Scheduled Agents + Expert Sub-agents
+## Three Autonomous Agents + Specialist Sub-agents
 
 ```
 marrow-core heartbeat (scheduler)
 │
-├── 2 min ──► watchdog   monitor infra; restart services; alert humans
-├── 5 min ──► scout      fast dispatch; trivial tasks; delegate complex work
-├── 4 h ────► artisan    deep work + research; end-to-end tasks
-└── 3.5 day ► refit      meta-learning orchestration; inventory unfinished work;
-                         dispatch/supervise weekly backlog closure; synthesize improvements
-                         (scheduled only — not callable by other agents)
+├── 5 min ──► scout        explore queue/state; gather facts; create handoffs
+├── 4 h ────► conductor    plan work; dispatch specialists; validate/integrate
+└── 3.5 day ► refit        strategic review; meta-learning; system improvements
+                           (scheduled only — not callable by other agents)
 
-On-demand expert sub-agents:
-  artisan/refit ──task──► reviewer   GitHub triage; PR reviews; issue replies
+On-demand sub-agents:
+  conductor/refit ──task──► scout     focused code exploration / evidence gathering
+  conductor/refit ──task──► reviewer  GitHub triage; PR reviews; issue replies
+  conductor/refit ──task──► watchdog  routine monitoring / health checks
 
 Data flows (all via filesystem):
-  scout ──delegate──► artisan    runtime/handoff/scout-to-artisan/
-  artisan ──offload──► scout     runtime/handoff/artisan-to-scout/
-  watchdog ──alert──► human      runtime/handoff/scout-to-human/
+  scout ──handoff────► conductor     runtime/handoff/scout-to-conductor/
+  conductor ──follow-up──► scout     runtime/handoff/conductor-to-scout/
+  watchdog ──alert────► human        runtime/handoff/scout-to-human/
   refit ──coordinate──► sub-agents   task tool (parallel lower-level workers)
   refit ──propose────► human         tasks/queue/core-proposal-*.md
-  human ──task──► any agent      tasks/queue/
+  human ──task──────► autonomous     tasks/queue/
 ```
 
 ### Agent Roles
 
-| Agent | Interval | Mode | Model | Role |
-|-------|----------|------|-------|------|
-| **watchdog** | 2 min | scheduled + callable | gpt-5-mini | Infra health; restart services; alert humans |
-| **scout** | 5 min | scheduled + callable | gpt-5-mini | Fast dispatch; trivial tasks; delegate complex work |
-| **artisan** | 4 h | scheduled + callable | claude-sonnet-4.6 | Deep work + research; end-to-end tasks with checkpoints |
-| **refit** | twice a week | scheduled only | claude-opus-4.6 | Meta-learning orchestrator; review performance, inventory backlog, supervise lower-level execution, propose improvements |
+| Tier | Agent | Category | Model | Role |
+|------|-------|----------|-------|------|
+| `strategic` | **refit** | Autonomous | claude-opus-4.6 | Goal setting, system improvement, meta-learning |
+| `operational` | **conductor** | Autonomous | gpt-5.4 | Task decomposition, specialist dispatch, result integration |
+| `specialist` | **scout** | Autonomous + Subagent | gpt-5.4 | Code exploration, information gathering, quick reconnaissance |
+| `specialist` | **reviewer** | Subagent | gpt-5.4 | GitHub triage, PR reviews, CI inspection |
+| `routine` | **watchdog** | Subagent | gpt-5-mini | Monitoring, health checks, safe recovery actions |
 
-### Expert Sub-agents
+### Model map (`roles.toml`)
 
-| Sub-agent | Mode | Model | Role |
-|-----------|------|-------|------|
-| **reviewer** | on-demand only | gpt-5.4 | GitHub triage; PR reviews; issue replies |
+```toml
+[targets.opencode.model_map]
+strategic   = "github-copilot/claude-opus-4.6"
+operational = "github-copilot/gpt-5.4"
+specialist  = "github-copilot/gpt-5.4"
+routine     = "github-copilot/gpt-5-mini"
+```
 
 ### Persistent TODO Queue
 
-Artisan maintains a persistent TODO queue at `runtime/state/artisan-todo.json`.
+Conductor maintains a persistent TODO queue at `runtime/state/conductor-todo.json`.
 Items survive session boundaries — incomplete tasks are resumed in the next session.
 This enables reliable multi-session execution of large tasks.
 
@@ -84,7 +89,10 @@ This enables reliable multi-session execution of large tasks.
 │   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
 ├── agents/                 # Base agent definitions (symlinked to workspace)
 │   ├── scout.md
-│   └── artisan.md
+│   ├── conductor.md
+│   ├── refit.md
+│   ├── reviewer.md
+│   └── watchdog.md
 ├── prompts/
 │   └── rules.md            # Immutable rules injected into every prompt
 ├── context.d/              # Default context providers (copied to workspace)
@@ -93,7 +101,7 @@ This enables reliable multi-session execution of large tasks.
 └── setup.sh / sync.sh      # Deployment scripts
 
 /Users/marrow/              # AGENT-OWNED (agent can modify freely)
-├── .opencode/agents/       # scout.md, artisan.md (symlinks) + custom-*.md
+├── .opencode/agents/       # scout.md, conductor.md, ... (symlinks) + custom-*.md
 ├── context.d/              # Agent-owned context scripts
 ├── tasks/                  # queue/ -> delegated/ -> done/
 ├── runtime/                # state/, handoff/, checkpoints/, logs/
@@ -125,7 +133,7 @@ The agent is encouraged to evolve within its boundary:
 
 See `marrow.toml`. Key fields per agent:
 
-- `name` — Unique identifier (scout, artisan)
+- `name` — Unique identifier (scout, conductor, refit)
 - `heartbeat_interval` — Seconds between ticks
 - `heartbeat_timeout` — Max seconds per agent execution
 - `workspace` — Agent's writable workspace root
@@ -158,7 +166,7 @@ This project uses **gitmoji** for commit messages and PR titles.
 **Examples:**
 
 ```
-✨ feat: add checkpoint auto-pruning for artisan
+✨ feat: add checkpoint auto-pruning for conductor
 🐛 fix: use loguru {} format instead of stdlib % format
 📝 docs: update AGENTS.md with commit conventions
 ```
@@ -168,5 +176,5 @@ This project uses **gitmoji** for commit messages and PR titles.
 PR titles follow the same gitmoji format:
 
 ```
-✨ feat: add checkpoint auto-pruning for artisan
+✨ feat: add checkpoint auto-pruning for conductor
 ```
