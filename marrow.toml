@@ -1,16 +1,6 @@
 core_dir = "/opt/marrow-core"
 
 [[agents]]
-name = "watchdog"
-heartbeat_interval = 300  # check every 5 min — faster agents don't need sub-minute polling
-heartbeat_timeout = 180  # LLM call + tools takes ≥2 min; 60s was always timing out
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent watchdog"
-context_dirs = [
-  "/Users/marrow/context.d",
-]
-
-[[agents]]
 name = "scout"
 heartbeat_interval = 300
 heartbeat_timeout = 500
@@ -21,11 +11,11 @@ context_dirs = [
 ]
 
 [[agents]]
-name = "artisan"
-heartbeat_interval = 14400
+name = "conductor"
+heartbeat_interval = 7200
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent artisan"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent conductor"
 context_dirs = [
   "/Users/marrow/context.d",
 ]

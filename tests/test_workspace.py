@@ -20,6 +20,8 @@ def test_verify_workspace(tmp_path: Path):
 def test_ensure_workspace_dirs(tmp_path: Path):
     ensure_workspace_dirs(str(tmp_path))
     assert (tmp_path / "runtime" / "state").is_dir()
+    assert (tmp_path / "runtime" / "handoff" / "scout-to-conductor").is_dir()
+    assert (tmp_path / "runtime" / "handoff" / "conductor-to-scout").is_dir()
     assert (tmp_path / "tasks" / "queue").is_dir()
     assert (tmp_path / "context.d").is_dir()
     assert (tmp_path / ".opencode" / "agents").is_dir()
@@ -30,7 +32,7 @@ def test_sync_agent_symlinks(tmp_path: Path):
     core_dir = tmp_path / "core"
     (core_dir / "agents").mkdir(parents=True)
     (core_dir / "agents" / "scout.md").write_text("# Scout")
-    (core_dir / "agents" / "artisan.md").write_text("# Artisan")
+    (core_dir / "agents" / "conductor.md").write_text("# Conductor")
 
     # Create fake workspace
     ws = tmp_path / "workspace"
@@ -98,12 +100,13 @@ def test_load_rules_missing(tmp_path: Path):
 
 
 def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
-    """All agent definitions (primary + sub-agents) are symlinked to workspace."""
+    """All agent definitions (autonomous + sub-agents) are symlinked to workspace."""
     core_dir = tmp_path / "core"
     (core_dir / "agents").mkdir(parents=True)
-    # Primary agents
+    # Autonomous agents
     (core_dir / "agents" / "scout.md").write_text("# Scout")
-    (core_dir / "agents" / "artisan.md").write_text("# Artisan")
+    (core_dir / "agents" / "conductor.md").write_text("# Conductor")
+    (core_dir / "agents" / "refit.md").write_text("# Refit")
     # Sub-agents
     (core_dir / "agents" / "analyst.md").write_text("# Analyst")
     (core_dir / "agents" / "researcher.md").write_text("# Researcher")
@@ -124,11 +127,12 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
     ws_agents = ws / ".opencode" / "agents"
     expected = [
         "analyst.md",
-        "artisan.md",
+        "conductor.md",
         "coder.md",
         "filer.md",
         "git-ops.md",
         "ops.md",
+        "refit.md",
         "researcher.md",
         "reviewer.md",
         "scout.md",

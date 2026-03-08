@@ -68,8 +68,8 @@ tar -czf "$archive_dir/checkpoints-$(date +%Y%m%d).tar.gz" runtime/checkpoints/o
 ├── runtime/
 │   ├── state/              # Agent state JSON files — CRITICAL, never bulk-delete
 │   ├── handoff/            # Inter-agent communication (ephemeral)
-│   │   ├── scout-to-artisan/
-│   │   └── artisan-to-scout/
+│   │   ├── scout-to-conductor/
+│   │   └── conductor-to-scout/
 │   ├── checkpoints/        # Session checkpoints (archivable after 30d)
 │   └── logs/exec/          # Execution logs (archivable after 7d)
 ├── docs/                   # Reports and documentation — permanent

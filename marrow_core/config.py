@@ -46,7 +46,7 @@ class AgentConfig(BaseModel):
     @field_validator("heartbeat_interval")
     @classmethod
     def _clamp_interval(cls, v: int) -> int:
-        return _clamp(v, 60, 86400, "heartbeat_interval")
+        return _clamp(v, 60, 604800, "heartbeat_interval")
 
     @field_validator("heartbeat_timeout")
     @classmethod

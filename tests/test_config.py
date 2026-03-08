@@ -52,6 +52,16 @@ def test_interval_clamping():
         assert len(w) == 1
 
 
+def test_interval_allows_multi_day_schedule():
+    cfg = AgentConfig(
+        name="x",
+        agent_command="cmd",
+        workspace="/tmp",
+        heartbeat_interval=302400,
+    )
+    assert cfg.heartbeat_interval == 302400
+
+
 def test_context_dirs_normalization():
     cfg = AgentConfig(
         name="x",

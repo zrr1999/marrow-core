@@ -11,12 +11,14 @@ Minimal self-evolving agent scheduler with hard isolation between the **core** (
 
 The agent cannot modify core. If it wants a core change it writes a proposal to `tasks/queue/core-proposal-*.md` and a human reviews it.
 
-## Two-tier agent model
+## Autonomous + delegated agent model
 
-| Agent | Interval | Purpose |
-|-------|----------|---------|
-| **scout** | 5 min | Fast dispatcher — scan queue, do trivial work, delegate complex tasks |
-| **artisan** | ~2.4 h | Deep worker — pick highest-value task, complete end-to-end with checkpoints |
+| Tier | Agent | Category | Purpose |
+|------|-------|----------|---------|
+| strategic | **refit** | Autonomous | Goal setting, system improvement, meta-learning |
+| operational | **conductor** | Autonomous | Plan work, dispatch specialists, integrate results |
+| routine | **scout** | Autonomous + Subagent | Monitoring, scanning, notifications, safe recovery actions |
+| specialist | **reviewer** | Subagent | PR review, CI triage, issue/PR responses |
 
 ## CLI
 
@@ -53,19 +55,37 @@ core_dir = "/opt/marrow-core"
 
 [[agents]]
 name              = "scout"
-heartbeat_interval = 300       # seconds
-heartbeat_timeout  = 300
+heartbeat_interval = 300
+heartbeat_timeout  = 500
 agent_command      = "opencode run --agent scout"
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
 
 [[agents]]
-name              = "artisan"
-heartbeat_interval = 8640      # ~2.4 hours
-heartbeat_timeout  = 8000
-agent_command      = "opencode run --agent artisan"
+name              = "conductor"
+heartbeat_interval = 7200      # 2 hours
+heartbeat_timeout  = 7200
+agent_command      = "opencode run --agent conductor"
 workspace          = "/Users/marrow"
 context_dirs       = ["/Users/marrow/context.d"]
+
+[[agents]]
+name              = "refit"
+heartbeat_interval = 302400    # 3.5 days
+heartbeat_timeout  = 28800
+agent_command      = "opencode run --agent refit"
+workspace          = "/Users/marrow"
+context_dirs       = ["/Users/marrow/context.d"]
+```
+
+Model tiers are defined in [`roles.toml`](roles.toml):
+
+```toml
+[targets.opencode.model_map]
+strategic   = "github-copilot/claude-opus-4.6"
+operational = "github-copilot/gpt-5.4"
+specialist  = "github-copilot/gpt-5.4"
+routine     = "github-copilot/gpt-5-mini"
 ```
 
 ## Context providers
