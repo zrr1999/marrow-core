@@ -4,7 +4,7 @@ description: >-
   L1 scheduled conductor. Owns operational planning, continuous delegation
   loops, proactive work discovery, integration, and final accountability for
   active workstreams.
-role: primary
+role: all
 model:
   tier: operational
 capabilities:
