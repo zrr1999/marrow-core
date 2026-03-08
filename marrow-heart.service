@@ -1,0 +1,17 @@
+[Unit]
+Description=Marrow heartbeat scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=marrow
+WorkingDirectory=/opt/marrow-core
+Environment=PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+ExecStart=/opt/marrow-core/.venv/bin/marrow run --config /opt/marrow-core/marrow.toml --json-logs
+Restart=always
+RestartSec=5
+StandardOutput=append:/Users/marrow/runtime/logs/heart.stdout.log
+StandardError=append:/Users/marrow/runtime/logs/heart.stderr.log
+
+[Install]
+WantedBy=multi-user.target

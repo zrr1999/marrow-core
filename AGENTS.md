@@ -74,17 +74,33 @@ This enables reliable multi-session execution of large tasks.
 3. **Run agent** — Execute `agent_command` with the assembled prompt.
 4. **Sleep** — Wait for `heartbeat_interval`, repeat.
 
+## Runtime Boundaries
+
+- `marrow_core/prompting.py` — context execution and prompt assembly
+- `marrow_core/runtime.py` — canonical socket, queue, and binary path resolution
+- `marrow_core/task_queue.py` — filesystem task queue read/write helpers
+- `marrow_core/services.py` — launchd/systemd rendering
+- `marrow_core/scaffold.py` — workspace scaffold and starter config generation
+- `marrow_core/heartbeat.py` / `marrow_core/cli.py` / `marrow_core/ipc.py` — orchestration layers that compose those helpers
+
 ## Filesystem Layout
 
 ```
 /opt/marrow-core/           # ROOT-OWNED (immutable to agent)
 ├── marrow_core/            # Python package
 │   ├── config.py           # TOML config + Pydantic validation
+│   ├── contracts.py        # Canonical topology and role model
 │   ├── heartbeat.py        # Core scheduler loop
+│   ├── prompting.py        # Context execution + prompt assembly
+│   ├── runtime.py          # Canonical runtime paths
+│   ├── task_queue.py       # Filesystem queue helpers
+│   ├── scaffold.py         # Workspace/config scaffolding
+│   ├── services.py         # launchd/systemd rendering
 │   ├── runner.py           # Agent subprocess execution
-│   ├── workspace.py            # Permission enforcement + symlinks
+│   ├── workspace.py        # Permission enforcement + symlinks
 │   ├── log.py              # Structured logging
-│   └── cli.py              # CLI: run, run-once, dry-run, setup, validate
+│   ├── ipc.py              # Local control plane over Unix socket
+│   └── cli.py              # CLI: run, status, task, scaffold, service install
 ├── agents/                 # Base agent definitions (symlinked to workspace)
 │   ├── scout.md
 │   ├── conductor.md
@@ -125,7 +141,13 @@ The agent is encouraged to evolve within its boundary:
 | `run-once` | One tick per agent, then exit |
 | `dry-run`  | Build prompts without running agents |
 | `setup`    | Initialize workspace and sync symlinks |
+| `scaffold` | Create a workspace skeleton and starter config |
 | `validate` | Check config and show summary |
+| `doctor`   | Verify workspace, context dirs, and agent command availability |
+| `status`   | Query live heartbeat state over IPC |
+| `install-service` | Render launchd or systemd service files |
+| `task add` | Submit a queued task over IPC |
+| `task list`| List queued tasks over IPC |
 
 ## Configuration
 
@@ -137,6 +159,12 @@ See `marrow.toml`. Key fields per agent:
 - `workspace` — Agent's writable workspace root
 - `agent_command` — Command to invoke the agent
 - `context_dirs` — Directories to scan for context scripts
+
+## Service Model
+
+- macOS uses `com.marrow.heart.plist` and `com.marrow.heart.sync.plist`
+- Linux uses `marrow-heart.service`, `marrow-heart-sync.service`, and `marrow-heart-sync.timer`
+- Both are rendered from the same CLI/runtime model so PATH, binary path, config path, and log destinations stay aligned
 
 ## Commit & PR Conventions
 

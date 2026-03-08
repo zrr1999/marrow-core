@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from marrow_core.contracts import BASE_AGENT_FILES, WORKSPACE_DIRS
 from marrow_core.workspace import (
     ensure_workspace_dirs,
     load_rules,
@@ -19,12 +20,8 @@ def test_verify_workspace(tmp_path: Path):
 
 def test_ensure_workspace_dirs(tmp_path: Path):
     ensure_workspace_dirs(str(tmp_path))
-    assert (tmp_path / "runtime" / "state").is_dir()
-    assert (tmp_path / "runtime" / "handoff" / "scout-to-conductor").is_dir()
-    assert (tmp_path / "runtime" / "handoff" / "conductor-to-scout").is_dir()
-    assert (tmp_path / "tasks" / "queue").is_dir()
-    assert (tmp_path / "context.d").is_dir()
-    assert (tmp_path / ".opencode" / "agents").is_dir()
+    for directory in WORKSPACE_DIRS:
+        assert (tmp_path / directory).is_dir(), f"missing {directory}"
 
 
 def test_sync_agent_symlinks(tmp_path: Path):
@@ -103,20 +100,8 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
     """All agent definitions (autonomous + sub-agents) are symlinked to workspace."""
     core_dir = tmp_path / "core"
     (core_dir / "agents").mkdir(parents=True)
-    # Autonomous agents
-    (core_dir / "agents" / "scout.md").write_text("# Scout")
-    (core_dir / "agents" / "conductor.md").write_text("# Conductor")
-    (core_dir / "agents" / "refit.md").write_text("# Refit")
-    # Sub-agents
-    (core_dir / "agents" / "analyst.md").write_text("# Analyst")
-    (core_dir / "agents" / "researcher.md").write_text("# Researcher")
-    (core_dir / "agents" / "coder.md").write_text("# Coder")
-    (core_dir / "agents" / "tester.md").write_text("# Tester")
-    (core_dir / "agents" / "writer.md").write_text("# Writer")
-    (core_dir / "agents" / "ops.md").write_text("# Ops")
-    (core_dir / "agents" / "reviewer.md").write_text("# Reviewer")
-    (core_dir / "agents" / "git-ops.md").write_text("# Git-Ops")
-    (core_dir / "agents" / "filer.md").write_text("# Filer")
+    for name in BASE_AGENT_FILES:
+        (core_dir / "agents" / f"{name}.md").write_text(f"# {name.title()}")
 
     ws = tmp_path / "workspace"
     ws.mkdir()
@@ -125,21 +110,7 @@ def test_sync_agent_symlinks_includes_subagents(tmp_path: Path):
     sync_agent_symlinks(str(core_dir), str(ws))
 
     ws_agents = ws / ".opencode" / "agents"
-    expected = [
-        "analyst.md",
-        "conductor.md",
-        "coder.md",
-        "filer.md",
-        "git-ops.md",
-        "ops.md",
-        "refit.md",
-        "researcher.md",
-        "reviewer.md",
-        "scout.md",
-        "tester.md",
-        "writer.md",
-    ]
-    for name in expected:
+    for name in [f"{agent}.md" for agent in BASE_AGENT_FILES]:
         link = ws_agents / name
         assert link.is_symlink(), f"{name} should be symlinked"
         assert link.resolve() == (core_dir / "agents" / name).resolve()

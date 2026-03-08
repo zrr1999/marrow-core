@@ -32,9 +32,7 @@ done
 sudo -u marrow chmod +x "${WORKSPACE}"/context.d/* 2>/dev/null || true
 
 # --- Install & start daemons ---
-for name in "${PLISTS[@]}"; do
-  install_daemon "$name"
-done
+install_services
 
 echo "[marrow] Setup complete."
-launchctl list | grep com.marrow.heart || true
+show_service_status

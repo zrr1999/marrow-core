@@ -27,8 +27,13 @@ marrow run          # persistent heartbeat loop
 marrow run-once     # one tick per agent then exit
 marrow dry-run      # print assembled prompts, don't run agents
 marrow setup        # init workspace dirs and sync agent symlinks
+marrow scaffold     # create a new writable workspace skeleton and starter config
 marrow validate     # check config and show summary
 marrow doctor       # verify workspace, context dirs, and agent command availability
+marrow status       # query live heartbeat state over IPC
+marrow install-service  # render launchd or systemd service files
+marrow task add     # submit a task into tasks/queue via IPC
+marrow task list    # inspect queued tasks via IPC
 ```
 
 Options available on every command:
@@ -88,6 +93,16 @@ specialist  = "github-copilot/gpt-5.4"
 routine     = "github-copilot/gpt-5-mini"
 ```
 
+## Execution surfaces
+
+The runtime is split into a few explicit seams:
+
+- `marrow_core/prompting.py` handles context execution and prompt assembly
+- `marrow_core/runtime.py` resolves canonical socket, queue, and binary paths
+- `marrow_core/task_queue.py` owns filesystem queue read/write helpers
+- `marrow_core/services.py` renders launchd and systemd service definitions
+- `marrow_core/scaffold.py` creates new workspace skeletons and starter config files
+
 ## Context providers
 
 Any executable script inside a `context_dirs` directory is run each tick. Its stdout is appended verbatim to the agent prompt. No JSON protocol — plain text.
@@ -99,6 +114,27 @@ Any executable script inside a `context_dirs` directory is run each tick. Its st
 ```
 
 The agent is free to add, edit, or remove scripts under its own `context.d/`.
+
+## Filesystem handoffs
+
+Core runtime coordination uses a fixed handoff layout:
+
+```
+runtime/handoff/scout-to-conductor/
+runtime/handoff/conductor-to-scout/
+runtime/handoff/scout-to-human/
+```
+
+## Service installation
+
+Service definitions are now rendered from the CLI instead of being maintained as separate manual artifacts.
+
+```bash
+marrow install-service --config marrow.toml --platform darwin --output-dir ./service-out
+marrow install-service --config marrow.toml --platform linux --output-dir ./service-out
+```
+
+The repository ships both launchd plists and systemd unit templates so operational surfaces stay aligned with the canonical runtime model.
 
 ## Architecture
 

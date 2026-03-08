@@ -11,20 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
-# Standard workspace subdirectories — single source of truth.
-# setup.sh should mirror this list.
-WORKSPACE_DIRS = (
-    "runtime/state",
-    "runtime/handoff/scout-to-conductor",
-    "runtime/handoff/conductor-to-scout",
-    "runtime/checkpoints",
-    "runtime/logs/exec",
-    "tasks/queue",
-    "tasks/delegated",
-    "tasks/done",
-    "context.d",
-    ".opencode/agents",
-)
+from marrow_core.contracts import WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:

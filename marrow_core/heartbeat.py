@@ -8,7 +8,6 @@ scripts that output plain text to stdout.
 from __future__ import annotations
 
 import asyncio
-import os
 import shlex
 import time
 from dataclasses import dataclass, field
@@ -19,6 +18,7 @@ from loguru import logger
 
 from marrow_core.config import AgentConfig
 from marrow_core.log_pruner import prune_exec_logs
+from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import run_agent
 from marrow_core.workspace import load_rules
 
@@ -107,59 +107,6 @@ def _session_id(agent_name: str) -> str:
     return f"{safe}-{ts}-{ms:03d}"
 
 
-async def _gather_context(context_dirs: list[str], timeout: int = 15) -> list[str]:
-    """Run all executable scripts in context_dirs, collect stdout as text blocks.
-
-    No JSON protocol — scripts simply print text to stdout.
-    Order: alphabetical within each dir, dirs in config order.
-    """
-    blocks: list[str] = []
-    for raw in context_dirs:
-        d = Path(raw)
-        if not d.is_dir():
-            continue
-        scripts = sorted(p for p in d.iterdir() if p.is_file() and os.access(p, os.X_OK))
-        for script in scripts:
-            try:
-                proc = await asyncio.create_subprocess_exec(
-                    str(script),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-                text = (out or b"").decode("utf-8", errors="replace").strip()
-                if text:
-                    blocks.append(f"--- [{script.stem}] ---\n{text}")
-                if proc.returncode != 0:
-                    logger.warning("context script {} exited {}", script, proc.returncode)
-                    if err:
-                        logger.debug(
-                            "context script {} stderr: {}",
-                            script,
-                            err.decode("utf-8", errors="replace").strip(),
-                        )
-            except TimeoutError:
-                logger.warning("context script {} timed out after {}s", script, timeout)
-            except Exception as exc:
-                logger.warning("context script {} failed: {}", script, exc)
-    return blocks
-
-
-def _build_prompt(
-    base_prompt: str,
-    rules: str,
-    context_blocks: list[str],
-) -> str:
-    """Assemble final prompt: rules + base prompt + context blocks."""
-    parts: list[str] = []
-    if rules:
-        parts.append(f"--- [Core Rules] ---\n{rules}")
-    if base_prompt:
-        parts.append(base_prompt.strip())
-    parts.extend(context_blocks)
-    return "\n\n".join(parts).strip() + "\n"
-
-
 async def heartbeat(
     cfg: AgentConfig,
     core_dir: str,
@@ -227,9 +174,9 @@ async def _tick(
     log_dir = workspace / "runtime" / "logs" / "exec"
 
     # Gather context from all configured context dirs
-    context_blocks = await _gather_context(cfg.context_dirs)
+    context_blocks = await gather_context(cfg.context_dirs)
 
-    prompt = _build_prompt(BASE_PROMPT, rules, context_blocks)
+    prompt = build_prompt(BASE_PROMPT, rules, context_blocks)
 
     if dry_run:
         print(f"--- DRY RUN [{name}] session={sid} ---")

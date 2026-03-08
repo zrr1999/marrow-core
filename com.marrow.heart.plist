@@ -15,6 +15,11 @@
     <string>--json-logs</string>
   </array>
 
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
   <key>WorkingDirectory</key>
   <string>/opt/marrow-core</string>
 

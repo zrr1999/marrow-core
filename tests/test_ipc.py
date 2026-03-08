@@ -11,11 +11,8 @@ from pathlib import Path
 import pytest
 
 from marrow_core.heartbeat import AgentState, HeartbeatState
-from marrow_core.ipc import (
-    _create_task_file,
-    _list_tasks,
-    start_ipc_server,
-)
+from marrow_core.ipc import start_ipc_server
+from marrow_core.task_queue import create_task_file, list_tasks
 
 # ---------------------------------------------------------------------------
 # Unit tests for helpers
@@ -24,7 +21,7 @@ from marrow_core.ipc import (
 
 def test_create_task_file(tmp_path: Path):
     queue = tmp_path / "tasks" / "queue"
-    fp = _create_task_file(queue, "My Task", "Details here")
+    fp = create_task_file(queue, "My Task", "Details here")
     assert fp.exists()
     assert fp.suffix == ".md"
     content = fp.read_text()
@@ -34,7 +31,7 @@ def test_create_task_file(tmp_path: Path):
 
 def test_create_task_file_no_body(tmp_path: Path):
     queue = tmp_path / "tasks" / "queue"
-    fp = _create_task_file(queue, "Quick fix", "")
+    fp = create_task_file(queue, "Quick fix", "")
     content = fp.read_text()
     assert "# Quick fix" in content
     assert content.count("\n") == 1
@@ -42,21 +39,21 @@ def test_create_task_file_no_body(tmp_path: Path):
 
 def test_create_task_file_sanitizes_name(tmp_path: Path):
     queue = tmp_path / "tasks" / "queue"
-    fp = _create_task_file(queue, "fix: the <bug> & crash!", "")
+    fp = create_task_file(queue, "fix: the <bug> & crash!", "")
     assert "<" not in fp.name
     assert ">" not in fp.name
     assert "&" not in fp.name
 
 
 def test_list_tasks_empty(tmp_path: Path):
-    assert _list_tasks(tmp_path / "nonexistent") == []
+    assert list_tasks(tmp_path / "nonexistent") == []
 
 
 def test_list_tasks(tmp_path: Path):
     queue = tmp_path / "queue"
-    _create_task_file(queue, "Task A", "")
-    _create_task_file(queue, "Task B", "body")
-    tasks = _list_tasks(queue)
+    create_task_file(queue, "Task A", "")
+    create_task_file(queue, "Task B", "body")
+    tasks = list_tasks(queue)
     assert len(tasks) == 2
     titles = {t["title"] for t in tasks}
     assert "Task A" in titles
