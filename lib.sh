@@ -33,21 +33,10 @@ ensure_workspace_dirs() {
   sudo -u marrow mkdir -p "${dirs[@]}"
 }
 
-link_agents() {
-  local sources=()
-  if [[ -d "${CORE_DIR}/roles" ]]; then
-    while IFS= read -r -d '' role_md; do
-      sources+=("$role_md")
-    done < <(find "${CORE_DIR}/roles" -type f -name '*.md' -print0 | sort -z)
-  fi
-
-  local role_md name dst
-  for role_md in "${sources[@]}"; do
-    [[ -f "$role_md" ]] || continue
-    name=$(basename "$role_md")
-    dst="${WORKSPACE}/.opencode/agents/${name}"
-    sudo -u marrow ln -sf "$role_md" "$dst"
-  done
+cast_roles() {
+  local marrow_bin="${CORE_DIR}/.venv/bin/python"
+  [[ -x "$marrow_bin" ]] || return 1
+  "$marrow_bin" -m marrow_core.cli setup --config "${CORE_DIR}/marrow.toml"
 }
 
 install_daemon() {

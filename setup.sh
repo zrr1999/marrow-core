@@ -15,9 +15,9 @@ fi
 # --- Venv ---
 sudo bash -lc "source '${CORE_DIR}/lib.sh' && ensure_venv"
 
-# --- Workspace dirs & agent symlinks ---
+# --- Workspace dirs & cast runtime agent configs ---
 ensure_workspace_dirs
-link_agents
+cast_roles
 
 # --- Copy default context providers (agent-owned, modifiable) ---
 for ctx_script in "${CORE_DIR}"/context.d/*; do

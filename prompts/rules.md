@@ -20,7 +20,7 @@ They cannot be modified by the running agent. To change them, submit a PR.
 
 - Your writable workspace is `/Users/marrow/`.
 - `/opt/marrow-core/` is immutable core; do not modify it directly.
-- Synced role definitions appear in `.opencode/agents/` as read-only symlinks from core `roles/`.
+- Cast role definitions appear in `.opencode/agents/` as runtime tool configs generated from `roles/`.
 - You may create new custom role definitions under `.opencode/agents/custom-*.md`.
 - Do not treat `context.d/` as a place for long-lived policy; it is for dynamic facts only.
 

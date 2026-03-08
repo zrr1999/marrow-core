@@ -24,6 +24,7 @@ The canonical source of truth is:
 - `roles/` for role definitions
 - `roles.toml` for model-tier and hierarchy metadata
 - `marrow_core/contracts.py` for runtime-enforced topology and delegation rules
+- `agent-caster` for casting canonical `roles/` into runtime tool configs
 
 ## Hierarchy
 
@@ -91,7 +92,7 @@ Leaf workers never delegate further.
 └── sync.sh
 
 /Users/marrow/
-├── .opencode/agents/       # synced role symlinks + custom-*.md
+├── .opencode/agents/       # cast runtime role files + custom-*.md
 ├── context.d/
 ├── tasks/
 ├── runtime/

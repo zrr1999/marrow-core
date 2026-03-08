@@ -62,6 +62,9 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             f"""
             core_dir = "{core_dir}"
 
+            [project]
+            agents_dir = "roles"
+
             [ipc]
             enabled = true
 

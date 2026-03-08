@@ -1,8 +1,4 @@
-"""Workspace — setup and isolation helpers.
-
-Core principle: the agent (user marrow) can only write within its workspace.
-This module verifies the boundary and manages symlinks from core -> workspace.
-"""
+"""Workspace — setup and isolation helpers."""
 
 from __future__ import annotations
 
@@ -11,7 +7,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from marrow_core.contracts import ROLE_DIR, WORKSPACE_AGENT_DIR, WORKSPACE_DIRS
+from marrow_core.contracts import ROLE_DIR, WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:
@@ -39,45 +35,6 @@ def _core_definition_files(core_dir: str) -> list[Path]:
     if role_dir.is_dir():
         return sorted(path for path in role_dir.rglob("*.md") if path.is_file())
     return []
-
-
-def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
-    """Symlink core role definitions into the workspace agent directory.
-
-    Canonical source is ``roles/``.
-    """
-    sources = _core_definition_files(core_dir)
-    ws_agents = Path(workspace) / WORKSPACE_AGENT_DIR
-    ws_agents.mkdir(parents=True, exist_ok=True)
-
-    if not sources:
-        logger.warning("no core role definitions found under {}/{}", core_dir, ROLE_DIR)
-        return
-
-    for src in sources:
-        dst = ws_agents / src.name
-        # If dst is a symlink, remove and re-create to ensure correct target.
-        if dst.is_symlink():
-            if dst.resolve() == src.resolve():
-                continue
-            dst.unlink()
-        elif dst.exists():
-            # A real file exists — agent may have created it.
-            # Back it up and replace with symlink.
-            backup = dst.with_suffix(dst.suffix + ".agent-backup")
-            if backup.exists():
-                # Avoid clobbering an existing backup.
-                i = 1
-                while True:
-                    alt = dst.with_suffix(dst.suffix + f".agent-backup-{i}")
-                    if not alt.exists():
-                        backup = alt
-                        break
-                    i += 1
-            logger.warning("backing up agent-modified {} -> {}", dst, backup)
-            dst.rename(backup)
-        dst.symlink_to(src)
-        logger.info("symlinked {} -> {}", dst, src)
 
 
 def load_rules(core_dir: str) -> str:

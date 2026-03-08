@@ -12,6 +12,7 @@ from typing import Annotated
 
 import typer
 
+from marrow_core.caster import cast_roles_to_workspace
 from marrow_core.config import load_config
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
@@ -19,7 +20,7 @@ from marrow_core.log import setup_logging
 from marrow_core.runtime import resolve_socket_path, resolve_task_dir
 from marrow_core.scaffold import scaffold_workspace, write_config_template
 from marrow_core.services import render_service_files, write_service_files
-from marrow_core.workspace import ensure_workspace_dirs, sync_agent_symlinks, verify_workspace
+from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
 
@@ -122,7 +123,7 @@ def setup(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
 ) -> None:
-    """Initialize workspace dirs and sync agent symlinks."""
+    """Initialize workspace dirs and cast roles into runtime agent configs."""
     setup_logging(verbose=verbose)
     root = load_config(config)
     for agent in root.agents:
@@ -130,7 +131,7 @@ def setup(
             typer.echo(f"FAIL: workspace invalid for {agent.name}", err=True)
             continue
         ensure_workspace_dirs(agent.workspace)
-        sync_agent_symlinks(root.core_dir, agent.workspace)
+        cast_roles_to_workspace(root.core_dir, agent.workspace)
         typer.echo(f"OK: {agent.name} workspace ready at {agent.workspace}")
 
 

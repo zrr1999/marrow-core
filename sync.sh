@@ -29,9 +29,9 @@ git -C "$CORE_DIR" merge --ff-only origin/main
 # Refresh venv
 ensure_venv
 
-# Ensure workspace dirs & re-link agents (core may have updated agent defs)
+# Ensure workspace dirs & re-cast runtime agent configs
 ensure_workspace_dirs
-link_agents
+cast_roles
 
 # Re-render and restart services
 install_services

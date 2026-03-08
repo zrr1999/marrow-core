@@ -36,6 +36,8 @@ def test_roles_toml_model_map_and_hierarchy():
     with (REPO_ROOT / "roles.toml").open("rb") as fh:
         config = tomllib.load(fh)
 
+    assert config["project"]["agents_dir"] == "roles"
+    assert config["targets"]["opencode"]["output_layout"] == "preserve"
     assert config["targets"]["opencode"]["model_map"] == {
         "strategic": "github-copilot/claude-opus-4.6",
         "operational": "github-copilot/gpt-5.4",
@@ -155,7 +157,16 @@ def test_service_files_exist_for_both_platforms():
 
 
 def test_role_files_use_agent_caster_friendly_frontmatter_only():
-    allowed_fields = {"description", "mode", "model", "tools"}
+    allowed_fields = {
+        "name",
+        "description",
+        "role",
+        "model",
+        "skills",
+        "capabilities",
+        "hierarchy",
+        "prompt_file",
+    }
     for role in SYNCED_ROLE_FILES:
         text = _role_file(role).read_text(encoding="utf-8")
         frontmatter = text.split("---", 2)[1].strip().splitlines()
