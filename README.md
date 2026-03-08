@@ -46,6 +46,7 @@ The canonical source of truth is now `roles/` plus `roles.toml`.
 marrow run              # persistent heartbeat loop
 marrow run-once         # one tick per scheduled main, then exit
 marrow dry-run          # assemble prompts without running agents
+marrow sync-once        # one bounded sync attempt with structured result codes
 marrow setup            # init workspace dirs and sync role symlinks
 marrow scaffold         # create a new writable workspace skeleton and starter config
 marrow validate         # check config and show summary
@@ -63,6 +64,11 @@ core_dir = "/opt/marrow-core"
 
 [ipc]
 enabled = true
+
+[sync]
+enabled = true
+interval_seconds = 3600
+failure_backoff_seconds = 300
 
 [[agents]]
 name = "scout"
@@ -126,7 +132,52 @@ marrow install-service --config marrow.toml --platform darwin --output-dir ./ser
 marrow install-service --config marrow.toml --platform linux --output-dir ./service-out
 ```
 
-The repo ships both launchd plists and systemd unit templates, all rendered from the same runtime model.
+The repo uses one long-running service per platform and CLI-managed periodic sync inside `marrow run`.
+Use `marrow sync-once` for the bounded update path, and `marrow install-service` only emits the primary runtime service file for each platform.
+
+## Quick Start
+
+Install on a fresh machine:
+
+```bash
+git clone https://github.com/zrr1999/marrow-core.git /opt/marrow-core
+cd /opt/marrow-core
+sudo ./setup.sh
+```
+
+What this does:
+
+- creates or updates `/opt/marrow-core/.venv`
+- ensures `/Users/marrow/` workspace directories exist
+- casts canonical roles into `/Users/marrow/.opencode/agents/`
+- renders and installs the single heartbeat service for your platform
+
+Update an existing installation:
+
+```bash
+cd /opt/marrow-core
+python -m marrow_core.cli sync-once --config marrow.toml
+```
+
+Result codes:
+
+- `0` -> `noop`, nothing changed
+- `10` -> `reloaded`, safe runtime data changed
+- `11` -> `restart_required`, let the service manager restart `marrow run`
+- `1` -> `failed`, inspect the sync state file and logs
+
+Useful follow-up checks:
+
+```bash
+python -m marrow_core.cli validate --config marrow.toml
+python -m marrow_core.cli install-service --config marrow.toml --platform auto --output-dir ./service-out
+python -m marrow_core.cli status --config marrow.toml
+```
+
+## Sync model
+
+CLI-managed periodic sync runs inside the main heartbeat service by spawning `marrow sync-once` as a subprocess.
+That keeps risky update work isolated while preserving one place to observe failures and one service lifecycle to manage.
 
 ## Role casting
 

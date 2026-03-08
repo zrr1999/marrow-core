@@ -90,8 +90,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 ├── roles.toml
 ├── marrow.toml
 ├── lib.sh
-├── setup.sh
-└── sync.sh
+└── setup.sh
 
 /Users/marrow/
 ├── .opencode/agents/       # cast runtime role files + custom-*.md
@@ -115,6 +114,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 | `run` | persistent heartbeat loop |
 | `run-once` | one tick per configured `L1` main |
 | `dry-run` | prompt assembly without execution |
+| `sync-once` | one bounded sync attempt with structured result |
 | `setup` | workspace init and role sync |
 | `scaffold` | create workspace skeleton and starter config |
 | `validate` | config summary and schema validation |
@@ -126,6 +126,31 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 
 ## Service model
 
-- macOS: `com.marrow.heart.plist`, `com.marrow.heart.sync.plist`
-- Linux: `marrow-heart.service`, `marrow-heart-sync.service`, `marrow-heart-sync.timer`
+- macOS: `com.marrow.heart.plist`
+- Linux: `marrow-heart.service`
+- `marrow run` owns CLI-managed periodic sync by invoking `sync-once` in a subprocess
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
+
+## Quick start
+
+Fresh install:
+
+```bash
+git clone https://github.com/zrr1999/marrow-core.git /opt/marrow-core
+cd /opt/marrow-core
+sudo ./setup.sh
+```
+
+Manual update attempt:
+
+```bash
+cd /opt/marrow-core
+python -m marrow_core.cli sync-once --config marrow.toml
+```
+
+Expected sync outcomes:
+
+- `0` -> `noop`
+- `10` -> `reloaded`
+- `11` -> `restart_required`
+- `1` -> `failed`

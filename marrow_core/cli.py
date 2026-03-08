@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import shlex
@@ -13,13 +14,19 @@ from typing import Annotated
 import typer
 
 from marrow_core.caster import cast_roles_to_workspace
-from marrow_core.config import load_config
+from marrow_core.config import RootConfig, load_config
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
-from marrow_core.runtime import resolve_socket_path, resolve_task_dir
+from marrow_core.runtime import (
+    resolve_socket_path,
+    resolve_sync_lock_path,
+    resolve_sync_state_path,
+    resolve_task_dir,
+)
 from marrow_core.scaffold import scaffold_workspace, write_config_template
 from marrow_core.services import render_service_files, write_service_files
+from marrow_core.sync import SyncError, run_sync_once
 from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
@@ -61,9 +68,17 @@ async def _run(
         )
         for agent in root.agents
     ]
+    sync_task = None
+    if not once and not dry_run and root.sync.enabled:
+        sync_task = asyncio.create_task(_sync_supervisor(config), name="sync-supervisor")
+        tasks.append(sync_task)
     try:
         await asyncio.gather(*tasks)
     finally:
+        if sync_task is not None and not sync_task.done():
+            sync_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await sync_task
         if server is not None:
             server.close()
             await server.wait_closed()
@@ -85,6 +100,42 @@ def _run_heartbeat(
     """Shared logic for run / run-once / dry-run commands."""
     setup_logging(verbose=verbose, json_logs=json_logs)
     asyncio.run(_run(config, once=once, dry_run=dry_run, ipc=ipc))
+
+
+async def _sync_supervisor(config: Path) -> None:
+    root = load_config(config)
+    while True:
+        exit_code = await _invoke_sync_once_subprocess(config)
+        if exit_code == 0:
+            await asyncio.sleep(root.sync.interval_seconds)
+            continue
+        if exit_code == 10:
+            await _reload_runtime(root)
+            await asyncio.sleep(root.sync.interval_seconds)
+            continue
+        if exit_code == 11:
+            raise typer.Exit(code=0)
+        await asyncio.sleep(root.sync.failure_backoff_seconds)
+
+
+async def _invoke_sync_once_subprocess(config: Path) -> int:
+    proc = await asyncio.create_subprocess_exec(
+        shutil.which("python") or "python",
+        "-m",
+        "marrow_core.cli",
+        "sync-once",
+        "--config",
+        str(config),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    return await proc.wait()
+
+
+async def _reload_runtime(root: RootConfig) -> None:
+    for agent in root.agents:
+        ensure_workspace_dirs(agent.workspace)
+        cast_roles_to_workspace(root.core_dir, agent.workspace)
 
 
 @app.command()
@@ -319,6 +370,32 @@ def install_service(
         typer.echo(f"  {path.name}")
 
 
+@app.command(name="sync-once")
+def sync_once(
+    config: ConfigOpt = Path("marrow.toml"),
+    verbose: VerboseOpt = False,
+) -> None:
+    """Run one bounded sync attempt and return a structured result code."""
+    setup_logging(verbose=verbose)
+    root = load_config(config)
+    if not root.agents:
+        typer.echo("FAIL: no agents configured", err=True)
+        raise typer.Exit(code=2)
+    workspace = root.agents[0].workspace
+    try:
+        outcome = run_sync_once(
+            core_dir=root.core_dir,
+            workspace=workspace,
+            state_file=Path(resolve_sync_state_path(root)),
+            lock_file=Path(resolve_sync_lock_path(root)),
+        )
+    except SyncError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps({"result": outcome.result.value, "reason": outcome.reason}))
+    raise typer.Exit(code=outcome.exit_code)
+
+
 @app.command()
 def status(
     config: ConfigOpt = Path("marrow.toml"),
@@ -361,3 +438,11 @@ def task_list(
         return
     for t in tasks:
         typer.echo(f"  {t.get('file', '?')}  {t.get('title', '?')}")
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":
+    main()

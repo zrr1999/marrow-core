@@ -1,5 +1,5 @@
 #!/bin/bash
-# Shared variables and functions for setup.sh and sync.sh.
+# Shared variables and functions for setup.sh.
 # Source this file, do not execute directly.
 
 REPO_URL="https://github.com/zrr1999/marrow-core.git"
@@ -7,8 +7,8 @@ CORE_DIR="/opt/marrow-core"
 WORKSPACE="/Users/marrow"
 SERVICE_RENDER_PLATFORM="${SERVICE_RENDER_PLATFORM:-auto}"
 
-PLISTS=(com.marrow.heart com.marrow.heart.sync)
-SYSTEMD_UNITS=(marrow-heart.service marrow-heart-sync.service marrow-heart-sync.timer)
+PLISTS=(com.marrow.heart)
+SYSTEMD_UNITS=(marrow-heart.service)
 
 # Keep in sync with marrow_core/contracts.py WORKSPACE_DIRS
 WORKSPACE_DIRS=(
@@ -90,7 +90,6 @@ install_services() {
     done
     sudo systemctl daemon-reload
     sudo systemctl enable --now marrow-heart.service
-    sudo systemctl enable --now marrow-heart-sync.timer
   fi
 }
 
@@ -102,7 +101,6 @@ show_service_status() {
 
   if [[ "$(uname -s)" == "Linux" ]]; then
     systemctl --no-pager --full status marrow-heart.service 2>/dev/null || true
-    systemctl --no-pager --full status marrow-heart-sync.timer 2>/dev/null || true
   fi
 }
 

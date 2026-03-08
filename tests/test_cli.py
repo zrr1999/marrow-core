@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
 import stat
 import sys
@@ -37,6 +39,18 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
             """
         )
 
+    sync_block = textwrap.dedent(
+        f"""
+
+        [sync]
+        enabled = true
+        interval_seconds = 3600
+        failure_backoff_seconds = 30
+        state_file = {json.dumps(str(workspace / "runtime" / "state" / "sync-status.json"))}
+        lock_file = {json.dumps(str(workspace / "runtime" / "state" / "sync.lock"))}
+        """
+    )
+
     agents = "\n\n".join(
         textwrap.dedent(
             f"""
@@ -58,6 +72,7 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
             f"""
             core_dir = {json.dumps(str(tmp_path / "core"))}
             {ipc_block}
+            {sync_block}
 
             {agents}
             """
@@ -247,5 +262,92 @@ def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert (output_dir / "marrow-heart.service").exists()
-    assert (output_dir / "marrow-heart-sync.timer").exists()
-    assert "rendered 3 service file(s)" in result.stdout
+    assert not (output_dir / "marrow-heart-sync.timer").exists()
+    assert "rendered 1 service file(s)" in result.stdout
+
+
+def test_sync_once_reports_noop(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+
+    def fake_run_sync_once(**kwargs):
+        assert kwargs["workspace"].endswith("workspace")
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.NOOP, "remote unchanged")
+
+    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
+    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+
+    result = runner.invoke(app, ["sync-once", "--config", str(config)])
+
+    assert result.exit_code == 0
+    assert '"result": "noop"' in result.stdout
+
+
+def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+
+    def fake_run_sync_once(**kwargs):
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
+
+    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
+    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+
+    result = runner.invoke(app, ["sync-once", "--config", str(config)])
+
+    assert result.exit_code == 11
+    assert '"result": "restart_required"' in result.stdout
+
+
+def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    sleeps: list[int] = []
+    reloads: list[str] = []
+
+    async def fake_invoke_sync_once_subprocess(path: Path) -> int:
+        assert path == config
+        return 10
+
+    async def fake_reload_runtime(root) -> None:
+        reloads.extend(agent.name for agent in root.agents)
+
+    async def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(
+        "marrow_core.cli._invoke_sync_once_subprocess", fake_invoke_sync_once_subprocess
+    )
+    monkeypatch.setattr("marrow_core.cli._reload_runtime", fake_reload_runtime)
+    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
+
+    with contextlib.suppress(asyncio.CancelledError):
+        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
+
+    assert reloads == list(AUTONOMOUS_AGENTS)
+    assert sleeps == [3600]
+
+
+def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    sleeps: list[int] = []
+
+    async def fake_invoke_sync_once_subprocess(path: Path) -> int:
+        assert path == config
+        return 1
+
+    async def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(
+        "marrow_core.cli._invoke_sync_once_subprocess", fake_invoke_sync_once_subprocess
+    )
+    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
+
+    with contextlib.suppress(asyncio.CancelledError):
+        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
+
+    assert sleeps == [30]

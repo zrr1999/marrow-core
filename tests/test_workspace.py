@@ -24,6 +24,12 @@ def test_ensure_workspace_dirs(tmp_path: Path):
         assert (tmp_path / directory).is_dir(), f"missing {directory}"
 
 
+def test_ensure_workspace_dirs_creates_sync_state_parent(tmp_path: Path) -> None:
+    ensure_workspace_dirs(str(tmp_path))
+
+    assert (tmp_path / "runtime" / "state").is_dir()
+
+
 def test_core_definition_files_require_roles(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
     assert _core_definition_files(str(core_dir)) == []

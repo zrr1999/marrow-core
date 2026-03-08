@@ -89,39 +89,6 @@ def _render_launchd_files(*, core_dir: str, config_path: Path, workspace: str) -
                 "</plist>\n"
             ),
         ),
-        ServiceFile(
-            name="com.marrow.heart.sync.plist",
-            content=(
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"\n'
-                '  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
-                '<plist version="1.0">\n'
-                "<dict>\n"
-                "  <key>Label</key>\n"
-                "  <string>com.marrow.heart.sync</string>\n\n"
-                "  <key>ProgramArguments</key>\n"
-                "  <array>\n"
-                f"    <string>{core_dir}/sync.sh</string>\n"
-                "  </array>\n\n"
-                "  <key>EnvironmentVariables</key>\n"
-                "  <dict>\n"
-                f"    <key>PATH</key><string>{path_env}</string>\n"
-                "  </dict>\n\n"
-                "  <key>StartCalendarInterval</key>\n"
-                "  <dict>\n"
-                "    <key>Hour</key>\n"
-                "    <integer>0</integer>\n"
-                "    <key>Minute</key>\n"
-                "    <integer>5</integer>\n"
-                "  </dict>\n\n"
-                "  <key>StandardOutPath</key>\n"
-                f"  <string>{workspace}/runtime/logs/sync.stdout.log</string>\n"
-                "  <key>StandardErrorPath</key>\n"
-                f"  <string>{workspace}/runtime/logs/sync.stderr.log</string>\n"
-                "</dict>\n"
-                "</plist>\n"
-            ),
-        ),
     ]
 
 
@@ -147,34 +114,6 @@ def _render_systemd_files(*, core_dir: str, config_path: Path, workspace: str) -
                 f"StandardError=append:{workspace}/runtime/logs/heart.stderr.log\n\n"
                 "[Install]\n"
                 "WantedBy=multi-user.target\n"
-            ),
-        ),
-        ServiceFile(
-            name="marrow-heart-sync.service",
-            content=(
-                "[Unit]\n"
-                "Description=Marrow sync job\n"
-                "After=network.target\n\n"
-                "[Service]\n"
-                "Type=oneshot\n"
-                "User=root\n"
-                f"WorkingDirectory={core_dir}\n"
-                f"Environment=PATH={DEFAULT_SERVICE_PATH}\n"
-                f"ExecStart={core_dir}/sync.sh\n"
-                f"StandardOutput=append:{workspace}/runtime/logs/sync.stdout.log\n"
-                f"StandardError=append:{workspace}/runtime/logs/sync.stderr.log\n"
-            ),
-        ),
-        ServiceFile(
-            name="marrow-heart-sync.timer",
-            content=(
-                "[Unit]\n"
-                "Description=Run marrow sync daily\n\n"
-                "[Timer]\n"
-                "OnCalendar=*-*-* 00:05:00\n"
-                "Persistent=true\n\n"
-                "[Install]\n"
-                "WantedBy=timers.target\n"
             ),
         ),
     ]

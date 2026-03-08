@@ -130,10 +130,19 @@ def test_readme_documents_new_handoffs_and_commands():
 
 def test_service_files_exist_for_both_platforms():
     assert (REPO_ROOT / "com.marrow.heart.plist").exists()
-    assert (REPO_ROOT / "com.marrow.heart.sync.plist").exists()
     assert (REPO_ROOT / "marrow-heart.service").exists()
-    assert (REPO_ROOT / "marrow-heart-sync.service").exists()
-    assert (REPO_ROOT / "marrow-heart-sync.timer").exists()
+
+
+def test_docs_describe_unified_sync_model() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert "marrow sync-once" in readme
+    assert "CLI-managed periodic sync" in readme
+    assert "one long-running service" in readme
+    assert "sync-once" in agents_doc
+    assert "com.marrow.heart.sync.plist" not in agents_doc
+    assert "marrow-heart-sync.timer" not in agents_doc
 
 
 def test_role_files_use_agent_caster_friendly_frontmatter_only():
