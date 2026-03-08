@@ -1,4 +1,4 @@
-"""Role casting via agent-caster."""
+"""Role casting via role-forge."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ from marrow_core.contracts import ROLE_DIR, WORKSPACE_AGENT_DIR
 def cast_roles_to_workspace(
     core_dir: str, workspace: str, *, target: str = "opencode"
 ) -> list[Path]:
-    """Cast canonical roles into workspace runtime config using agent-caster."""
-    from agent_caster.adapters import get_adapter
-    from agent_caster.config import load_config
-    from agent_caster.loader import load_agents
+    """Cast canonical roles into workspace runtime config using role-forge."""
+    from role_forge.adapters import get_adapter
+    from role_forge.config import load_config
+    from role_forge.loader import load_agents
 
     roles_dir = Path(core_dir) / ROLE_DIR
     config_path = Path(core_dir) / "roles.toml"

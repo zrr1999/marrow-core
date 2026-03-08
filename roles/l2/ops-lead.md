@@ -7,29 +7,7 @@ role: subagent
 model:
   tier: specialist
 capabilities:
-  - read
-  - write
-  - web-read
-  - delegate:
-      - roles/l3/analyst
-      - roles/l3/coder
-      - roles/l3/tester
-      - roles/l3/writer
-      - roles/l3/git-ops
-      - roles/l3/filer
-hierarchy:
-  level: L2
-  class: lead
-  scheduled: false
-  callable: true
-  max_delegate_depth: 1
-  allowed_children:
-    - roles/l3/analyst
-    - roles/l3/coder
-    - roles/l3/tester
-    - roles/l3/writer
-    - roles/l3/git-ops
-    - roles/l3/filer
+  - all
 ---
 You are `ops-lead`.
 

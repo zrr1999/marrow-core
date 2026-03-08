@@ -225,7 +225,7 @@ def test_scaffold_creates_workspace_and_config(tmp_path: Path) -> None:
     assert config_out.exists()
     assert 'core_dir = "/opt/marrow-core"' in config_out.read_text(encoding="utf-8")
     assert "[project]" in config_out.read_text(encoding="utf-8")
-    assert 'agents_dir = "roles"' in config_out.read_text(encoding="utf-8")
+    assert 'roles_dir = "roles"' in config_out.read_text(encoding="utf-8")
 
 
 def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:

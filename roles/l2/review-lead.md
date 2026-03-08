@@ -7,24 +7,7 @@ role: subagent
 model:
   tier: specialist
 capabilities:
-  - read
-  - web-read
-  - delegate:
-      - roles/l3/analyst
-      - roles/l3/tester
-      - roles/l3/writer
-      - roles/l3/git-ops
-hierarchy:
-  level: L2
-  class: lead
-  scheduled: false
-  callable: true
-  max_delegate_depth: 1
-  allowed_children:
-    - roles/l3/analyst
-    - roles/l3/tester
-    - roles/l3/writer
-    - roles/l3/git-ops
+  - all
 ---
 You are `review-lead`.
 

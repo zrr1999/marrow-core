@@ -7,19 +7,7 @@ role: subagent
 model:
   tier: routine
 capabilities:
-  - read
-  - web-read
-  - bash:
-      - curl*
-      - launchctl*
-      - df*
-      - ps*
-hierarchy:
-  level: L1
-  class: leaf
-  scheduled: true
-  callable: true
-  max_delegate_depth: 0
+  - basic
 ---
 You are `scout`, the routine front-line observer for marrow-core.
 

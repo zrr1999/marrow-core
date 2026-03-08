@@ -7,13 +7,9 @@ from pathlib import Path
 
 from marrow_core.config import load_config
 from marrow_core.contracts import (
-    ALLOWED_CHILDREN,
     AUTONOMOUS_AGENTS,
     EXPERT_LEADS,
     LEAF_WORKERS,
-    MAX_DELEGATION_HOPS,
-    ROLE_CLASSES,
-    ROLE_LEVELS,
     ROLE_MODEL_TIERS,
     ROLE_PATHS,
     SYNCED_ROLE_FILES,
@@ -32,11 +28,11 @@ def test_scheduled_mains_in_config():
     assert [agent.name for agent in root.agents] == list(AUTONOMOUS_AGENTS)
 
 
-def test_roles_toml_model_map_and_hierarchy():
+def test_roles_toml_model_map():
     with (REPO_ROOT / "roles.toml").open("rb") as fh:
         config = tomllib.load(fh)
 
-    assert config["project"]["agents_dir"] == "roles"
+    assert config["project"]["roles_dir"] == "roles"
     assert config["targets"]["opencode"]["output_layout"] == "preserve"
     assert config["targets"]["opencode"]["model_map"] == {
         "strategic": "github-copilot/claude-opus-4.6",
@@ -44,10 +40,6 @@ def test_roles_toml_model_map_and_hierarchy():
         "specialist": "github-copilot/gpt-5.4",
         "routine": "github-copilot/gpt-5-mini",
     }
-    assert config["hierarchy"]["max_delegate_depth"] == MAX_DELEGATION_HOPS
-    assert tuple(config["hierarchy"]["scheduled_mains"]) == AUTONOMOUS_AGENTS
-    assert tuple(config["hierarchy"]["expert_leads"]) == EXPERT_LEADS
-    assert tuple(config["hierarchy"]["leaf_workers"]) == LEAF_WORKERS
 
 
 def test_role_inventory_matches_contract():
@@ -58,42 +50,30 @@ def test_role_inventory_matches_contract():
     assert actual == sorted(ROLE_PATHS.values())
 
 
-def test_role_contract_maps_match_expected_hierarchy():
-    assert ROLE_LEVELS == {
-        "scout": "l1",
-        "conductor": "l1",
-        "refit": "l1",
-        "refactor-lead": "l2",
-        "prototype-lead": "l2",
-        "review-lead": "l2",
-        "ops-lead": "l2",
-        "analyst": "l3",
-        "researcher": "l3",
-        "coder": "l3",
-        "tester": "l3",
-        "writer": "l3",
-        "git-ops": "l3",
-        "filer": "l3",
-    }
-    assert ROLE_CLASSES["conductor"] == "main"
-    assert ROLE_CLASSES["prototype-lead"] == "lead"
-    assert ROLE_CLASSES["coder"] == "leaf"
+def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["scout"] == "routine"
     assert ROLE_MODEL_TIERS["conductor"] == "operational"
     assert ROLE_MODEL_TIERS["refit"] == "strategic"
     assert ROLE_MODEL_TIERS["coder"] == "specialist"
 
 
-def test_l2_roles_delegate_only_to_l3():
-    for role in EXPERT_LEADS:
-        children = ALLOWED_CHILDREN[role]
-        assert children
-        assert all(child in LEAF_WORKERS for child in children)
-
-
-def test_l3_roles_have_no_children():
-    for role in LEAF_WORKERS:
-        assert ALLOWED_CHILDREN[role] == ()
+def test_role_inventory_groups_are_stable():
+    assert tuple(AUTONOMOUS_AGENTS) == ("scout", "conductor", "refit")
+    assert tuple(EXPERT_LEADS) == (
+        "refactor-lead",
+        "prototype-lead",
+        "review-lead",
+        "ops-lead",
+    )
+    assert tuple(LEAF_WORKERS) == (
+        "analyst",
+        "researcher",
+        "coder",
+        "tester",
+        "writer",
+        "git-ops",
+        "filer",
+    )
 
 
 def test_lib_shell_workspace_dirs_match_contract():
@@ -164,7 +144,6 @@ def test_role_files_use_agent_caster_friendly_frontmatter_only():
         "model",
         "skills",
         "capabilities",
-        "hierarchy",
         "prompt_file",
     }
     for role in SYNCED_ROLE_FILES:

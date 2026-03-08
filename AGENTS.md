@@ -2,7 +2,7 @@
 
 ## Overview
 
-marrow-core is a minimal scheduler for a hierarchy-aware autonomous agent system.
+marrow-core is a minimal scheduler for an autonomous agent system with a level-based role layout.
 The human-maintained core stays immutable under `/opt/marrow-core/`; the running
 agent works inside `/Users/marrow/`.
 
@@ -22,11 +22,11 @@ Repo-root `agents/` has been retired from the active prompt model.
 The canonical source of truth is:
 
 - `roles/` for role definitions
-- `roles.toml` for model-tier and hierarchy metadata
-- `marrow_core/contracts.py` for runtime-enforced topology and delegation rules
-- `agent-caster` for casting canonical `roles/` into runtime tool configs
+- `roles.toml` for model-tier metadata
+- `marrow_core/contracts.py` for runtime inventory and workspace topology rules
+- `role-forge` for casting canonical `roles/` into runtime tool configs
 
-## Hierarchy
+## Role Layout
 
 Levels are expressed by directory layout and architecture policy, not by encoding `l1-`, `l2-`, or `l3-` into runtime-facing role names.
 
@@ -55,6 +55,8 @@ Leaf workers never delegate further.
 
 ## Delegation policy
 
+These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
+
 - `L1 -> L2/L3` allowed
 - declared `L2 -> L3` allowed
 - `L3 -> *` forbidden
@@ -64,7 +66,7 @@ Leaf workers never delegate further.
 
 ## Runtime boundaries
 
-- `marrow_core/contracts.py` — hierarchy, delegation, workspace topology
+- `marrow_core/contracts.py` — role inventory and workspace topology
 - `marrow_core/prompting.py` — context execution and prompt assembly
 - `marrow_core/runtime.py` — socket, queue, binary path resolution
 - `marrow_core/task_queue.py` — filesystem queue read/write helpers

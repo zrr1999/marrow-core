@@ -1,4 +1,4 @@
-"""Tests for agent-caster integration."""
+"""Tests for role-forge integration."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ def _write_roles_toml(core_dir: Path) -> None:
         textwrap.dedent(
             """
             [project]
-            agents_dir = "roles"
+            roles_dir = "roles"
 
             [targets.opencode]
             enabled = true
@@ -48,12 +48,6 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
             role: primary
             model:
               tier: routine
-            hierarchy:
-              level: L1
-              class: main
-              scheduled: true
-              callable: false
-              max_delegate_depth: 0
             ---
             You are scout.
             """
@@ -91,12 +85,6 @@ def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> 
             role: primary
             model:
               tier: routine
-            hierarchy:
-              level: L1
-              class: main
-              scheduled: true
-              callable: false
-              max_delegate_depth: 0
             ---
             You are scout.
             """

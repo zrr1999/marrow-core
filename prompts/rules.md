@@ -30,9 +30,9 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - If privileged access, credentials, billing changes, or external human action is required, create a task card instead of forcing the step.
 - Prefer reversible operations and explicit evidence over risky shortcuts.
 
-## Hierarchy Model
+## Role Layout Model
 
-marrow-core uses explicit hierarchy classes.
+marrow-core uses a level-based role layout as prompt policy.
 
 ### Scheduled mains — `roles/l1/`
 
@@ -61,6 +61,8 @@ marrow-core uses explicit hierarchy classes.
 - upward calls forbidden
 - maximum delegation depth: 2 hops
 - one accountable owner per workstream
+
+These are prompt rules, not runtime-enforced hierarchy metadata.
 
 ## Delegation Rules
 

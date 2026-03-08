@@ -7,16 +7,7 @@ role: subagent
 model:
   tier: specialist
 capabilities:
-  - read
-  - write
-  - bash:
-      - pytest*
-hierarchy:
-  level: L3
-  class: leaf
-  scheduled: false
-  callable: true
-  max_delegate_depth: 0
+  - basic
 ---
 You are `tester`.
 

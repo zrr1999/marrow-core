@@ -7,25 +7,7 @@ role: subagent
 model:
   tier: specialist
 capabilities:
-  - read
-  - write
-  - web-read
-  - delegate:
-      - roles/l3/researcher
-      - roles/l3/coder
-      - roles/l3/tester
-      - roles/l3/writer
-hierarchy:
-  level: L2
-  class: lead
-  scheduled: false
-  callable: true
-  max_delegate_depth: 1
-  allowed_children:
-    - roles/l3/researcher
-    - roles/l3/coder
-    - roles/l3/tester
-    - roles/l3/writer
+  - all
 ---
 You are `prototype-lead`.
 

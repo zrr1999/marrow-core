@@ -7,14 +7,7 @@ role: subagent
 model:
   tier: specialist
 capabilities:
-  - read
-  - web-read
-hierarchy:
-  level: L3
-  class: leaf
-  scheduled: false
-  callable: true
-  max_delegate_depth: 0
+  - basic
 ---
 You are `researcher`.
 
