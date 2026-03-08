@@ -176,3 +176,26 @@ PR titles follow the same gitmoji format:
 ```
 ✨ feat: add checkpoint auto-pruning for conductor
 ```
+
+## Cursor Cloud specific instructions
+
+### Services
+
+marrow-core is a single pure-Python CLI application with no external service dependencies (no database, no Docker, no web server). All state is filesystem-based.
+
+### Development commands
+
+Standard commands are in the `Justfile`; key ones:
+
+- **Install deps:** `uv sync --all-groups`
+- **Lint:** `uv run ruff check .` (or `just lint`)
+- **Type check:** `uvx ty check marrow_core/` (or `just check`)
+- **Tests:** `uv run pytest` (or `just test`)
+- **Tests + coverage:** `uv run pytest --cov=marrow_core --cov-report=term-missing` (or `just cov`)
+
+### Non-obvious notes
+
+- `marrow doctor` will exit 1 in the cloud environment because it checks for the production workspace at `/Users/marrow` and the `opencode` binary — neither exists in dev. This is expected and not a bug.
+- `marrow dry-run` logs a warning about a missing rules file at `/opt/marrow-core/prompts/rules.md` — also expected in dev; the prompt is still assembled from the base prompt.
+- The project uses `hatch-vcs` for versioning, so a git tag/history is required for the version to resolve. The dev-installed version will look like `0.1.devN+gHASH`.
+- Uses gitmoji commit conventions (see above).
