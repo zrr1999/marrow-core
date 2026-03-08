@@ -34,12 +34,24 @@ ensure_workspace_dirs() {
 }
 
 link_agents() {
-  for agent_md in "${CORE_DIR}"/agents/*.md; do
-    [[ -f "$agent_md" ]] || continue
-    local name dst
-    name=$(basename "$agent_md")
+  local sources=()
+  if [[ -d "${CORE_DIR}/roles" ]]; then
+    while IFS= read -r -d '' role_md; do
+      sources+=("$role_md")
+    done < <(find "${CORE_DIR}/roles" -type f -name '*.md' -print0 | sort -z)
+  else
+    for role_md in "${CORE_DIR}"/agents/*.md; do
+      [[ -f "$role_md" ]] || continue
+      sources+=("$role_md")
+    done
+  fi
+
+  local role_md name dst
+  for role_md in "${sources[@]}"; do
+    [[ -f "$role_md" ]] || continue
+    name=$(basename "$role_md")
     dst="${WORKSPACE}/.opencode/agents/${name}"
-    sudo -u marrow ln -sf "$agent_md" "$dst"
+    sudo -u marrow ln -sf "$role_md" "$dst"
   done
 }
 
