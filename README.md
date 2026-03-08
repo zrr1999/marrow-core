@@ -26,6 +26,7 @@ marrow run-once     # one tick per agent then exit
 marrow dry-run      # print assembled prompts, don't run agents
 marrow setup        # init workspace dirs and sync agent symlinks
 marrow validate     # check config and show summary
+marrow doctor       # verify workspace, context dirs, and agent command availability
 ```
 
 Options available on every command:
