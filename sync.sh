@@ -7,11 +7,10 @@ source "${SCRIPT_DIR}/lib.sh"
 
 [[ -d "${CORE_DIR}/.git" ]] || git clone --branch main --single-branch "$REPO_URL" "$CORE_DIR"
 
-cd "$CORE_DIR"
-git fetch origin main
+git -C "$CORE_DIR" fetch origin main
 
-LOCAL=$(git rev-parse HEAD)
-REMOTE=$(git rev-parse origin/main)
+LOCAL=$(git -C "$CORE_DIR" rev-parse HEAD)
+REMOTE=$(git -C "$CORE_DIR" rev-parse origin/main)
 
 if [[ "$LOCAL" == "$REMOTE" ]]; then
   echo "[marrow-sync] Already up to date."
@@ -20,16 +19,12 @@ fi
 
 echo "[marrow-sync] Updating..."
 
-# Stash if dirty
-if ! git diff --quiet HEAD 2>/dev/null || ! git diff --quiet --cached HEAD 2>/dev/null; then
-  echo "[marrow-sync] WARNING: stashing local changes" >&2
-  git stash push -m "marrow-sync $(date +%Y%m%d-%H%M%S)"
+if [[ -n "$(git -C "$CORE_DIR" status --short)" ]]; then
+  echo "[marrow-sync] WARNING: local changes detected in ${CORE_DIR}; aborting sync to avoid destructive update" >&2
+  exit 1
 fi
 
-git merge --ff-only origin/main 2>/dev/null || {
-  echo "[marrow-sync] WARNING: ff failed, resetting" >&2
-  git reset --hard origin/main
-}
+git -C "$CORE_DIR" merge --ff-only origin/main
 
 # Refresh venv
 ensure_venv
@@ -38,7 +33,7 @@ ensure_venv
 ensure_workspace_dirs
 link_agents
 
-# Restart heartbeat daemon
-install_daemon "com.marrow.heart"
+# Re-render and restart services
+install_services
 
 echo "[marrow-sync] Done."

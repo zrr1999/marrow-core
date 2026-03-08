@@ -3,3 +3,28 @@ strategic = "github-copilot/claude-opus-4.6"
 operational = "github-copilot/gpt-5.4"
 specialist = "github-copilot/gpt-5.4"
 routine = "github-copilot/gpt-5-mini"
+
+[hierarchy]
+max_delegate_depth = 2
+scheduled_mains = ["scout", "conductor", "refit"]
+expert_leads = [
+  "refactor-lead",
+  "prototype-lead",
+  "review-lead",
+  "ops-lead",
+]
+leaf_workers = [
+  "analyst",
+  "researcher",
+  "coder",
+  "tester",
+  "writer",
+  "git-ops",
+  "filer",
+]
+
+[delegation]
+upward_calls_forbidden = true
+l1_to = ["l2", "l3"]
+l2_to = ["l3"]
+l3_to = []

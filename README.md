@@ -1,109 +1,123 @@
 # marrow-core
 
-Minimal self-evolving agent scheduler with hard isolation between the **core** (human-maintained) and **agent evolution** (agent-maintained).
+Minimal self-evolving agent scheduler with hard isolation between the immutable core and the writable agent workspace.
 
-## Design
+## Prompt model
 
-```
-/opt/marrow-core/      # root-owned — immutable to the agent
-/Users/marrow/         # agent-owned — the agent evolves here freely
-```
+Use one mental model everywhere:
 
-The agent cannot modify core. If it wants a core change it writes a proposal to `tasks/queue/core-proposal-*.md` and a human reviews it.
+- `rules` -> stable global policy in `prompts/rules.md`
+- `roles` -> per-agent identity and delegation boundaries in `roles/`
+- `context providers` -> current queue/state/environment facts from `context.d/`
+- `skills` -> reusable procedures; not part of repo prompt assembly
 
-## Autonomous + delegated agent model
+Repo-root `agents/` is retired. Do not add new prompt material there.
 
-| Tier | Agent | Category | Purpose |
-|------|-------|----------|---------|
-| strategic | **refit** | Autonomous | Goal setting, system improvement, meta-learning |
-| operational | **conductor** | Autonomous | Plan work, dispatch specialists, integrate results |
-| routine | **scout** | Autonomous + Subagent | Monitoring, scanning, notifications, safe recovery actions |
-| specialist | **reviewer** | Subagent | PR review, CI triage, issue/PR responses |
+## Hierarchy
+
+marrow-core uses an explicit three-level hierarchy. Levels are expressed by folder structure and architecture docs, not encoded into runtime-facing role names.
+
+| Level | Directory | Roles | Responsibility |
+|------|-----------|-------|----------------|
+| `L1` | `roles/l1/` | `scout`, `conductor`, `refit` | scheduled monitoring, operational ownership, strategic closure |
+| `L2` | `roles/l2/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded domain ownership with downward delegation |
+| `L3` | `roles/l3/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
+
+Delegation policy:
+
+- `L1 -> L2/L3` allowed
+- `L2 -> L3` allowed where declared
+- `L3 -> *` forbidden
+- no upward calls
+- one accountable owner per workstream
+- max delegation depth: 2 hops
+
+## Canonical role layer
+
+The canonical source of truth is now `roles/` plus `roles.toml`.
+
+- `roles/` stores hierarchy-aware role definitions
+- `roles.toml` stores model-tier mapping and hierarchy metadata
+- `.opencode/agents/` is the synced runtime surface used by the agent runtime
 
 ## CLI
 
-```
-marrow run          # persistent heartbeat loop
-marrow run-once     # one tick per agent then exit
-marrow dry-run      # print assembled prompts, don't run agents
-marrow setup        # init workspace dirs and sync agent symlinks
-marrow validate     # check config and show summary
-marrow doctor       # verify workspace, context dirs, and agent command availability
-```
-
-Options available on every command:
-
-```
---config / -c   PATH   Path to marrow.toml  [default: marrow.toml]
---verbose / -v         Enable debug logging
---json-logs            Emit newline-delimited JSON log records
-```
-
-## Installation
-
-```bash
-uv tool install marrow-core
-# or inside a project:
-uv add marrow-core
+```text
+marrow run              # persistent heartbeat loop
+marrow run-once         # one tick per scheduled main, then exit
+marrow dry-run          # assemble prompts without running agents
+marrow setup            # init workspace dirs and sync role symlinks
+marrow scaffold         # create a new writable workspace skeleton and starter config
+marrow validate         # check config and show summary
+marrow doctor           # verify workspace, context dirs, and agent command availability
+marrow status           # query live heartbeat state over IPC
+marrow install-service  # render launchd or systemd service files
+marrow task add         # submit a task into tasks/queue via IPC
+marrow task list        # inspect queued tasks via IPC
 ```
 
 ## Configuration
 
 ```toml
-# marrow.toml
 core_dir = "/opt/marrow-core"
 
+[ipc]
+enabled = true
+
 [[agents]]
-name              = "scout"
+name = "scout"
 heartbeat_interval = 300
-heartbeat_timeout  = 500
-agent_command      = "opencode run --agent scout"
-workspace          = "/Users/marrow"
-context_dirs       = ["/Users/marrow/context.d"]
+heartbeat_timeout = 500
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent scout"
+context_dirs = ["/Users/marrow/context.d"]
 
 [[agents]]
-name              = "conductor"
-heartbeat_interval = 7200      # 2 hours
-heartbeat_timeout  = 7200
-agent_command      = "opencode run --agent conductor"
-workspace          = "/Users/marrow"
-context_dirs       = ["/Users/marrow/context.d"]
+name = "conductor"
+heartbeat_interval = 7200
+heartbeat_timeout = 7200
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent conductor"
+context_dirs = ["/Users/marrow/context.d"]
 
 [[agents]]
-name              = "refit"
-heartbeat_interval = 302400    # 3.5 days
-heartbeat_timeout  = 28800
-agent_command      = "opencode run --agent refit"
-workspace          = "/Users/marrow"
-context_dirs       = ["/Users/marrow/context.d"]
+name = "refit"
+heartbeat_interval = 302400
+heartbeat_timeout = 28800
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
+context_dirs = ["/Users/marrow/context.d"]
 ```
 
-Model tiers are defined in [`roles.toml`](roles.toml):
+Model tiers and hierarchy metadata live in `roles.toml`.
 
-```toml
-[targets.opencode.model_map]
-strategic   = "github-copilot/claude-opus-4.6"
-operational = "github-copilot/gpt-5.4"
-specialist  = "github-copilot/gpt-5.4"
-routine     = "github-copilot/gpt-5-mini"
+## Runtime boundaries
+
+- `marrow_core/contracts.py` — canonical hierarchy, delegation, and workspace topology
+- `marrow_core/prompting.py` — context execution and prompt assembly
+- `marrow_core/runtime.py` — socket, queue, and binary path resolution
+- `marrow_core/task_queue.py` — filesystem queue helpers
+- `marrow_core/services.py` — launchd/systemd rendering
+- `marrow_core/scaffold.py` — workspace scaffold and starter config generation
+- `marrow_core/heartbeat.py`, `marrow_core/cli.py`, `marrow_core/ipc.py` — orchestration layers
+
+## Filesystem handoffs
+
+```text
+runtime/handoff/scout-to-conductor/
+runtime/handoff/conductor-to-scout/
+runtime/handoff/scout-to-human/
 ```
 
-## Context providers
+## Service installation
 
-Any executable script inside a `context_dirs` directory is run each tick. Its stdout is appended verbatim to the agent prompt. No JSON protocol — plain text.
-
-```
-/Users/marrow/context.d/
-├── 00_queue.py     # reads tasks/queue/ and prints a summary
-└── 10_explore.py   # fallback when no tasks are queued
+```bash
+marrow install-service --config marrow.toml --platform darwin --output-dir ./service-out
+marrow install-service --config marrow.toml --platform linux --output-dir ./service-out
 ```
 
-The agent is free to add, edit, or remove scripts under its own `context.d/`.
+The repo ships both launchd plists and systemd unit templates, all rendered from the same runtime model.
 
 ## Architecture
 
-See [AGENTS.md](AGENTS.md) for a full breakdown.
-
-## License
-
-MIT
+See `AGENTS.md` for the full contract and filesystem model.

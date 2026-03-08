@@ -11,20 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
-# Standard workspace subdirectories — single source of truth.
-# setup.sh should mirror this list.
-WORKSPACE_DIRS = (
-    "runtime/state",
-    "runtime/handoff/scout-to-conductor",
-    "runtime/handoff/conductor-to-scout",
-    "runtime/checkpoints",
-    "runtime/logs/exec",
-    "tasks/queue",
-    "tasks/delegated",
-    "tasks/done",
-    "context.d",
-    ".opencode/agents",
-)
+from marrow_core.contracts import ROLE_DIR, WORKSPACE_AGENT_DIR, WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:
@@ -46,21 +33,28 @@ def ensure_workspace_dirs(workspace: str) -> None:
         (base / d).mkdir(parents=True, exist_ok=True)
 
 
-def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
-    """Symlink base agent definitions from core into workspace .opencode/agents/.
+def _core_definition_files(core_dir: str) -> list[Path]:
+    core_path = Path(core_dir)
+    role_dir = core_path / ROLE_DIR
+    if role_dir.is_dir():
+        return sorted(path for path in role_dir.rglob("*.md") if path.is_file())
+    return []
 
-    Core-owned .md files become read-only symlinks in the agent's config.
-    The agent can see them but cannot modify them (targets are root-owned).
+
+def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
+    """Symlink core role definitions into the workspace agent directory.
+
+    Canonical source is ``roles/``.
     """
-    core_agents = Path(core_dir) / "agents"
-    ws_agents = Path(workspace) / ".opencode" / "agents"
+    sources = _core_definition_files(core_dir)
+    ws_agents = Path(workspace) / WORKSPACE_AGENT_DIR
     ws_agents.mkdir(parents=True, exist_ok=True)
 
-    if not core_agents.is_dir():
-        logger.warning("core agents dir not found: {}", core_agents)
+    if not sources:
+        logger.warning("no core role definitions found under {}/{}", core_dir, ROLE_DIR)
         return
 
-    for src in sorted(core_agents.glob("*.md")):
+    for src in sources:
         dst = ws_agents / src.name
         # If dst is a symlink, remove and re-create to ensure correct target.
         if dst.is_symlink():

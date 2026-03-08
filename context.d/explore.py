@@ -25,8 +25,11 @@ def main() -> None:
     print()
     print("Improve yourself:")
     print("- Review runtime/state/learnings.md and identify patterns or gaps")
-    print("- Audit context.d/ scripts — can they provide richer, more useful context?")
-    print("- Create or refine custom agents in .opencode/agents/custom-*.md")
+    print(
+        "- Audit context.d/ scripts for richer current facts; keep long-lived policy "
+        "in prompts/rules.md or roles/"
+    )
+    print("- Create or refine custom roles in .opencode/agents/custom-*.md")
     print()
     print("Improve your environment:")
     print("- Scan runtime/logs/exec/ for errors or anomalies worth investigating")
