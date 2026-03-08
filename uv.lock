@@ -428,7 +428,7 @@ wheels = [
 [[package]]
 name = "role-forge"
 version = "0.0.1"
-source = { git = "https://github.com/zrr1999/role-forge.git?rev=main#7e48a7072b0cb6d77b192de90a3aabf94c6e58c3" }
+source = { git = "https://github.com/zrr1999/role-forge.git?rev=main#1b79bf40e45f0ba1bc70b1ca595b218b3721bff2" }
 dependencies = [
     { name = "loguru" },
     { name = "pydantic" },
