@@ -110,6 +110,20 @@ def test_lib_shell_workspace_dirs_match_contract():
     assert actual == list(WORKSPACE_DIRS)
 
 
+def test_docs_describe_rules_roles_context_layers():
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    rules = (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8")
+
+    assert "`rules` -> stable global policy" in readme
+    assert "`roles` -> per-agent identity" in readme
+    assert "`context providers` -> current queue/state/environment facts" in readme
+    assert "`prompts/rules.md` -> stable global policy" in agents_doc
+    assert "`roles/` -> role identity and delegation boundaries" in agents_doc
+    assert "`context.d/` -> dynamic facts only" in agents_doc
+    assert "Do not treat `context.d/` as a place for long-lived policy" in rules
+
+
 def test_docs_use_level_folders_not_level_encoded_names():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
@@ -130,6 +144,16 @@ def test_readme_documents_new_handoffs_and_commands():
     assert "runtime/handoff/scout-to-conductor/" in text
     assert "runtime/handoff/conductor-to-scout/" in text
     assert "runtime/handoff/scout-to-human/" in text
+
+
+def test_docs_include_agent_caster_priority_needs_note():
+    text = (REPO_ROOT / "docs" / "agent-caster-priority-needs.md").read_text(encoding="utf-8")
+    assert "agent-caster#18" in text
+    assert "agent-caster#19" in text
+    assert "agent-caster#20" in text
+    assert "https://github.com/zrr1999/agent-caster/issues/18" in text
+    assert "https://github.com/zrr1999/agent-caster/issues/19" in text
+    assert "https://github.com/zrr1999/agent-caster/issues/20" in text
 
 
 def test_service_files_exist_for_both_platforms():

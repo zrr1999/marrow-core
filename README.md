@@ -2,6 +2,17 @@
 
 Minimal self-evolving agent scheduler with hard isolation between the immutable core and the writable agent workspace.
 
+## Prompt model
+
+Use one mental model everywhere:
+
+- `rules` -> stable global policy in `prompts/rules.md`
+- `roles` -> per-agent identity and delegation boundaries in `roles/`
+- `context providers` -> current queue/state/environment facts from `context.d/`
+- `skills` -> reusable procedures; not part of repo prompt assembly
+
+Repo-root `agents/` is retired. Do not add new prompt material there.
+
 ## Hierarchy
 
 marrow-core uses an explicit three-level hierarchy. Levels are expressed by folder structure and architecture docs, not encoded into runtime-facing role names.
@@ -28,7 +39,6 @@ The canonical source of truth is now `roles/` plus `roles.toml`.
 - `roles/` stores hierarchy-aware role definitions
 - `roles.toml` stores model-tier mapping and hierarchy metadata
 - `.opencode/agents/` is the synced runtime surface used by the agent runtime
-- legacy `agents/` remains in the repo during migration, but `roles/` is canonical
 
 ## CLI
 
@@ -107,6 +117,14 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 ```
 
 The repo ships both launchd plists and systemd unit templates, all rendered from the same runtime model.
+
+## Upstream coordination
+
+See `docs/agent-caster-priority-needs.md` for the high-priority `agent-caster` capabilities marrow-core needs next, with full issue text for:
+
+- `agent-caster#18`
+- `agent-caster#19`
+- `agent-caster#20`
 
 ## Architecture
 

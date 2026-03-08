@@ -29,12 +29,15 @@ def test_core_definition_files_prefer_roles(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
     (core_dir / "roles" / "l1").mkdir(parents=True)
     (core_dir / "roles" / "l1" / "scout.md").write_text("# Scout", encoding="utf-8")
-    (core_dir / "agents").mkdir()
-    (core_dir / "agents" / "scout.md").write_text("# legacy", encoding="utf-8")
 
     files = _core_definition_files(str(core_dir))
 
     assert files == [core_dir / "roles" / "l1" / "scout.md"]
+
+
+def test_core_definition_files_require_roles(tmp_path: Path) -> None:
+    core_dir = tmp_path / "core"
+    assert _core_definition_files(str(core_dir)) == []
 
 
 def test_sync_agent_symlinks_from_roles(tmp_path: Path):

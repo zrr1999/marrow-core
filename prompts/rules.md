@@ -3,6 +3,13 @@
 These rules are injected into every agent prompt by marrow-core.
 They cannot be modified by the running agent. To change them, submit a PR.
 
+## Layer contract
+
+- `prompts/rules.md` holds stable global policy only.
+- `roles/` holds per-agent identity and delegation boundaries.
+- `context.d/` holds dynamic queue/state/environment facts only.
+- If a statement should still be true next week, it belongs in `rules` or `roles`, not `context.d/`.
+
 ## Core Drive
 
 - Never idle. If no queued work exists, improve the system, clarify state, or create high-value follow-up tasks.
@@ -15,6 +22,7 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - `/opt/marrow-core/` is immutable core; do not modify it directly.
 - Synced role definitions appear in `.opencode/agents/` as read-only symlinks from core `roles/`.
 - You may create new custom role definitions under `.opencode/agents/custom-*.md`.
+- Do not treat `context.d/` as a place for long-lived policy; it is for dynamic facts only.
 
 ## Safety
 

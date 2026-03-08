@@ -6,6 +6,17 @@ marrow-core is a minimal scheduler for a hierarchy-aware autonomous agent system
 The human-maintained core stays immutable under `/opt/marrow-core/`; the running
 agent works inside `/Users/marrow/`.
 
+## Prompt layers
+
+Keep these concepts separate:
+
+- `prompts/rules.md` -> stable global policy
+- `roles/` -> role identity and delegation boundaries
+- `context.d/` -> dynamic facts only
+- skills -> reusable procedures outside the repo prompt-layer contract
+
+Repo-root `agents/` has been retired from the active prompt model.
+
 ## Canonical model
 
 The canonical source of truth is:
@@ -13,8 +24,6 @@ The canonical source of truth is:
 - `roles/` for role definitions
 - `roles.toml` for model-tier and hierarchy metadata
 - `marrow_core/contracts.py` for runtime-enforced topology and delegation rules
-
-`agents/` is now legacy migration material, not the canonical definition layer.
 
 ## Hierarchy
 
@@ -73,7 +82,6 @@ Leaf workers never delegate further.
 │   ├── l1/
 │   ├── l2/
 │   └── l3/
-├── agents/                 # legacy migration material
 ├── prompts/
 ├── context.d/
 ├── roles.toml
@@ -119,10 +127,6 @@ Leaf workers never delegate further.
 - Linux: `marrow-heart.service`, `marrow-heart-sync.service`, `marrow-heart-sync.timer`
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
 
-## Migration note
+## Upstream coordination
 
-The repo is intentionally in a migration-friendly state:
-
-- runtime and tests treat `roles/` as canonical
-- workspace sync prefers `roles/` and only falls back to legacy `agents/` if needed
-- legacy `agents/` docs remain temporarily to avoid breaking existing consumers during transition
+See `docs/agent-caster-priority-needs.md` for the current high-priority upstream asks with full issue text and coordination order.

@@ -8,7 +8,6 @@ truth.
 from __future__ import annotations
 
 ROLE_DIR = "roles"
-LEGACY_AGENT_DIR = "agents"
 WORKSPACE_AGENT_DIR = ".opencode/agents"
 
 SCHEDULED_MAINS = (

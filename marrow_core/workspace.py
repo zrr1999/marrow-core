@@ -11,7 +11,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from marrow_core.contracts import LEGACY_AGENT_DIR, ROLE_DIR, WORKSPACE_AGENT_DIR, WORKSPACE_DIRS
+from marrow_core.contracts import ROLE_DIR, WORKSPACE_AGENT_DIR, WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:
@@ -38,31 +38,20 @@ def _core_definition_files(core_dir: str) -> list[Path]:
     role_dir = core_path / ROLE_DIR
     if role_dir.is_dir():
         return sorted(path for path in role_dir.rglob("*.md") if path.is_file())
-
-    legacy_dir = core_path / LEGACY_AGENT_DIR
-    if legacy_dir.is_dir():
-        return sorted(legacy_dir.glob("*.md"))
     return []
 
 
 def sync_agent_symlinks(core_dir: str, workspace: str) -> None:
     """Symlink core role definitions into the workspace agent directory.
 
-    Canonical source is ``roles/``. Legacy ``agents/`` is a deliberate fallback
-    only for older cores that have not migrated yet.
+    Canonical source is ``roles/``.
     """
     sources = _core_definition_files(core_dir)
     ws_agents = Path(workspace) / WORKSPACE_AGENT_DIR
     ws_agents.mkdir(parents=True, exist_ok=True)
 
     if not sources:
-        logger.warning(
-            "no core role definitions found under {}/{} or {}/{}",
-            core_dir,
-            ROLE_DIR,
-            core_dir,
-            LEGACY_AGENT_DIR,
-        )
+        logger.warning("no core role definitions found under {}/{}", core_dir, ROLE_DIR)
         return
 
     for src in sources:

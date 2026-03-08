@@ -39,11 +39,6 @@ link_agents() {
     while IFS= read -r -d '' role_md; do
       sources+=("$role_md")
     done < <(find "${CORE_DIR}/roles" -type f -name '*.md' -print0 | sort -z)
-  else
-    for role_md in "${CORE_DIR}"/agents/*.md; do
-      [[ -f "$role_md" ]] || continue
-      sources+=("$role_md")
-    done
   fi
 
   local role_md name dst
