@@ -146,16 +146,6 @@ def test_readme_documents_new_handoffs_and_commands():
     assert "runtime/handoff/scout-to-human/" in text
 
 
-def test_docs_include_agent_caster_priority_needs_note():
-    text = (REPO_ROOT / "docs" / "agent-caster-priority-needs.md").read_text(encoding="utf-8")
-    assert "agent-caster#18" in text
-    assert "agent-caster#19" in text
-    assert "agent-caster#20" in text
-    assert "https://github.com/zrr1999/agent-caster/issues/18" in text
-    assert "https://github.com/zrr1999/agent-caster/issues/19" in text
-    assert "https://github.com/zrr1999/agent-caster/issues/20" in text
-
-
 def test_service_files_exist_for_both_platforms():
     assert (REPO_ROOT / "com.marrow.heart.plist").exists()
     assert (REPO_ROOT / "com.marrow.heart.sync.plist").exists()

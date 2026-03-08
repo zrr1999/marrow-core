@@ -126,7 +126,3 @@ Leaf workers never delegate further.
 - macOS: `com.marrow.heart.plist`, `com.marrow.heart.sync.plist`
 - Linux: `marrow-heart.service`, `marrow-heart-sync.service`, `marrow-heart-sync.timer`
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
-
-## Upstream coordination
-
-See `docs/agent-caster-priority-needs.md` for the current high-priority upstream asks with full issue text and coordination order.

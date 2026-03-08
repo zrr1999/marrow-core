@@ -118,14 +118,6 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 
 The repo ships both launchd plists and systemd unit templates, all rendered from the same runtime model.
 
-## Upstream coordination
-
-See `docs/agent-caster-priority-needs.md` for the high-priority `agent-caster` capabilities marrow-core needs next, with full issue text for:
-
-- `agent-caster#18`
-- `agent-caster#19`
-- `agent-caster#20`
-
 ## Architecture
 
 See `AGENTS.md` for the full contract and filesystem model.
