@@ -8,7 +8,6 @@ from pathlib import Path
 
 from marrow_core.config import load_config
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
