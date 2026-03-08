@@ -11,15 +11,14 @@ Minimal self-evolving agent scheduler with hard isolation between the **core** (
 
 The agent cannot modify core. If it wants a core change it writes a proposal to `tasks/queue/core-proposal-*.md` and a human reviews it.
 
-## Autonomous + specialist agent model
+## Autonomous + delegated agent model
 
 | Tier | Agent | Category | Purpose |
 |------|-------|----------|---------|
 | strategic | **refit** | Autonomous | Goal setting, system improvement, meta-learning |
 | operational | **conductor** | Autonomous | Plan work, dispatch specialists, integrate results |
-| specialist | **scout** | Autonomous + Subagent | Exploration, information gathering, quick reconnaissance |
+| routine | **scout** | Autonomous + Subagent | Monitoring, scanning, notifications, safe recovery actions |
 | specialist | **reviewer** | Subagent | PR review, CI triage, issue/PR responses |
-| routine | **watchdog** | Subagent | Monitoring, health checks, safe recovery actions |
 
 ## CLI
 
@@ -64,7 +63,7 @@ context_dirs       = ["/Users/marrow/context.d"]
 
 [[agents]]
 name              = "conductor"
-heartbeat_interval = 14400     # 4 hours
+heartbeat_interval = 7200      # 2 hours
 heartbeat_timeout  = 7200
 agent_command      = "opencode run --agent conductor"
 workspace          = "/Users/marrow"

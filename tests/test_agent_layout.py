@@ -49,8 +49,10 @@ def test_agent_modes_and_models_match_role_plan():
     assert _frontmatter_value("conductor", "mode") == "primary"
     assert _frontmatter_value("conductor", "model") == "github-copilot/gpt-5.4"
     assert _frontmatter_value("scout", "mode") == "all"
-    assert _frontmatter_value("scout", "model") == "github-copilot/gpt-5.4"
+    assert _frontmatter_value("scout", "model") == "github-copilot/gpt-5-mini"
     assert _frontmatter_value("reviewer", "mode") == "subagent"
     assert _frontmatter_value("reviewer", "model") == "github-copilot/gpt-5.4"
-    assert _frontmatter_value("watchdog", "mode") == "subagent"
-    assert _frontmatter_value("watchdog", "model") == "github-copilot/gpt-5-mini"
+
+
+def test_watchdog_agent_removed():
+    assert not (REPO_ROOT / "agents" / "watchdog.md").exists()

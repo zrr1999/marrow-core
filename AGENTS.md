@@ -18,25 +18,24 @@ behavior within its workspace, but can never modify the core.
    from core into the agent's `.opencode/agents/`. The agent can see
    them but cannot modify the symlink targets (root-owned).
 
-## Three Autonomous Agents + Specialist Sub-agents
+## Three Autonomous Agents + Delegated Sub-agents
 
 ```
 marrow-core heartbeat (scheduler)
 │
-├── 5 min ──► scout        explore queue/state; gather facts; create handoffs
-├── 4 h ────► conductor    plan work; dispatch specialists; validate/integrate
+├── 5 min ──► scout        monitor queue/state/services; scan notifications; create handoffs
+├── 2 h ────► conductor    plan work; dispatch specialists; validate/integrate
 └── 3.5 day ► refit        strategic review; meta-learning; system improvements
                            (scheduled only — not callable by other agents)
 
 On-demand sub-agents:
-  conductor/refit ──task──► scout     focused code exploration / evidence gathering
+  conductor/refit ──task──► scout     focused monitoring / scanning / status gathering
   conductor/refit ──task──► reviewer  GitHub triage; PR reviews; issue replies
-  conductor/refit ──task──► watchdog  routine monitoring / health checks
 
 Data flows (all via filesystem):
   scout ──handoff────► conductor     runtime/handoff/scout-to-conductor/
   conductor ──follow-up──► scout     runtime/handoff/conductor-to-scout/
-  watchdog ──alert────► human        runtime/handoff/scout-to-human/
+  scout ──alert────► human           runtime/handoff/scout-to-human/
   refit ──coordinate──► sub-agents   task tool (parallel lower-level workers)
   refit ──propose────► human         tasks/queue/core-proposal-*.md
   human ──task──────► autonomous     tasks/queue/
@@ -48,9 +47,8 @@ Data flows (all via filesystem):
 |------|-------|----------|-------|------|
 | `strategic` | **refit** | Autonomous | claude-opus-4.6 | Goal setting, system improvement, meta-learning |
 | `operational` | **conductor** | Autonomous | gpt-5.4 | Task decomposition, specialist dispatch, result integration |
-| `specialist` | **scout** | Autonomous + Subagent | gpt-5.4 | Code exploration, information gathering, quick reconnaissance |
+| `routine` | **scout** | Autonomous + Subagent | gpt-5-mini | Monitoring, scanning, notifications, safe recovery actions |
 | `specialist` | **reviewer** | Subagent | gpt-5.4 | GitHub triage, PR reviews, CI inspection |
-| `routine` | **watchdog** | Subagent | gpt-5-mini | Monitoring, health checks, safe recovery actions |
 
 ### Model map (`roles.toml`)
 
@@ -92,7 +90,7 @@ This enables reliable multi-session execution of large tasks.
 │   ├── conductor.md
 │   ├── refit.md
 │   ├── reviewer.md
-│   └── watchdog.md
+│   └── analyst.md
 ├── prompts/
 │   └── rules.md            # Immutable rules injected into every prompt
 ├── context.d/              # Default context providers (copied to workspace)
