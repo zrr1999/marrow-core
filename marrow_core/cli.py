@@ -28,7 +28,7 @@ from marrow_core.runtime import (
 )
 from marrow_core.scaffold import scaffold_workspace, write_config_template
 from marrow_core.services import render_service_files, write_service_files
-from marrow_core.sync import SyncError, run_sync_once
+from marrow_core.sync import SyncError, SyncOutcome, SyncResult, run_sync_once
 from marrow_core.task_queue import create_task_file
 from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
 
@@ -125,33 +125,34 @@ def _run_heartbeat(
 
 
 async def _sync_supervisor(config: Path) -> None:
-    root = load_config(config)
     while True:
-        exit_code = await _invoke_sync_once_subprocess(config)
-        if exit_code == 0:
+        root = load_config(config)
+        outcome = await _invoke_sync_once(root)
+        if outcome.result is SyncResult.NOOP:
             await asyncio.sleep(root.sync.interval_seconds)
             continue
-        if exit_code == 10:
+        if outcome.result is SyncResult.RELOADED:
             await _reload_runtime(root)
             await asyncio.sleep(root.sync.interval_seconds)
             continue
-        if exit_code == 11:
+        if outcome.result is SyncResult.RESTART_REQUIRED:
             raise typer.Exit(code=0)
         await asyncio.sleep(root.sync.failure_backoff_seconds)
 
 
-async def _invoke_sync_once_subprocess(config: Path) -> int:
-    proc = await asyncio.create_subprocess_exec(
-        shutil.which("python3") or shutil.which("python") or "python3",
-        "-m",
-        "marrow_core.cli",
-        "sync-once",
-        "--config",
-        str(config),
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    return await proc.wait()
+async def _invoke_sync_once(root: RootConfig) -> SyncOutcome:
+    if not root.agents:
+        return SyncOutcome(SyncResult.FAILED, "no agents configured")
+    try:
+        return await asyncio.to_thread(
+            run_sync_once,
+            core_dir=root.core_dir,
+            workspace=root.agents[0].workspace,
+            state_file=Path(resolve_sync_state_path(root)),
+            lock_file=Path(resolve_sync_lock_path(root)),
+        )
+    except SyncError as exc:
+        return SyncOutcome(SyncResult.FAILED, str(exc))
 
 
 async def _reload_runtime(root: RootConfig) -> None:

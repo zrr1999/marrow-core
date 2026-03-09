@@ -1,4 +1,4 @@
-name: macOS Integration Test
+name: CLI Integration Test
 
 on:
   push:
@@ -11,9 +11,13 @@ permissions:
   contents: read
 
 jobs:
-  macos-e2e:
-    name: macOS CLI Integration
-    runs-on: macos-latest
+  cli-integration:
+    name: CLI Integration (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
