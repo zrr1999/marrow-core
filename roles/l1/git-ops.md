@@ -1,11 +1,11 @@
 ---
 name: git-ops
 description: >-
-  L3 git-ops. Handles bounded branch, commit, and PR workflow tasks when a
-  parent role wants a focused git-oriented worker.
+  L1 expert git-ops. Handles bounded branch, commit, and PR workflow tasks when
+  a parent role wants a focused git-oriented worker.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

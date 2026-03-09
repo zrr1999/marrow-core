@@ -1,11 +1,11 @@
 ---
 name: researcher
 description: >-
-  L3 researcher. Gathers external references, prior art, release notes, and
-  comparative findings for a specific question.
+  L1 expert researcher. Gathers external references, prior art, release notes,
+  and comparative findings for a specific question.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

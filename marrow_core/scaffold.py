@@ -9,9 +9,7 @@ from pathlib import Path
 from marrow_core.contracts import AUTONOMOUS_AGENTS, WORKSPACE_DIRS
 
 DEFAULT_AGENT_SCHEDULES = {
-    "scout": (300, 500),
-    "conductor": (7200, 7200),
-    "refit": (302400, 28800),
+    "refit": (10800, 7200),
 }
 
 
@@ -62,11 +60,13 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             f"""
             core_dir = "{core_dir}"
 
-            [project]
-            roles_dir = "roles"
-
             [ipc]
             enabled = true
+
+            [self_check]
+            enabled = true
+            interval_seconds = 900
+            wake_agent = "refit"
 
             {"\n\n".join(blocks)}
             """

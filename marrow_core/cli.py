@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from loguru import logger
 
 from marrow_core.caster import cast_roles_to_workspace
 from marrow_core.config import RootConfig, load_config
+from marrow_core.health import collect_health_issues
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
@@ -27,6 +29,7 @@ from marrow_core.runtime import (
 from marrow_core.scaffold import scaffold_workspace, write_config_template
 from marrow_core.services import render_service_files, write_service_files
 from marrow_core.sync import SyncError, run_sync_once
+from marrow_core.task_queue import create_task_file
 from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
@@ -52,26 +55,41 @@ async def _run(
         raise typer.Exit(code=1)
 
     state = HeartbeatState()
+    wake_events = {agent.name: asyncio.Event() for agent in root.agents}
+    task_dir = resolve_task_dir(root)
 
     # Determine whether to start IPC server
     ipc_enabled = ipc if ipc is not None else root.ipc.enabled
     server = None
     if ipc_enabled and not dry_run:
         socket_path = resolve_socket_path(root)
-        task_dir = resolve_task_dir(root)
-        server = await start_ipc_server(socket_path, task_dir, state)
+        server = await start_ipc_server(socket_path, task_dir, state, wake_events)
 
     tasks = [
         asyncio.create_task(
-            heartbeat(agent, root.core_dir, once=once, dry_run=dry_run, state=state),
+            heartbeat(
+                agent,
+                root.core_dir,
+                once=once,
+                dry_run=dry_run,
+                state=state,
+                wake_event=wake_events[agent.name],
+            ),
             name=agent.name,
         )
         for agent in root.agents
     ]
     sync_task = None
+    self_check_task = None
     if not once and not dry_run and root.sync.enabled:
         sync_task = asyncio.create_task(_sync_supervisor(config), name="sync-supervisor")
         tasks.append(sync_task)
+    if not once and not dry_run and root.self_check.enabled:
+        self_check_task = asyncio.create_task(
+            _self_check_supervisor(root, Path(task_dir), wake_events),
+            name="self-check-supervisor",
+        )
+        tasks.append(self_check_task)
     try:
         await asyncio.gather(*tasks)
     finally:
@@ -79,6 +97,10 @@ async def _run(
             sync_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await sync_task
+        if self_check_task is not None and not self_check_task.done():
+            self_check_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self_check_task
         if server is not None:
             server.close()
             await server.wait_closed()
@@ -120,7 +142,7 @@ async def _sync_supervisor(config: Path) -> None:
 
 async def _invoke_sync_once_subprocess(config: Path) -> int:
     proc = await asyncio.create_subprocess_exec(
-        shutil.which("python") or "python",
+        shutil.which("python3") or shutil.which("python") or "python3",
         "-m",
         "marrow_core.cli",
         "sync-once",
@@ -136,6 +158,56 @@ async def _reload_runtime(root: RootConfig) -> None:
     for agent in root.agents:
         ensure_workspace_dirs(agent.workspace)
         cast_roles_to_workspace(root.core_dir, agent.workspace)
+
+
+def _wake_agent(
+    wake_events: dict[str, asyncio.Event], agent_name: str, *, reason: str
+) -> bool:
+    event = wake_events.get(agent_name)
+    if event is None:
+        logger.warning('wake requested for unknown agent "{}" ({})', agent_name, reason)
+        return False
+    event.set()
+    logger.info('wake requested for "{}" ({})', agent_name, reason)
+    return True
+
+
+def _self_check_task_body(agent_name: str, issues: list[str]) -> str:
+    lines = [
+        f'Run `{agent_name}` in repair mode and resolve the following core health issues.',
+        "",
+        "Observed issues:",
+    ]
+    lines.extend(f"- {issue}" for issue in issues)
+    return "\n".join(lines) + "\n"
+
+
+async def _self_check_supervisor(
+    root: RootConfig,
+    task_dir: Path,
+    wake_events: dict[str, asyncio.Event],
+) -> None:
+    last_failure_signature = ""
+    while True:
+        issues = collect_health_issues(root)
+        if issues:
+            signature = "\n".join(issues)
+            if signature != last_failure_signature:
+                task = create_task_file(
+                    task_dir,
+                    "Core self-check requires repair",
+                    _self_check_task_body(root.self_check.wake_agent, issues),
+                )
+                logger.warning(
+                    "core self-check failed with {} issue(s); queued {}",
+                    len(issues),
+                    task.name,
+                )
+                _wake_agent(wake_events, root.self_check.wake_agent, reason="core self-check")
+                last_failure_signature = signature
+        else:
+            last_failure_signature = ""
+        await asyncio.sleep(root.self_check.interval_seconds)
 
 
 @app.command()
@@ -403,6 +475,26 @@ def status(
     """Query heartbeat status via IPC socket."""
     data = _run_ipc_command(config, "GET", "/status")
     typer.echo(json.dumps(data, indent=2))
+
+
+@app.command()
+def wake(
+    agent: Annotated[str, typer.Argument(help="Configured agent name to wake immediately")],
+    config: ConfigOpt = Path("marrow.toml"),
+    reason: Annotated[str, typer.Option("--reason", help="Optional wake reason")] = "",
+) -> None:
+    """Wake one configured agent early via IPC."""
+    data = _run_ipc_command(
+        config,
+        "POST",
+        "/wake",
+        json.dumps({"agent": agent, "reason": reason}),
+    )
+    if data.get("ok"):
+        typer.echo(f'wake submitted for "{agent}"')
+        return
+    typer.echo(f"❌ {data.get('error', 'unknown error')}", err=True)
+    raise typer.Exit(code=1)
 
 
 # Task subcommand group

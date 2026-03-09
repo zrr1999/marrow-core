@@ -17,9 +17,6 @@ SYSTEMD_UNITS=(marrow-heart.service)
 # Keep in sync with marrow_core/contracts.py WORKSPACE_DIRS
 WORKSPACE_DIRS=(
   runtime/state
-  runtime/handoff/scout-to-conductor
-  runtime/handoff/conductor-to-scout
-  runtime/handoff/scout-to-human
   runtime/checkpoints
   runtime/logs/exec
   tasks/queue

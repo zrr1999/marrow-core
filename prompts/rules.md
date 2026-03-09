@@ -32,50 +32,54 @@ They cannot be modified by the running agent. To change them, submit a PR.
 
 ## Role Layout Model
 
-marrow-core uses a level-based role layout as prompt policy.
+marrow-core uses a layered role layout as prompt policy.
 
-### Scheduled mains — `roles/l1/`
+### top-level scheduled orchestrators — `roles/`
 
 | Role | Purpose | Delegation |
 |------|---------|------------|
-| `scout` | routine monitoring, scanning, handoffs | none |
-| `conductor` | operational planning, execution ownership | `L2` and `L3` |
-| `refit` | strategic review, redesign, weekly closure | `L2` and `L3` |
+| `refit` | orchestration, repair, backlog shaping | `stewards` |
 
-### Expert leads — `roles/l2/`
+### stewards — `roles/l3/`
+
+| Role | Purpose | Delegation |
+|------|---------|------------|
+| `conductor` | delivery ownership, integration, closure | `leaders`, exceptional direct `experts` |
+| `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
+
+### leaders — `roles/l2/`
 
 | Role | Domain | Delegation |
 |------|--------|------------|
-| `refactor-lead` | refactors, migrations, architecture changes | `L3` only |
-| `prototype-lead` | PoCs, experiments, throwaway builds | `L3` only |
-| `review-lead` | reviews, CI synthesis, GitHub-facing analysis | `L3` only |
-| `ops-lead` | CI, services, deployment, environment work | `L3` only |
+| `refactor-lead` | refactors, migrations, architecture changes | `experts` |
+| `prototype-lead` | PoCs, experiments, throwaway builds | `experts` |
+| `review-lead` | reviews, CI synthesis, GitHub-facing analysis | `experts` |
+| `ops-lead` | CI, services, deployment, environment work | `experts` |
 
-### Leaf workers — `roles/l3/`
+### experts — `roles/l1/`
 
 `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
 
-- `L1 -> L2/L3` allowed
-- selected `L2 -> L3` allowed
-- `L3 -> *` forbidden
+- `refit -> stewards`
+- `stewards -> leaders`
+- `leaders -> experts`
+- `experts -> *` forbidden
 - upward calls forbidden
-- maximum delegation depth: 2 hops
+- maximum delegation depth: 3 hops
 - one accountable owner per workstream
 
 These are prompt rules, not runtime-enforced hierarchy metadata.
 
 ## Delegation Rules
 
+- `refit` is the default scheduled owner and should route work through stewards first.
 - The parent that starts a workstream remains accountable for final integration.
 - Delegate only when the child role has a clearly bounded responsibility.
-- Use `runtime/handoff/` for passive filesystem handoffs and the `task` tool for active lower-level delegation.
-- `scout` does not recursively delegate.
-- leaf workers never spawn other agents.
+- Use `tasks/queue` plus IPC wake events for active coordination.
+- Experts never spawn other agents.
 
 ## Communication
 
-- `scout -> conductor`: `runtime/handoff/scout-to-conductor/`
-- `conductor -> scout`: `runtime/handoff/conductor-to-scout/`
-- `scout -> human`: `runtime/handoff/scout-to-human/`
-- State files live under `runtime/state/`
+- Queue state lives under `tasks/queue/`
+- Persistent runtime notes live under `runtime/state/`
 - Checkpoints live under `runtime/checkpoints/`

@@ -29,9 +29,10 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
     for name in AUTONOMOUS_AGENTS:
         assert f'name = "{name}"' in text
         assert f'--agent {name}"' in text
-    assert 'roles_dir = "roles"' in text
     assert "[ipc]" in text
     assert "enabled = true" in text
+    assert "[self_check]" in text
+    assert 'wake_agent = "refit"' in text
 
 
 def test_write_config_template_persists_file(tmp_path: Path) -> None:

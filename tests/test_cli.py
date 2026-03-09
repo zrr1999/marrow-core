@@ -13,6 +13,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from marrow_core.cli import app
+from marrow_core.config import RootConfig
 from marrow_core.contracts import AUTONOMOUS_AGENTS
 
 runner = CliRunner()
@@ -50,6 +51,15 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
         lock_file = {json.dumps(str(workspace / "runtime" / "state" / "sync.lock"))}
         """
     )
+    self_check_block = textwrap.dedent(
+        """
+
+        [self_check]
+        enabled = false
+        interval_seconds = 900
+        wake_agent = "refit"
+        """
+    )
 
     agents = "\n\n".join(
         textwrap.dedent(
@@ -72,6 +82,7 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
             f"""
             core_dir = {json.dumps(str(tmp_path / "core"))}
             {ipc_block}
+            {self_check_block}
             {sync_block}
 
             {agents}
@@ -118,7 +129,9 @@ def test_run_once_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     calls: list[tuple[str, bool, bool, bool]] = []
 
-    async def fake_heartbeat(agent, core_dir, *, once=False, dry_run=False, state=None):
+    async def fake_heartbeat(
+        agent, core_dir, *, once=False, dry_run=False, state=None, wake_event=None
+    ):
         calls.append((agent.name, once, dry_run, state is not None))
 
     monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
@@ -134,7 +147,9 @@ def test_dry_run_invokes_heartbeat_in_dry_mode(monkeypatch, tmp_path: Path) -> N
     config = _write_config(tmp_path)
     calls: list[tuple[str, bool, bool]] = []
 
-    async def fake_heartbeat(agent, core_dir, *, once=False, dry_run=False, state=None):
+    async def fake_heartbeat(
+        agent, core_dir, *, once=False, dry_run=False, state=None, wake_event=None
+    ):
         calls.append((agent.name, once, dry_run))
 
     monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
@@ -156,7 +171,7 @@ def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
         assert method == "GET"
         assert path == "/status"
         assert body == ""
-        return {"uptime": 1.2, "agents": {"scout": {"tick_count": 3}}}
+        return {"uptime": 1.2, "agents": {"refit": {"tick_count": 3}}}
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
@@ -165,6 +180,28 @@ def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert '"uptime": 1.2' in result.stdout
     assert '"tick_count": 3' in result.stdout
+
+
+def test_wake_submits_ipc_request(monkeypatch, tmp_path: Path) -> None:
+    socket_path = tmp_path / "marrow.sock"
+    socket_path.write_text("", encoding="utf-8")
+    config = _write_config(tmp_path, socket_path=socket_path)
+    request: dict[str, str] = {}
+
+    async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
+        request.update({"socket": socket, "method": method, "path": path, "body": body})
+        return {"ok": True, "agent": "refit"}
+
+    monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
+
+    result = runner.invoke(app, ["wake", "refit", "--reason", "manual", "--config", str(config)])
+
+    assert result.exit_code == 0
+    assert 'wake submitted for "refit"' in result.stdout
+    assert request["socket"] == str(socket_path)
+    assert request["method"] == "POST"
+    assert request["path"] == "/wake"
+    assert json.loads(request["body"]) == {"agent": "refit", "reason": "manual"}
 
 
 def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
@@ -239,8 +276,7 @@ def test_scaffold_creates_workspace_and_config(tmp_path: Path) -> None:
     assert (workspace / "context.d" / "queue.py").exists()
     assert config_out.exists()
     assert 'core_dir = "/opt/marrow-core"' in config_out.read_text(encoding="utf-8")
-    assert "[project]" in config_out.read_text(encoding="utf-8")
-    assert 'roles_dir = "roles"' in config_out.read_text(encoding="utf-8")
+    assert "[self_check]" in config_out.read_text(encoding="utf-8")
 
 
 def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
@@ -351,3 +387,46 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
         asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
 
     assert sleeps == [30]
+
+
+def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
+    monkeypatch, tmp_path: Path
+) -> None:
+    workspace = tmp_path / "workspace"
+    task_dir = workspace / "tasks" / "queue"
+    task_dir.mkdir(parents=True)
+    root = RootConfig.model_validate(
+        {
+            "core_dir": str(tmp_path / "core"),
+            "self_check": {
+                "enabled": True,
+                "interval_seconds": 900,
+                "wake_agent": "refit",
+            },
+            "agents": [
+                {
+                    "name": "refit",
+                    "agent_command": str(tmp_path / "missing-binary"),
+                    "workspace": str(workspace),
+                    "context_dirs": [str(workspace / "missing-context")],
+                }
+            ],
+        }
+    )
+    wake_events = {"refit": asyncio.Event()}
+
+    async def fake_sleep(seconds: int) -> None:
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
+
+    with contextlib.suppress(asyncio.CancelledError):
+        asyncio.run(
+            __import__("marrow_core.cli").cli._self_check_supervisor(root, task_dir, wake_events)
+        )
+
+    files = list(task_dir.glob("*.md"))
+    assert len(files) == 1
+    body = files[0].read_text(encoding="utf-8")
+    assert "Run `refit` in repair mode" in body
+    assert wake_events["refit"].is_set()

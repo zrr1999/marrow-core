@@ -1,11 +1,11 @@
 ---
 name: analyst
 description: >-
-  L3 analyst. Performs read-only code tracing, architecture mapping, and
+  L1 expert analyst. Performs read-only code tracing, architecture mapping, and
   dependency analysis for a bounded question.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

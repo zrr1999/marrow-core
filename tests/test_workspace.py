@@ -37,12 +37,12 @@ def test_core_definition_files_require_roles(tmp_path: Path) -> None:
 
 def test_core_definition_files_read_roles_recursively(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
-    (core_dir / "roles" / "l1").mkdir(parents=True)
-    (core_dir / "roles" / "l1" / "scout.md").write_text("# Scout", encoding="utf-8")
+    (core_dir / "roles").mkdir(parents=True)
+    (core_dir / "roles" / "refit.md").write_text("# Refit", encoding="utf-8")
 
     files = _core_definition_files(str(core_dir))
 
-    assert files == [core_dir / "roles" / "l1" / "scout.md"]
+    assert files == [core_dir / "roles" / "refit.md"]
 
 
 def test_load_rules(tmp_path: Path):

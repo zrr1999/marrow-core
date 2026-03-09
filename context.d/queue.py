@@ -12,7 +12,6 @@ from pathlib import Path
 
 WORKSPACE = Path(os.environ.get("MARROW_WORKSPACE") or os.environ.get("HOME") or "/Users/marrow")
 QUEUE_DIR = WORKSPACE / "tasks" / "queue"
-HANDOFF_DIR = WORKSPACE / "runtime" / "handoff"
 
 
 def main() -> None:
@@ -28,19 +27,6 @@ def main() -> None:
 
     for f in files:
         print(f.resolve())
-
-    # Show delegation status
-    scout_to_conductor = HANDOFF_DIR / "scout-to-conductor"
-    if scout_to_conductor.is_dir():
-        pending = sorted(scout_to_conductor.iterdir())
-        if pending:
-            print(f"\nDelegated to conductor (pending): {', '.join(p.name for p in pending)}")
-
-    conductor_to_scout = HANDOFF_DIR / "conductor-to-scout"
-    if conductor_to_scout.is_dir():
-        msgs = sorted(conductor_to_scout.iterdir())
-        if msgs:
-            print(f"\nMessages from conductor: {', '.join(p.name for p in msgs)}")
 
 
 if __name__ == "__main__":

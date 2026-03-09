@@ -40,22 +40,13 @@ def test_queue_outputs_full_paths_without_contents(tmp_path: Path) -> None:
     assert "first task body" not in output
     assert "second task body" not in output
 
-
-def test_queue_reports_conductor_handoffs(tmp_path: Path) -> None:
+def test_queue_context_stays_queue_focused(tmp_path: Path) -> None:
     queue_dir = tmp_path / "tasks" / "queue"
     queue_dir.mkdir(parents=True)
     (queue_dir / "task.md").write_text("queued")
 
-    scout_to_conductor = tmp_path / "runtime" / "handoff" / "scout-to-conductor"
-    scout_to_conductor.mkdir(parents=True)
-    (scout_to_conductor / "handoff-1.md").write_text("pending")
-
-    conductor_to_scout = tmp_path / "runtime" / "handoff" / "conductor-to-scout"
-    conductor_to_scout.mkdir(parents=True)
-    (conductor_to_scout / "followup-1.md").write_text("message")
-
     output = run_queue_script(tmp_path)
 
-    assert "Delegated to conductor (pending): handoff-1.md" in output
-    assert "Messages from conductor: followup-1.md" in output
-    assert "artisan" not in output
+    assert "Task queue lives in tasks/queue/" in output
+    assert "Delegated to conductor" not in output
+    assert "Messages from conductor" not in output

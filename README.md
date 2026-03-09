@@ -13,28 +13,32 @@ Use one mental model everywhere:
 
 Repo-root `agents/` is retired. Do not add new prompt material there.
 
-## Role Layout
+## Role layout
 
-marrow-core keeps the `l1` / `l2` / `l3` folder layout as an architectural convention and prompt-shaping aid, not as runtime-enforced metadata.
+marrow-core now treats `roles/` root as the home for top-level scheduled orchestrators, with the numbered folders used only for the lower layers.
 
-| Level | Directory | Roles | Responsibility |
+| Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
-| `L1` | `roles/l1/` | `scout`, `conductor`, `refit` | scheduled monitoring, operational ownership, strategic closure |
-| `L2` | `roles/l2/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded domain ownership with downward delegation |
-| `L3` | `roles/l3/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
+| top-level | `roles/` | `refit` | scheduled orchestration, repair, backlog shaping |
+| stewards | `roles/l3/` | `conductor`, `repo-steward` | domain ownership, routing, closure, external follow-through |
+| leaders | `roles/l2/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded planning and integration for a domain |
+| experts | `roles/l1/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
 Delegation policy:
 
-- `L1 -> L2/L3` allowed
-- `L2 -> L3` allowed where declared
-- `L3 -> *` forbidden
+- top-level -> stewards
+- stewards -> leaders
+- leaders -> experts
+- experts -> none
 - no upward calls
 - one accountable owner per workstream
-- max delegation depth: 2 hops
+- max delegation depth: 3 hops
+
+Default runtime scheduling only runs `refit`, but the config format still supports multiple top-level scheduled agents for future multi-user or multi-root deployments.
 
 ## Canonical role layer
 
-The canonical source of truth is now `roles/` plus `roles.toml`.
+The canonical source of truth is `roles/` plus `roles.toml`.
 
 - `roles/` stores role prompts, directory layout, and capability declarations
 - `roles.toml` stores model-tier mapping for casting
@@ -44,14 +48,15 @@ The canonical source of truth is now `roles/` plus `roles.toml`.
 
 ```text
 marrow run              # persistent heartbeat loop
-marrow run-once         # one tick per scheduled main, then exit
+marrow run-once         # one tick per scheduled agent, then exit
 marrow dry-run          # assemble prompts without running agents
 marrow sync-once        # one bounded sync attempt with structured result codes
-marrow setup            # init workspace dirs and sync role symlinks
+marrow setup            # init workspace dirs and cast runtime roles
 marrow scaffold         # create a new writable workspace skeleton and starter config
 marrow validate         # check config and show summary
 marrow doctor           # verify workspace, context dirs, and agent command availability
 marrow status           # query live heartbeat state over IPC
+marrow wake             # wake one configured agent immediately via IPC
 marrow install-service  # render launchd or systemd service files
 marrow task add         # submit a task into tasks/queue via IPC
 marrow task list        # inspect queued tasks via IPC
@@ -65,47 +70,40 @@ core_dir = "/opt/marrow-core"
 [ipc]
 enabled = true
 
+[self_check]
+enabled = true
+interval_seconds = 900
+wake_agent = "refit"
+
 [sync]
 enabled = true
 interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
-name = "scout"
-heartbeat_interval = 300
-heartbeat_timeout = 500
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent scout"
-context_dirs = ["/Users/marrow/context.d"]
-
-[[agents]]
-name = "conductor"
-heartbeat_interval = 7200
-heartbeat_timeout = 7200
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent conductor"
-context_dirs = ["/Users/marrow/context.d"]
-
-[[agents]]
 name = "refit"
-heartbeat_interval = 302400
-heartbeat_timeout = 28800
+heartbeat_interval = 10800
+heartbeat_timeout = 7200
 workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
 context_dirs = ["/Users/marrow/context.d"]
 ```
 
-Model tiers live in `roles.toml`.
+Model tiers live in `roles.toml` and now map to `high`, `medium`, and `low`.
 
 ## Runtime contract
 
-`marrow-core` now uses `role-forge` as the casting runtime. Canonical role files in `roles/` are cast into `.opencode/agents/`, then execution is handed off to the external `opencode` CLI configured by each agent's `agent_command`.
+`marrow-core` uses `role-forge` as the casting runtime. Canonical role files in `roles/` are cast into `.opencode/agents/`, then execution is handed off to the external `opencode` CLI configured by each agent's `agent_command`.
 
-That means the effective execution path is:
+The effective execution path is:
 
 1. edit canonical role definitions in `roles/`
 2. cast them into `.opencode/agents/` via `role-forge`
 3. launch `opencode run --agent <name>`
+
+## Core self-check
+
+`scout` is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
 
 ## Runtime boundaries
 
@@ -113,17 +111,29 @@ That means the effective execution path is:
 - `marrow_core/prompting.py` — context execution and prompt assembly
 - `marrow_core/runtime.py` — socket, queue, and binary path resolution
 - `marrow_core/task_queue.py` — filesystem queue helpers
+- `marrow_core/health.py` — reusable doctor and self-check health checks
 - `marrow_core/services.py` — launchd/systemd rendering
 - `marrow_core/scaffold.py` — workspace scaffold and starter config generation
 - `marrow_core/heartbeat.py`, `marrow_core/cli.py`, `marrow_core/ipc.py` — orchestration layers
 
-## Filesystem handoffs
+## Workspace layout
 
 ```text
-runtime/handoff/scout-to-conductor/
-runtime/handoff/conductor-to-scout/
-runtime/handoff/scout-to-human/
+/Users/marrow/
+├── .opencode/agents/
+├── context.d/
+├── tasks/
+│   ├── queue/
+│   ├── delegated/
+│   └── done/
+├── runtime/
+│   ├── state/
+│   ├── checkpoints/
+│   └── logs/exec/
+└── docs/
 ```
+
+Use the queue plus IPC wake events for active coordination. Filesystem handoff directories are no longer part of the default model.
 
 ## Service installation
 
@@ -135,7 +145,7 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 The repo uses one long-running service per platform and CLI-managed periodic sync inside `marrow run`.
 Use `marrow sync-once` for the bounded update path, and `marrow install-service` only emits the primary runtime service file for each platform.
 
-## Quick Start
+## Quick start
 
 Install on a fresh machine:
 
@@ -170,7 +180,7 @@ Useful follow-up checks:
 
 ```bash
 python -m marrow_core.cli validate --config marrow.toml
-python -m marrow_core.cli install-service --config marrow.toml --platform auto --output-dir ./service-out
+python -m marrow_core.cli doctor --config marrow.toml
 python -m marrow_core.cli status --config marrow.toml
 ```
 
@@ -179,12 +189,6 @@ python -m marrow_core.cli status --config marrow.toml
 CLI-managed periodic sync runs inside the main heartbeat service by spawning `marrow sync-once` as a subprocess.
 That keeps risky update work isolated while preserving one place to observe failures and one service lifecycle to manage.
 
-## Role casting
-
-Runtime role files are no longer hand-written or symlinked into `.opencode/agents/`.
-Instead, marrow-core depends on `role-forge` `main` and casts canonical `roles/` into
-OpenCode output during setup/sync.
-
 ## Developer tooling
 
 Repository-local quality tools are intended to be invoked with `uvx` rather than pinned as project runtime dependencies. See `Justfile` for the standard commands for `ruff`, `ty`, and `prek`.
@@ -192,3 +196,4 @@ Repository-local quality tools are intended to be invoked with `uvx` rather than
 ## Architecture
 
 See `AGENTS.md` for the full contract and filesystem model.
+Deferred naming follow-ups, including evaluating `refit -> curator`, live in `docs/todo.md`.

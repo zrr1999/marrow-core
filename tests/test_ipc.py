@@ -67,11 +67,11 @@ def test_list_tasks(tmp_path: Path):
 
 def test_heartbeat_state_to_dict():
     state = HeartbeatState()
-    state.agents["scout"] = AgentState(name="scout", interval=300, tick_count=5)
+    state.agents["refit"] = AgentState(name="refit", interval=300, tick_count=5)
     d = state.to_dict()
     assert "uptime" in d
     assert "agents" in d
-    assert d["agents"]["scout"]["tick_count"] == 5
+    assert d["agents"]["refit"]["tick_count"] == 5
 
 
 # ---------------------------------------------------------------------------
@@ -92,9 +92,10 @@ async def ipc_server():
         sock = str(tmpdir / "t.sock")
         task_dir = tmpdir / "tasks" / "queue"
         state = HeartbeatState()
-        state.agents["scout"] = AgentState(name="scout", interval=300, tick_count=3)
-        server = await start_ipc_server(sock, str(task_dir), state)
-        yield sock, task_dir, state
+        state.agents["refit"] = AgentState(name="refit", interval=300, tick_count=3)
+        wake_events = {"refit": asyncio.Event()}
+        server = await start_ipc_server(sock, str(task_dir), state, wake_events)
+        yield sock, task_dir, state, wake_events
         server.close()
         await server.wait_closed()
     finally:
@@ -122,21 +123,21 @@ async def _ipc_request(sock: str, method: str, path: str, body: str = "") -> dic
 
 
 async def test_health(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     data = await _ipc_request(sock, "GET", "/health")
     assert data["status"] == "ok"
 
 
 async def test_status(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     data = await _ipc_request(sock, "GET", "/status")
     assert "uptime" in data
     assert "agents" in data
-    assert data["agents"]["scout"]["tick_count"] == 3
+    assert data["agents"]["refit"]["tick_count"] == 3
 
 
 async def test_post_task(ipc_server):
-    sock, task_dir, _ = ipc_server
+    sock, task_dir, _, _ = ipc_server
     payload = json.dumps({"title": "test task", "body": "some details"})
     data = await _ipc_request(sock, "POST", "/tasks", payload)
     assert data["ok"] is True
@@ -148,7 +149,7 @@ async def test_post_task(ipc_server):
 
 
 async def test_post_task_no_title(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     payload = json.dumps({"title": "", "body": "text"})
     data = await _ipc_request(sock, "POST", "/tasks", payload)
     assert "error" in data
@@ -156,19 +157,19 @@ async def test_post_task_no_title(ipc_server):
 
 
 async def test_post_task_bad_json(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     data = await _ipc_request(sock, "POST", "/tasks", "not json")
     assert "error" in data
 
 
 async def test_list_tasks_via_ipc_empty(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     data = await _ipc_request(sock, "GET", "/tasks")
     assert data["tasks"] == []
 
 
 async def test_list_tasks_after_add(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     payload = json.dumps({"title": "alpha"})
     await _ipc_request(sock, "POST", "/tasks", payload)
     data = await _ipc_request(sock, "GET", "/tasks")
@@ -177,6 +178,14 @@ async def test_list_tasks_after_add(ipc_server):
 
 
 async def test_not_found(ipc_server):
-    sock, _, _ = ipc_server
+    sock, _, _, _ = ipc_server
     data = await _ipc_request(sock, "GET", "/nope")
     assert "error" in data
+
+
+async def test_wake_sets_agent_event(ipc_server):
+    sock, _, _, wake_events = ipc_server
+    payload = json.dumps({"agent": "refit", "reason": "test"})
+    data = await _ipc_request(sock, "POST", "/wake", payload)
+    assert data == {"ok": True, "agent": "refit"}
+    assert wake_events["refit"].is_set()
