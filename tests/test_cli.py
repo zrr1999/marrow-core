@@ -353,7 +353,9 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
     assert sleeps == [30]
 
 
-def test_invoke_sync_once_subprocess_uses_resolved_python(monkeypatch, tmp_path: Path) -> None:
+def test_invoke_sync_once_subprocess_uses_core_virtualenv_binary(
+    monkeypatch, tmp_path: Path
+) -> None:
     config = _write_config(tmp_path)
     call: dict[str, object] = {}
 
@@ -366,18 +368,13 @@ def test_invoke_sync_once_subprocess_uses_resolved_python(monkeypatch, tmp_path:
         call["kwargs"] = kwargs
         return FakeProc()
 
-    monkeypatch.setattr(
-        "marrow_core.cli.resolve_python_executable", lambda: "/venv/bin/python3.14"
-    )
     monkeypatch.setattr("marrow_core.cli.asyncio.create_subprocess_exec", fake_create_subprocess_exec)
 
     exit_code = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once_subprocess(config))
 
     assert exit_code == 10
     assert call["argv"] == (
-        "/venv/bin/python3.14",
-        "-m",
-        "marrow_core.cli",
+        str(tmp_path / "core" / ".venv" / "bin" / "marrow"),
         "sync-once",
         "--config",
         str(config),
