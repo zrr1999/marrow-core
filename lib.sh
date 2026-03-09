@@ -2,6 +2,10 @@
 # Shared variables and functions for setup.sh.
 # Source this file, do not execute directly.
 
+# When running as root under launchd the PATH is minimal (/usr/bin:/bin:…).
+# Prepend common uv / Homebrew install locations so ensure_venv() can find uv.
+export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
+
 REPO_URL="https://github.com/zrr1999/marrow-core.git"
 CORE_DIR="/opt/marrow-core"
 WORKSPACE="/Users/marrow"
@@ -105,7 +109,10 @@ show_service_status() {
 }
 
 ensure_venv() {
-  command -v uv >/dev/null 2>&1 || { echo "ERROR: uv required (brew install uv)" >&2; exit 1; }
+  command -v uv >/dev/null 2>&1 || {
+    echo "ERROR: uv not found in PATH (${PATH}). Install via: brew install uv" >&2
+    exit 1
+  }
   # Use uv's built-in Python resolution (>=3.12 per pyproject.toml) rather than
   # a hardcoded path that only works on Homebrew macOS installations.
   [[ -d "${CORE_DIR}/.venv" ]] || uv venv --python 3.12 --directory "$CORE_DIR" >/dev/null
