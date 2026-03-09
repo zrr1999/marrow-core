@@ -25,8 +25,8 @@ def test_minimal_agent_config():
 
 
 def test_name_strip():
-    cfg = AgentConfig(name="  scout  ", agent_command="cmd", workspace="/tmp")
-    assert cfg.name == "scout"
+    cfg = AgentConfig(name="  curator  ", agent_command="cmd", workspace="/tmp")
+    assert cfg.name == "curator"
 
 
 def test_empty_name_raises():
@@ -89,16 +89,18 @@ def test_load_config(tmp_path: Path):
         core_dir = "/opt/marrow-core"
 
         [[agents]]
-        name = "scout"
-        agent_command = "opencode run --agent scout"
+        name = "curator"
+        agent_command = "opencode run --agent curator"
         workspace = "/Users/marrow"
         context_dirs = ["/Users/marrow/context.d"]
     """)
     )
     root = load_config(toml)
     assert len(root.agents) == 1
-    assert root.agents[0].name == "scout"
+    assert root.agents[0].name == "curator"
     assert root.core_dir == "/opt/marrow-core"
+    assert root.ipc.enabled is True
+    assert root.self_check.enabled is True
 
 
 def test_extra_forbid(tmp_path: Path):

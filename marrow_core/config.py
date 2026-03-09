@@ -81,7 +81,7 @@ class AgentConfig(BaseModel):
 class IpcConfig(BaseModel):
     """Optional IPC server configuration (Unix domain socket)."""
 
-    enabled: bool = False
+    enabled: bool = True
     socket_path: str = ""  # If empty, derived from first agent's workspace
     task_dir: str = ""  # If empty, derived from first agent's workspace
 
@@ -117,6 +117,36 @@ class SyncConfig(BaseModel):
         return v
 
 
+class SelfCheckConfig(BaseModel):
+    """Core-owned health checks that can wake a top-level agent early."""
+
+    enabled: bool = True
+    interval_seconds: int = 900
+    wake_agent: str = "curator"
+    extra_commands: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("interval_seconds")
+    @classmethod
+    def _clamp_interval(cls, v: int) -> int:
+        return _clamp(v, 60, 604800, "self_check.interval_seconds")
+
+    @field_validator("wake_agent", mode="before")
+    @classmethod
+    def _normalize_wake_agent(cls, v: Any) -> str:
+        return str(v).strip()
+
+    @field_validator("extra_commands", mode="before")
+    @classmethod
+    def _normalize_commands(cls, v: Any) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v.strip()] if v.strip() else []
+        return [str(x).strip() for x in v if str(x).strip()]
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
@@ -124,6 +154,7 @@ class RootConfig(BaseModel):
     agents: list[AgentConfig] = Field(default_factory=list)
     ipc: IpcConfig = Field(default_factory=IpcConfig)
     sync: SyncConfig = Field(default_factory=SyncConfig)
+    self_check: SelfCheckConfig = Field(default_factory=SelfCheckConfig)
 
     model_config = ConfigDict(extra="forbid")
 

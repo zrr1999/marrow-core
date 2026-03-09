@@ -2,9 +2,7 @@
 
 ## Overview
 
-marrow-core is a minimal scheduler for an autonomous agent system with a level-based role layout.
-The human-maintained core stays immutable under `/opt/marrow-core/`; the running
-agent works inside `/Users/marrow/`.
+marrow-core is a minimal scheduler for an autonomous agent system with one scheduled top-level orchestrator by default and layered delegated execution beneath it. The human-maintained core stays immutable under `/opt/marrow-core/`; the running agent works inside `/Users/marrow/`.
 
 ## Prompt layers
 
@@ -26,43 +24,49 @@ The canonical source of truth is:
 - `marrow_core/contracts.py` for runtime inventory and workspace topology rules
 - `role-forge` for casting canonical `roles/` into runtime tool configs
 
-## Role Layout
+## Role layout
 
-Levels are expressed by directory layout and architecture policy, not by encoding `l1-`, `l2-`, or `l3-` into runtime-facing role names.
+Directory layout is an architecture aid, not runtime-enforced metadata.
 
-### `L1` scheduled mains — `roles/l1/`
+### top-level scheduled orchestrators — `roles/`
 
 | Role | Purpose | Can delegate to |
 |------|---------|-----------------|
-| `scout` | routine monitoring, scans, alerts, passive handoffs | none |
-| `conductor` | operational planning, bounded delegation, integration | `L2`, `L3` |
-| `refit` | strategic review, redesign, weekly closure | `L2`, `L3` |
+| `curator` | orchestration, repair, backlog shaping, multi-round closure | `stewards` |
 
-### `L2` expert leads — `roles/l2/`
+### stewards — `roles/stewards/`
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
-| `refactor-lead` | refactors, migrations, architecture change | selected `L3` |
-| `prototype-lead` | PoCs, experiments, exploratory builds | selected `L3` |
-| `review-lead` | PR/CI/review synthesis | selected `L3` |
-| `ops-lead` | CI, deployment, service, environment orchestration | selected `L3` |
+| `conductor` | delivery workstream ownership, integration, closure | `leaders`, exceptional direct `experts` |
+| `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
 
-### `L3` leaf workers — `roles/l3/`
+### leaders — `roles/leaders/`
+
+| Role | Domain | Can delegate to |
+|------|--------|-----------------|
+| `refactor-lead` | refactors, migrations, architecture change | `experts` |
+| `prototype-lead` | PoCs, experiments, exploratory builds | `experts` |
+| `review-lead` | PR/CI/review synthesis | `experts` |
+| `ops-lead` | CI, deployment, service, environment orchestration | `experts` |
+
+### experts — `roles/experts/`
 
 `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
 
-Leaf workers never delegate further.
+Experts never delegate further.
 
 ## Delegation policy
 
 These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 
-- `L1 -> L2/L3` allowed
-- declared `L2 -> L3` allowed
-- `L3 -> *` forbidden
+- `curator -> stewards`
+- `stewards -> leaders`
+- `leaders -> experts`
+- `experts -> *` forbidden
 - upward calls forbidden
 - one accountable owner per workstream
-- delegation depth capped at 2 hops
+- delegation depth capped at 3 hops
 
 ## Runtime boundaries
 
@@ -70,9 +74,10 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 - `marrow_core/prompting.py` — context execution and prompt assembly
 - `marrow_core/runtime.py` — socket, queue, binary path resolution
 - `marrow_core/task_queue.py` — filesystem queue read/write helpers
+- `marrow_core/health.py` — doctor and self-check health checks
 - `marrow_core/services.py` — launchd/systemd rendering
 - `marrow_core/scaffold.py` — workspace scaffold and starter config generation
-- `marrow_core/heartbeat.py` — scheduled orchestration per configured `L1` main
+- `marrow_core/heartbeat.py` — scheduled orchestration per configured top-level agent
 - `marrow_core/ipc.py` — local control plane over Unix socket
 - `marrow_core/cli.py` — user-facing command surface
 
@@ -82,9 +87,10 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 /opt/marrow-core/
 ├── marrow_core/
 ├── roles/
-│   ├── l1/
-│   ├── l2/
-│   └── l3/
+│ ├── experts/
+│ ├── leaders/
+│ ├── stewards/
+│ └── curator.md
 ├── prompts/
 ├── context.d/
 ├── roles.toml
@@ -96,14 +102,13 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 ├── .opencode/agents/       # cast runtime role files + custom-*.md
 ├── context.d/
 ├── tasks/
+│ ├── queue/
+│ ├── delegated/
+│ └── done/
 ├── runtime/
-│   ├── state/
-│   ├── handoff/
-│   │   ├── scout-to-conductor/
-│   │   ├── conductor-to-scout/
-│   │   └── scout-to-human/
-│   ├── checkpoints/
-│   └── logs/
+│ ├── state/
+│ ├── checkpoints/
+│ └── logs/
 └── docs/
 ```
 
@@ -112,7 +117,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 | Command | Purpose |
 |---------|---------|
 | `run` | persistent heartbeat loop |
-| `run-once` | one tick per configured `L1` main |
+| `run-once` | one tick per configured scheduled agent |
 | `dry-run` | prompt assembly without execution |
 | `sync-once` | one bounded sync attempt with structured result |
 | `setup` | workspace init and role sync |
@@ -120,6 +125,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 | `validate` | config summary and schema validation |
 | `doctor` | workspace/context/command availability checks |
 | `status` | heartbeat state via IPC |
+| `wake` | wake a configured agent via IPC |
 | `install-service` | render launchd/systemd service files |
 | `task add` | submit a queued task over IPC |
 | `task list` | inspect queued tasks over IPC |
@@ -129,6 +135,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 - macOS: `com.marrow.heart.plist`
 - Linux: `marrow-heart.service`
 - `marrow run` owns CLI-managed periodic sync by invoking `sync-once` in a subprocess
+- core-owned self-check can wake `curator` early with a repair task when doctor-style checks fail
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
 
 ## Quick start

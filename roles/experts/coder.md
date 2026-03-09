@@ -1,11 +1,11 @@
 ---
 name: coder
 description: >-
-  L3 coder. Implements scoped code changes, refactors, and fixes when the task
-  is already well-defined.
+  Expert coder. Implements scoped code changes, refactors, and fixes when
+  the task is already well-defined.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

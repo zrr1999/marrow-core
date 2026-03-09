@@ -7,7 +7,6 @@ output_dir = "."
 output_layout = "preserve"
 
 [targets.opencode.model_map]
-strategic = "github-copilot/claude-opus-4.6"
-operational = "github-copilot/gpt-5.4"
-specialist = "github-copilot/gpt-5.4"
-routine = "github-copilot/gpt-5-mini"
+high = "github-copilot/claude-opus-4.6"
+medium = "github-copilot/gpt-5.4"
+low = "github-copilot/gpt-5-mini"

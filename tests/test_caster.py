@@ -21,10 +21,9 @@ def _write_roles_toml(core_dir: Path) -> None:
             output_layout = "preserve"
 
             [targets.opencode.model_map]
-            routine = "model-routine"
-            operational = "model-operational"
-            strategic = "model-strategic"
-            specialist = "model-specialist"
+            high = "model-high"
+            medium = "model-medium"
+            low = "model-low"
             """
         ).strip()
         + "\n",
@@ -35,21 +34,21 @@ def _write_roles_toml(core_dir: Path) -> None:
 def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
     workspace = tmp_path / "workspace"
-    role_dir = core_dir / "roles" / "l1"
+    role_dir = core_dir / "roles"
     role_dir.mkdir(parents=True)
     (workspace / ".opencode" / "agents").mkdir(parents=True)
     _write_roles_toml(core_dir)
-    (role_dir / "scout.md").write_text(
+    (role_dir / "curator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: scout
-            description: Routine scout
+            name: curator
+            description: Top-level curator
             role: primary
             model:
-              tier: routine
+              tier: high
             ---
-            You are scout.
+            You are curator.
             """
         ).strip()
         + "\n",
@@ -58,35 +57,35 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
 
     written = cast_roles_to_workspace(str(core_dir), str(workspace))
 
-    target = workspace / ".opencode" / "agents" / "l1" / "scout.md"
+    target = workspace / ".opencode" / "agents" / "curator.md"
     assert written == [target]
     content = target.read_text(encoding="utf-8")
-    assert "description: Routine scout" in content
+    assert "description: Top-level curator" in content
     assert "mode: primary" in content
-    assert "model: model-routine" in content
-    assert "You are scout." in content
+    assert "model: model-high" in content
+    assert "You are curator." in content
 
 
 def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
     workspace = tmp_path / "workspace"
-    role_dir = core_dir / "roles" / "l1"
+    role_dir = core_dir / "roles"
     role_dir.mkdir(parents=True)
     agents_dir = workspace / ".opencode" / "agents"
     agents_dir.mkdir(parents=True)
     _write_roles_toml(core_dir)
     (agents_dir / "custom-local.md").write_text("custom", encoding="utf-8")
-    (role_dir / "scout.md").write_text(
+    (role_dir / "curator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: scout
-            description: Routine scout
+            name: curator
+            description: Top-level curator
             role: primary
             model:
-              tier: routine
+              tier: high
             ---
-            You are scout.
+            You are curator.
             """
         ).strip()
         + "\n",

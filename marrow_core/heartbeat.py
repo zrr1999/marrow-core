@@ -114,6 +114,7 @@ async def heartbeat(
     once: bool = False,
     dry_run: bool = False,
     state: HeartbeatState | None = None,
+    wake_event: asyncio.Event | None = None,
 ) -> None:
     """Run the heartbeat loop for a single agent."""
     rules = load_rules(core_dir)
@@ -158,7 +159,15 @@ async def heartbeat(
 
         if once:
             return
-        await asyncio.sleep(interval)
+        if wake_event is None:
+            await asyncio.sleep(interval)
+            continue
+        try:
+            await asyncio.wait_for(wake_event.wait(), timeout=interval)
+            wake_event.clear()
+            logger.info("[{}] woke early due to external event", name)
+        except TimeoutError:
+            pass
 
 
 async def _tick(

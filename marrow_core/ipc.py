@@ -7,6 +7,7 @@ a Unix domain socket using a minimal HTTP/1.1 protocol with JSON bodies.
 Usage with curl:
     curl --unix-socket /path/to/marrow.sock http://localhost/status
     curl --unix-socket /path/to/marrow.sock -X POST -d '{"title":"fix bug"}' http://localhost/tasks
+    curl --unix-socket /path/to/marrow.sock -X POST -d '{"agent":"curator"}' http://localhost/wake
 """
 
 from __future__ import annotations
@@ -66,6 +67,7 @@ async def _handle(
     writer: asyncio.StreamWriter,
     task_dir: Path,
     state: HeartbeatState,
+    wake_events: dict[str, asyncio.Event],
 ) -> None:
     """Handle one HTTP request over the Unix socket."""
     try:
@@ -118,6 +120,28 @@ async def _handle(
             logger.info("task submitted via ipc: {}", fp.name)
             _send(writer, 200, {"ok": True, "file": fp.name})
 
+        elif path == "/wake" and method == "POST":
+            try:
+                req = json.loads(raw_body) if raw_body else {}
+            except json.JSONDecodeError:
+                _send(writer, 400, {"error": "invalid JSON"})
+                return
+            agent = req.get("agent", "").strip() if isinstance(req, dict) else ""
+            if not agent:
+                _send(writer, 400, {"error": "agent is required"})
+                return
+            event = wake_events.get(agent)
+            if event is None:
+                _send(writer, 404, {"error": f"unknown agent: {agent}"})
+                return
+            event.set()
+            reason = req.get("reason", "").strip() if isinstance(req, dict) else ""
+            if reason:
+                logger.info('wake submitted via ipc for "{}": {}', agent, reason)
+            else:
+                logger.info('wake submitted via ipc for "{}"', agent)
+            _send(writer, 200, {"ok": True, "agent": agent})
+
         else:
             _send(writer, 404, {"error": "not found"})
 
@@ -142,6 +166,7 @@ async def start_ipc_server(
     socket_path: str,
     task_dir: str,
     state: HeartbeatState,
+    wake_events: dict[str, asyncio.Event],
 ) -> asyncio.Server:
     """Start the IPC server on a Unix domain socket."""
     sock = Path(socket_path)
@@ -153,7 +178,7 @@ async def start_ipc_server(
     td = Path(task_dir)
 
     async def handler(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
-        await _handle(r, w, td, state)
+        await _handle(r, w, td, state, wake_events)
 
     server = await asyncio.start_unix_server(handler, path=str(sock))
     logger.info("ipc server listening on {}", sock)

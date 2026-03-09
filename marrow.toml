@@ -1,36 +1,24 @@
 core_dir = "/opt/marrow-core"
 
+[ipc]
+enabled = true
+
+[self_check]
+enabled = true
+interval_seconds = 900
+wake_agent = "curator"
+
 [sync]
 enabled = true
 interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
-name = "scout"
-heartbeat_interval = 300
-heartbeat_timeout = 500
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent l1/scout"
-context_dirs = [
-  "/Users/marrow/context.d",
-]
-
-[[agents]]
-name = "conductor"
-heartbeat_interval = 7200
+name = "curator"
+heartbeat_interval = 10800  # every 3 hours
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent l1/conductor"
-context_dirs = [
-  "/Users/marrow/context.d",
-]
-
-[[agents]]
-name = "refit"
-heartbeat_interval = 302400  # twice a week (3.5 days)
-heartbeat_timeout = 28800  # 8 h — deep co-evolution sessions can run long
-workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent l1/refit"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = [
   "/Users/marrow/context.d",
 ]

@@ -1,11 +1,11 @@
 ---
 name: tester
 description: >-
-  L3 tester. Writes or runs targeted tests, diagnoses failures, and reports
-  concrete regression evidence.
+  Expert tester. Writes or runs targeted tests, diagnoses failures, and
+  reports concrete regression evidence.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

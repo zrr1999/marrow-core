@@ -1,11 +1,11 @@
 ---
 name: filer
 description: >-
-  L3 filer. Handles bounded file organization, cleanup, archival, and workspace
-  hygiene tasks with strong caution around destructive actions.
+  Expert filer. Handles bounded file organization, cleanup, archival, and
+  workspace hygiene tasks with strong caution around destructive actions.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---

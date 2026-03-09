@@ -1,11 +1,11 @@
 ---
 name: writer
 description: >-
-  L3 writer. Produces documentation, summaries, reports, and explanatory text
-  for a bounded output target.
+  Expert writer. Produces documentation, summaries, reports, and explanatory
+  text for a bounded output target.
 role: subagent
 model:
-  tier: specialist
+  tier: low
 capabilities:
   - basic
 ---
