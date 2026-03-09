@@ -306,9 +306,11 @@ def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Pa
     sleeps: list[int] = []
     reloads: list[str] = []
 
-    async def fake_invoke_sync_once(root) -> int:
+    async def fake_invoke_sync_once(root):
         assert root.sync.interval_seconds == 3600
-        return 10
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.RELOADED, "workspace metadata refreshed")
 
     async def fake_reload_runtime(root) -> None:
         reloads.extend(agent.name for agent in root.agents)
@@ -332,9 +334,11 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
     config = _write_config(tmp_path)
     sleeps: list[int] = []
 
-    async def fake_invoke_sync_once(root) -> int:
+    async def fake_invoke_sync_once(root):
         assert root.sync.failure_backoff_seconds == 30
-        return 1
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.FAILED, "git fetch failed")
 
     async def fake_sleep(seconds: int) -> None:
         sleeps.append(seconds)
@@ -369,9 +373,9 @@ def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: P
     monkeypatch.setattr("marrow_core.cli.asyncio.to_thread", fake_to_thread)
     monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
 
-    exit_code = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once(root))
+    outcome = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once(root))
 
-    assert exit_code == 10
+    assert outcome.result.value == "reloaded"
     assert call["func"] is fake_run_sync_once
     assert call["args"] == ()
     assert call["kwargs"] == {
@@ -381,3 +385,22 @@ def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: P
         "lock_file": tmp_path / "workspace" / "runtime" / "state" / "sync.lock",
     }
     assert call["run_sync_once_kwargs"] == call["kwargs"]
+
+
+def test_invoke_sync_once_wraps_sync_errors(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    root = __import__("marrow_core.cli").cli.load_config(config)
+
+    async def fake_to_thread(func, /, *args, **kwargs):
+        return func(*args, **kwargs)
+
+    def fake_run_sync_once(**kwargs):
+        raise __import__("marrow_core.sync").sync.SyncError("git fetch failed")
+
+    monkeypatch.setattr("marrow_core.cli.asyncio.to_thread", fake_to_thread)
+    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
+
+    outcome = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once(root))
+
+    assert outcome.result.value == "failed"
+    assert outcome.reason == "git fetch failed"
