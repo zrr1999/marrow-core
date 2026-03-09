@@ -19,7 +19,6 @@ from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
 from marrow_core.runtime import (
-    marrow_binary,
     resolve_socket_path,
     resolve_sync_lock_path,
     resolve_sync_state_path,
@@ -104,9 +103,9 @@ def _run_heartbeat(
 
 
 async def _sync_supervisor(config: Path) -> None:
-    root = load_config(config)
     while True:
-        exit_code = await _invoke_sync_once_subprocess(config)
+        root = load_config(config)
+        exit_code = await _invoke_sync_once(root)
         if exit_code == 0:
             await asyncio.sleep(root.sync.interval_seconds)
             continue
@@ -119,17 +118,20 @@ async def _sync_supervisor(config: Path) -> None:
         await asyncio.sleep(root.sync.failure_backoff_seconds)
 
 
-async def _invoke_sync_once_subprocess(config: Path) -> int:
-    root = load_config(config)
-    proc = await asyncio.create_subprocess_exec(
-        marrow_binary(root.core_dir),
-        "sync-once",
-        "--config",
-        str(config),
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    return await proc.wait()
+async def _invoke_sync_once(root: RootConfig) -> int:
+    if not root.agents:
+        return 1
+    try:
+        outcome = await asyncio.to_thread(
+            run_sync_once,
+            core_dir=root.core_dir,
+            workspace=root.agents[0].workspace,
+            state_file=Path(resolve_sync_state_path(root)),
+            lock_file=Path(resolve_sync_lock_path(root)),
+        )
+    except SyncError:
+        return 1
+    return outcome.exit_code
 
 
 async def _reload_runtime(root: RootConfig) -> None:

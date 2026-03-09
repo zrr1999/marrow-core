@@ -306,8 +306,8 @@ def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Pa
     sleeps: list[int] = []
     reloads: list[str] = []
 
-    async def fake_invoke_sync_once_subprocess(path: Path) -> int:
-        assert path == config
+    async def fake_invoke_sync_once(root) -> int:
+        assert root.sync.interval_seconds == 3600
         return 10
 
     async def fake_reload_runtime(root) -> None:
@@ -317,9 +317,7 @@ def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Pa
         sleeps.append(seconds)
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(
-        "marrow_core.cli._invoke_sync_once_subprocess", fake_invoke_sync_once_subprocess
-    )
+    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
     monkeypatch.setattr("marrow_core.cli._reload_runtime", fake_reload_runtime)
     monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
 
@@ -334,17 +332,15 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
     config = _write_config(tmp_path)
     sleeps: list[int] = []
 
-    async def fake_invoke_sync_once_subprocess(path: Path) -> int:
-        assert path == config
+    async def fake_invoke_sync_once(root) -> int:
+        assert root.sync.failure_backoff_seconds == 30
         return 1
 
     async def fake_sleep(seconds: int) -> None:
         sleeps.append(seconds)
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(
-        "marrow_core.cli._invoke_sync_once_subprocess", fake_invoke_sync_once_subprocess
-    )
+    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
     monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
 
     with contextlib.suppress(asyncio.CancelledError):
@@ -353,33 +349,35 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
     assert sleeps == [30]
 
 
-def test_invoke_sync_once_subprocess_uses_core_virtualenv_binary(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
+    root = __import__("marrow_core.cli").cli.load_config(config)
     call: dict[str, object] = {}
 
-    class FakeProc:
-        async def wait(self) -> int:
-            return 10
-
-    async def fake_create_subprocess_exec(*argv, **kwargs):
-        call["argv"] = argv
+    async def fake_to_thread(func, /, *args, **kwargs):
+        call["func"] = func
+        call["args"] = args
         call["kwargs"] = kwargs
-        return FakeProc()
+        return func(*args, **kwargs)
 
-    monkeypatch.setattr("marrow_core.cli.asyncio.create_subprocess_exec", fake_create_subprocess_exec)
+    def fake_run_sync_once(**kwargs):
+        call["run_sync_once_kwargs"] = kwargs
+        from marrow_core.sync import SyncOutcome, SyncResult
 
-    exit_code = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once_subprocess(config))
+        return SyncOutcome(SyncResult.RELOADED, "workspace metadata refreshed")
+
+    monkeypatch.setattr("marrow_core.cli.asyncio.to_thread", fake_to_thread)
+    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
+
+    exit_code = asyncio.run(__import__("marrow_core.cli").cli._invoke_sync_once(root))
 
     assert exit_code == 10
-    assert call["argv"] == (
-        str(tmp_path / "core" / ".venv" / "bin" / "marrow"),
-        "sync-once",
-        "--config",
-        str(config),
-    )
+    assert call["func"] is fake_run_sync_once
+    assert call["args"] == ()
     assert call["kwargs"] == {
-        "stdout": asyncio.subprocess.DEVNULL,
-        "stderr": asyncio.subprocess.DEVNULL,
+        "core_dir": str(tmp_path / "core"),
+        "workspace": str(tmp_path / "workspace"),
+        "state_file": tmp_path / "workspace" / "runtime" / "state" / "sync-status.json",
+        "lock_file": tmp_path / "workspace" / "runtime" / "state" / "sync.lock",
     }
+    assert call["run_sync_once_kwargs"] == call["kwargs"]
