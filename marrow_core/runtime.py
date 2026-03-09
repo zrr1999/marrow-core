@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
 from pathlib import Path
 
 from marrow_core.config import RootConfig
@@ -39,6 +41,21 @@ def resolve_task_dir(root: RootConfig) -> str:
 
 def marrow_binary(core_dir: str) -> str:
     return str(Path(core_dir) / ".venv" / "bin" / "marrow")
+
+
+def resolve_python_executable() -> str:
+    current = sys.executable
+    if current:
+        if Path(current).exists():
+            return current
+        resolved_current = shutil.which(current)
+        if resolved_current:
+            return resolved_current
+    for candidate in ("python3", "python"):
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return current or "python3"
 
 
 def resolve_sync_state_path(root: RootConfig) -> str:

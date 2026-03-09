@@ -19,6 +19,7 @@ from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
 from marrow_core.runtime import (
+    resolve_python_executable,
     resolve_socket_path,
     resolve_sync_lock_path,
     resolve_sync_state_path,
@@ -120,7 +121,7 @@ async def _sync_supervisor(config: Path) -> None:
 
 async def _invoke_sync_once_subprocess(config: Path) -> int:
     proc = await asyncio.create_subprocess_exec(
-        shutil.which("python") or "python",
+        resolve_python_executable(),
         "-m",
         "marrow_core.cli",
         "sync-once",
