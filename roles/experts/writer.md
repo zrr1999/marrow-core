@@ -1,7 +1,7 @@
 ---
 name: writer
 description: >-
-  L1 expert writer. Produces documentation, summaries, reports, and explanatory
+  Expert writer. Produces documentation, summaries, reports, and explanatory
   text for a bounded output target.
 role: subagent
 model:

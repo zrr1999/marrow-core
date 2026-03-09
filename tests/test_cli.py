@@ -27,9 +27,15 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
     script.write_text("#!/usr/bin/env python3\nprint('queue ok')\n", encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IXUSR)
 
-    ipc_block = ""
+    task_dir = workspace / "tasks" / "queue"
+    ipc_block = textwrap.dedent(
+        """
+
+        [ipc]
+        enabled = false
+        """
+    )
     if socket_path is not None:
-        task_dir = workspace / "tasks" / "queue"
         ipc_block = textwrap.dedent(
             f"""
 
@@ -57,7 +63,7 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
         [self_check]
         enabled = false
         interval_seconds = 900
-        wake_agent = "refit"
+        wake_agent = "curator"
         """
     )
 
@@ -171,7 +177,7 @@ def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
         assert method == "GET"
         assert path == "/status"
         assert body == ""
-        return {"uptime": 1.2, "agents": {"refit": {"tick_count": 3}}}
+        return {"uptime": 1.2, "agents": {"curator": {"tick_count": 3}}}
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
@@ -190,18 +196,18 @@ def test_wake_submits_ipc_request(monkeypatch, tmp_path: Path) -> None:
 
     async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
         request.update({"socket": socket, "method": method, "path": path, "body": body})
-        return {"ok": True, "agent": "refit"}
+        return {"ok": True, "agent": "curator"}
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
-    result = runner.invoke(app, ["wake", "refit", "--reason", "manual", "--config", str(config)])
+    result = runner.invoke(app, ["wake", "curator", "--reason", "manual", "--config", str(config)])
 
     assert result.exit_code == 0
-    assert 'wake submitted for "refit"' in result.stdout
+    assert 'wake submitted for "curator"' in result.stdout
     assert request["socket"] == str(socket_path)
     assert request["method"] == "POST"
     assert request["path"] == "/wake"
-    assert json.loads(request["body"]) == {"agent": "refit", "reason": "manual"}
+    assert json.loads(request["body"]) == {"agent": "curator", "reason": "manual"}
 
 
 def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
@@ -401,11 +407,11 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
             "self_check": {
                 "enabled": True,
                 "interval_seconds": 900,
-                "wake_agent": "refit",
+                "wake_agent": "curator",
             },
             "agents": [
                 {
-                    "name": "refit",
+                    "name": "curator",
                     "agent_command": str(tmp_path / "missing-binary"),
                     "workspace": str(workspace),
                     "context_dirs": [str(workspace / "missing-context")],
@@ -413,7 +419,7 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
             ],
         }
     )
-    wake_events = {"refit": asyncio.Event()}
+    wake_events = {"curator": asyncio.Event()}
 
     async def fake_sleep(seconds: int) -> None:
         raise asyncio.CancelledError
@@ -428,5 +434,5 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
     files = list(task_dir.glob("*.md"))
     assert len(files) == 1
     body = files[0].read_text(encoding="utf-8")
-    assert "Run `refit` in repair mode" in body
-    assert wake_events["refit"].is_set()
+    assert "Run `curator` in repair mode" in body
+    assert wake_events["curator"].is_set()

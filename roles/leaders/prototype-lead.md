@@ -1,7 +1,7 @@
 ---
 name: prototype-lead
 description: >-
-  L2 leader for proof-of-concept work, fast experiments, throwaway
+  Leader for proof-of-concept work, fast experiments, throwaway
   implementations, and explicit findings for exploratory changes.
 role: subagent
 model:

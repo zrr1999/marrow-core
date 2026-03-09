@@ -30,11 +30,11 @@ jobs:
           core_dir = "${{ github.workspace }}"
 
           [[agents]]
-          name = "refit"
+          name = "curator"
           heartbeat_interval = 10800
           heartbeat_timeout = 7200
           workspace = "/tmp/marrow-ci"
-          agent_command = "opencode run --agent refit"
+          agent_command = "opencode run --agent curator"
           context_dirs = ["/tmp/marrow-ci/context.d"]
           EOF
 

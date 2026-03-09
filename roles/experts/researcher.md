@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: >-
-  L1 expert researcher. Gathers external references, prior art, release notes,
+  Expert researcher. Gathers external references, prior art, release notes,
   and comparative findings for a specific question.
 role: subagent
 model:

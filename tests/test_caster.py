@@ -38,17 +38,17 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
     role_dir.mkdir(parents=True)
     (workspace / ".opencode" / "agents").mkdir(parents=True)
     _write_roles_toml(core_dir)
-    (role_dir / "refit.md").write_text(
+    (role_dir / "curator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: refit
-            description: Top-level refit
+            name: curator
+            description: Top-level curator
             role: primary
             model:
               tier: high
             ---
-            You are refit.
+            You are curator.
             """
         ).strip()
         + "\n",
@@ -57,13 +57,13 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
 
     written = cast_roles_to_workspace(str(core_dir), str(workspace))
 
-    target = workspace / ".opencode" / "agents" / "refit.md"
+    target = workspace / ".opencode" / "agents" / "curator.md"
     assert written == [target]
     content = target.read_text(encoding="utf-8")
-    assert "description: Top-level refit" in content
+    assert "description: Top-level curator" in content
     assert "mode: primary" in content
     assert "model: model-high" in content
-    assert "You are refit." in content
+    assert "You are curator." in content
 
 
 def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> None:
@@ -75,17 +75,17 @@ def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> 
     agents_dir.mkdir(parents=True)
     _write_roles_toml(core_dir)
     (agents_dir / "custom-local.md").write_text("custom", encoding="utf-8")
-    (role_dir / "refit.md").write_text(
+    (role_dir / "curator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: refit
-            description: Top-level refit
+            name: curator
+            description: Top-level curator
             role: primary
             model:
               tier: high
             ---
-            You are refit.
+            You are curator.
             """
         ).strip()
         + "\n",

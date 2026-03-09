@@ -1,7 +1,7 @@
 ---
 name: coder
 description: >-
-  L1 expert coder. Implements scoped code changes, refactors, and fixes when
+  Expert coder. Implements scoped code changes, refactors, and fixes when
   the task is already well-defined.
 role: subagent
 model:

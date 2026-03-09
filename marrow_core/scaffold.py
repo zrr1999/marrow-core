@@ -9,7 +9,7 @@ from pathlib import Path
 from marrow_core.contracts import AUTONOMOUS_AGENTS, WORKSPACE_DIRS
 
 DEFAULT_AGENT_SCHEDULES = {
-    "refit": (10800, 7200),
+    "curator": (10800, 7200),
 }
 
 
@@ -66,7 +66,7 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             [self_check]
             enabled = true
             interval_seconds = 900
-            wake_agent = "refit"
+            wake_agent = "curator"
 
             {"\n\n".join(blocks)}
             """

@@ -91,7 +91,7 @@ def test_run_sync_once_refreshes_workspace_for_role_only_changes(
             ("status", "--short"): "",
             ("rev-parse", "HEAD"): "abc",
             ("rev-parse", "origin/main"): "def",
-            ("diff", "--name-only", "HEAD..origin/main"): "roles/refit.md\n",
+            ("diff", "--name-only", "HEAD..origin/main"): "roles/curator.md\n",
             ("merge", "--ff-only", "origin/main"): "updated",
         }
         return responses[args]

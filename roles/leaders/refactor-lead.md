@@ -1,7 +1,7 @@
 ---
 name: refactor-lead
 description: >-
-  L2 leader for bounded architecture changes, phased refactors, migration
+  Leader for bounded architecture changes, phased refactors, migration
   plans, and technical integration across multiple files.
 role: subagent
 model:

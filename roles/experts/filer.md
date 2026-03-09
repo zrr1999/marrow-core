@@ -1,7 +1,7 @@
 ---
 name: filer
 description: >-
-  L1 expert filer. Handles bounded file organization, cleanup, archival, and
+  Expert filer. Handles bounded file organization, cleanup, archival, and
   workspace hygiene tasks with strong caution around destructive actions.
 role: subagent
 model:

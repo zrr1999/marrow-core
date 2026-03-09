@@ -48,17 +48,19 @@ def test_role_inventory_matches_contract():
         for path in (REPO_ROOT / "roles").rglob("*.md")
     )
     assert actual == sorted(ROLE_PATHS.values())
+    role_dirs = sorted(path.name for path in (REPO_ROOT / "roles").iterdir() if path.is_dir())
+    assert role_dirs == ["experts", "leaders", "stewards"]
 
 
 def test_role_model_tiers_match_expected_inventory():
-    assert ROLE_MODEL_TIERS["refit"] == "high"
+    assert ROLE_MODEL_TIERS["curator"] == "high"
     assert ROLE_MODEL_TIERS["conductor"] == "medium"
     assert ROLE_MODEL_TIERS["repo-steward"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
 def test_role_inventory_groups_are_stable():
-    assert tuple(AUTONOMOUS_AGENTS) == ("refit",)
+    assert tuple(AUTONOMOUS_AGENTS) == ("curator",)
     assert tuple(STEWARDS) == (
         "conductor",
         "repo-steward",
@@ -110,17 +112,16 @@ def test_docs_describe_rules_roles_context_layers():
     assert "Do not treat `context.d/` as a place for long-lived policy" in rules
 
 
-def test_docs_use_level_folders_not_level_encoded_names():
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    rules = (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8")
+def test_docs_use_semantic_role_directories_and_avoid_numbered_layers():
+    docs = [
+        (REPO_ROOT / "README.md").read_text(encoding="utf-8"),
+        (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8"),
+        (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8"),
+    ]
+    merged = "\n".join(docs)
 
-    for token in ("roles/l1/", "roles/l2/", "roles/l3/", "repo-steward", "coder"):
-        assert token in readme or token in agents_doc or token in rules
-
-    for token in ("l1-", "l2-", "l3-"):
-        assert token not in readme
-        assert token not in rules
+    for token in ("roles/experts/", "roles/leaders/", "roles/stewards/", "`curator`"):
+        assert token in merged
 
 
 def test_readme_documents_commands_and_self_check():
@@ -145,7 +146,7 @@ def test_docs_describe_unified_sync_model() -> None:
     assert "CLI-managed periodic sync" in readme
     assert "one long-running service" in readme
     assert "sync-once" in agents_doc
-    assert "self-check can wake `refit` early" in agents_doc
+    assert "self-check can wake `curator` early" in agents_doc
     assert "com.marrow.heart.sync.plist" not in agents_doc
     assert "marrow-heart-sync.timer" not in agents_doc
 

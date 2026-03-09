@@ -1,7 +1,7 @@
 ---
 name: review-lead
 description: >-
-  L2 leader for PR review, CI failure synthesis, GitHub discussion handling,
+  Leader for PR review, CI failure synthesis, GitHub discussion handling,
   and review-driven follow-up planning.
 role: subagent
 model:

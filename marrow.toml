@@ -6,7 +6,7 @@ enabled = true
 [self_check]
 enabled = true
 interval_seconds = 900
-wake_agent = "refit"
+wake_agent = "curator"
 
 [sync]
 enabled = true
@@ -14,11 +14,11 @@ interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
-name = "refit"
+name = "curator"
 heartbeat_interval = 10800  # every 3 hours
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = [
   "/Users/marrow/context.d",
 ]

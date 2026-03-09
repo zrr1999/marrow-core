@@ -38,16 +38,16 @@ marrow-core uses a layered role layout as prompt policy.
 
 | Role | Purpose | Delegation |
 |------|---------|------------|
-| `refit` | orchestration, repair, backlog shaping | `stewards` |
+| `curator` | orchestration, repair, backlog shaping | `stewards` |
 
-### stewards — `roles/l3/`
+### stewards — `roles/stewards/`
 
 | Role | Purpose | Delegation |
 |------|---------|------------|
 | `conductor` | delivery ownership, integration, closure | `leaders`, exceptional direct `experts` |
 | `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
 
-### leaders — `roles/l2/`
+### leaders — `roles/leaders/`
 
 | Role | Domain | Delegation |
 |------|--------|------------|
@@ -56,11 +56,11 @@ marrow-core uses a layered role layout as prompt policy.
 | `review-lead` | reviews, CI synthesis, GitHub-facing analysis | `experts` |
 | `ops-lead` | CI, services, deployment, environment work | `experts` |
 
-### experts — `roles/l1/`
+### experts — `roles/experts/`
 
 `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
 
-- `refit -> stewards`
+- `curator -> stewards`
 - `stewards -> leaders`
 - `leaders -> experts`
 - `experts -> *` forbidden
@@ -72,7 +72,7 @@ These are prompt rules, not runtime-enforced hierarchy metadata.
 
 ## Delegation Rules
 
-- `refit` is the default scheduled owner and should route work through stewards first.
+- `curator` is the default scheduled owner and should route work through stewards first.
 - The parent that starts a workstream remains accountable for final integration.
 - Delegate only when the child role has a clearly bounded responsibility.
 - Use `tasks/queue` plus IPC wake events for active coordination.

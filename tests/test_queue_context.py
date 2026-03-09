@@ -40,6 +40,7 @@ def test_queue_outputs_full_paths_without_contents(tmp_path: Path) -> None:
     assert "first task body" not in output
     assert "second task body" not in output
 
+
 def test_queue_context_stays_queue_focused(tmp_path: Path) -> None:
     queue_dir = tmp_path / "tasks" / "queue"
     queue_dir.mkdir(parents=True)

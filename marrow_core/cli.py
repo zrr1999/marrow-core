@@ -160,9 +160,7 @@ async def _reload_runtime(root: RootConfig) -> None:
         cast_roles_to_workspace(root.core_dir, agent.workspace)
 
 
-def _wake_agent(
-    wake_events: dict[str, asyncio.Event], agent_name: str, *, reason: str
-) -> bool:
+def _wake_agent(wake_events: dict[str, asyncio.Event], agent_name: str, *, reason: str) -> bool:
     event = wake_events.get(agent_name)
     if event is None:
         logger.warning('wake requested for unknown agent "{}" ({})', agent_name, reason)
@@ -174,7 +172,7 @@ def _wake_agent(
 
 def _self_check_task_body(agent_name: str, issues: list[str]) -> str:
     lines = [
-        f'Run `{agent_name}` in repair mode and resolve the following core health issues.',
+        f"Run `{agent_name}` in repair mode and resolve the following core health issues.",
         "",
         "Observed issues:",
     ]

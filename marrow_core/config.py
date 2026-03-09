@@ -122,7 +122,7 @@ class SelfCheckConfig(BaseModel):
 
     enabled: bool = True
     interval_seconds: int = 900
-    wake_agent: str = "refit"
+    wake_agent: str = "curator"
     extra_commands: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")

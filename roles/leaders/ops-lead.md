@@ -1,7 +1,7 @@
 ---
 name: ops-lead
 description: >-
-  L2 leader for CI, service, deployment, environment, and operational rollout
+  Leader for CI, service, deployment, environment, and operational rollout
   work that may require local planning plus several execution steps.
 role: subagent
 model:

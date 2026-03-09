@@ -67,11 +67,11 @@ def test_list_tasks(tmp_path: Path):
 
 def test_heartbeat_state_to_dict():
     state = HeartbeatState()
-    state.agents["refit"] = AgentState(name="refit", interval=300, tick_count=5)
+    state.agents["curator"] = AgentState(name="curator", interval=300, tick_count=5)
     d = state.to_dict()
     assert "uptime" in d
     assert "agents" in d
-    assert d["agents"]["refit"]["tick_count"] == 5
+    assert d["agents"]["curator"]["tick_count"] == 5
 
 
 # ---------------------------------------------------------------------------
@@ -92,8 +92,8 @@ async def ipc_server():
         sock = str(tmpdir / "t.sock")
         task_dir = tmpdir / "tasks" / "queue"
         state = HeartbeatState()
-        state.agents["refit"] = AgentState(name="refit", interval=300, tick_count=3)
-        wake_events = {"refit": asyncio.Event()}
+        state.agents["curator"] = AgentState(name="curator", interval=300, tick_count=3)
+        wake_events = {"curator": asyncio.Event()}
         server = await start_ipc_server(sock, str(task_dir), state, wake_events)
         yield sock, task_dir, state, wake_events
         server.close()
@@ -133,7 +133,7 @@ async def test_status(ipc_server):
     data = await _ipc_request(sock, "GET", "/status")
     assert "uptime" in data
     assert "agents" in data
-    assert data["agents"]["refit"]["tick_count"] == 3
+    assert data["agents"]["curator"]["tick_count"] == 3
 
 
 async def test_post_task(ipc_server):
@@ -185,7 +185,7 @@ async def test_not_found(ipc_server):
 
 async def test_wake_sets_agent_event(ipc_server):
     sock, _, _, wake_events = ipc_server
-    payload = json.dumps({"agent": "refit", "reason": "test"})
+    payload = json.dumps({"agent": "curator", "reason": "test"})
     data = await _ipc_request(sock, "POST", "/wake", payload)
-    assert data == {"ok": True, "agent": "refit"}
-    assert wake_events["refit"].is_set()
+    assert data == {"ok": True, "agent": "curator"}
+    assert wake_events["curator"].is_set()

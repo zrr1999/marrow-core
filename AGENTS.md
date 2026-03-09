@@ -32,16 +32,16 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 
 | Role | Purpose | Can delegate to |
 |------|---------|-----------------|
-| `refit` | orchestration, repair, backlog shaping, multi-round closure | `stewards` |
+| `curator` | orchestration, repair, backlog shaping, multi-round closure | `stewards` |
 
-### `stewards` — `roles/l3/`
+### stewards — `roles/stewards/`
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
 | `conductor` | delivery workstream ownership, integration, closure | `leaders`, exceptional direct `experts` |
 | `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
 
-### `leaders` — `roles/l2/`
+### leaders — `roles/leaders/`
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
@@ -50,7 +50,7 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 | `review-lead` | PR/CI/review synthesis | `experts` |
 | `ops-lead` | CI, deployment, service, environment orchestration | `experts` |
 
-### `experts` — `roles/l1/`
+### experts — `roles/experts/`
 
 `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
 
@@ -60,7 +60,7 @@ Experts never delegate further.
 
 These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 
-- `refit -> stewards`
+- `curator -> stewards`
 - `stewards -> leaders`
 - `leaders -> experts`
 - `experts -> *` forbidden
@@ -87,10 +87,10 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 /opt/marrow-core/
 ├── marrow_core/
 ├── roles/
-│ ├── l1/
-│ ├── l2/
-│ ├── l3/
-│ └── refit.md
+│ ├── experts/
+│ ├── leaders/
+│ ├── stewards/
+│ └── curator.md
 ├── prompts/
 ├── context.d/
 ├── roles.toml
@@ -135,7 +135,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 - macOS: `com.marrow.heart.plist`
 - Linux: `marrow-heart.service`
 - `marrow run` owns CLI-managed periodic sync by invoking `sync-once` in a subprocess
-- core-owned self-check can wake `refit` early with a repair task when doctor-style checks fail
+- core-owned self-check can wake `curator` early with a repair task when doctor-style checks fail
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
 
 ## Quick start

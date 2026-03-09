@@ -15,14 +15,14 @@ Repo-root `agents/` is retired. Do not add new prompt material there.
 
 ## Role layout
 
-marrow-core now treats `roles/` root as the home for top-level scheduled orchestrators, with the numbered folders used only for the lower layers.
+marrow-core uses semantic role directories instead of numbered layers.
 
 | Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
-| top-level | `roles/` | `refit` | scheduled orchestration, repair, backlog shaping |
-| stewards | `roles/l3/` | `conductor`, `repo-steward` | domain ownership, routing, closure, external follow-through |
-| leaders | `roles/l2/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded planning and integration for a domain |
-| experts | `roles/l1/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
+| top-level | `roles/` | `curator` | scheduled orchestration, repair, backlog shaping |
+| stewards | `roles/stewards/` | `conductor`, `repo-steward` | domain ownership, routing, closure, external follow-through |
+| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded planning and integration for a domain |
+| experts | `roles/experts/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
 Delegation policy:
 
@@ -34,7 +34,7 @@ Delegation policy:
 - one accountable owner per workstream
 - max delegation depth: 3 hops
 
-Default runtime scheduling only runs `refit`, but the config format still supports multiple top-level scheduled agents for future multi-user or multi-root deployments.
+Default runtime scheduling only runs `curator`, but the config format still supports multiple top-level scheduled agents for future multi-user or multi-root deployments.
 
 ## Canonical role layer
 
@@ -73,7 +73,7 @@ enabled = true
 [self_check]
 enabled = true
 interval_seconds = 900
-wake_agent = "refit"
+wake_agent = "curator"
 
 [sync]
 enabled = true
@@ -81,15 +81,15 @@ interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
-name = "refit"
+name = "curator"
 heartbeat_interval = 10800
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-agent_command = "/Users/marrow/.opencode/bin/opencode run --agent refit"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = ["/Users/marrow/context.d"]
 ```
 
-Model tiers live in `roles.toml` and now map to `high`, `medium`, and `low`.
+Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
 ## Runtime contract
 
@@ -103,7 +103,7 @@ The effective execution path is:
 
 ## Core self-check
 
-`scout` is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
+The old scout-style巡检 loop is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
 
 ## Runtime boundaries
 
@@ -182,6 +182,7 @@ Useful follow-up checks:
 python -m marrow_core.cli validate --config marrow.toml
 python -m marrow_core.cli doctor --config marrow.toml
 python -m marrow_core.cli status --config marrow.toml
+python -m marrow_core.cli wake curator --config marrow.toml --reason manual
 ```
 
 ## Sync model
@@ -196,4 +197,3 @@ Repository-local quality tools are intended to be invoked with `uvx` rather than
 ## Architecture
 
 See `AGENTS.md` for the full contract and filesystem model.
-Deferred naming follow-ups, including evaluating `refit -> curator`, live in `docs/todo.md`.

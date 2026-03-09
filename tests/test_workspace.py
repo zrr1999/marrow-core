@@ -38,11 +38,11 @@ def test_core_definition_files_require_roles(tmp_path: Path) -> None:
 def test_core_definition_files_read_roles_recursively(tmp_path: Path) -> None:
     core_dir = tmp_path / "core"
     (core_dir / "roles").mkdir(parents=True)
-    (core_dir / "roles" / "refit.md").write_text("# Refit", encoding="utf-8")
+    (core_dir / "roles" / "curator.md").write_text("# Curator", encoding="utf-8")
 
     files = _core_definition_files(str(core_dir))
 
-    assert files == [core_dir / "roles" / "refit.md"]
+    assert files == [core_dir / "roles" / "curator.md"]
 
 
 def test_load_rules(tmp_path: Path):

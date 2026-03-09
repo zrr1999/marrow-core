@@ -1,7 +1,7 @@
 ---
 name: tester
 description: >-
-  L1 expert tester. Writes or runs targeted tests, diagnoses failures, and
+  Expert tester. Writes or runs targeted tests, diagnoses failures, and
   reports concrete regression evidence.
 role: subagent
 model:

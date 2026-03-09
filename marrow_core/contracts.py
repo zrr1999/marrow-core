@@ -9,7 +9,7 @@ from __future__ import annotations
 ROLE_DIR = "roles"
 WORKSPACE_AGENT_DIR = ".opencode/agents"
 
-ROOT_AGENTS = ("refit",)
+TOP_LEVEL_AGENTS = ("curator",)
 STEWARDS = (
     "conductor",
     "repo-steward",
@@ -31,30 +31,30 @@ EXPERTS = (
 )
 
 # Scheduled agents are a runtime concern; keep them distinct from the full role inventory.
-AUTONOMOUS_AGENTS = ROOT_AGENTS
-SYNCED_ROLE_FILES = ROOT_AGENTS + STEWARDS + LEADERS + EXPERTS
+AUTONOMOUS_AGENTS = TOP_LEVEL_AGENTS
+SYNCED_ROLE_FILES = TOP_LEVEL_AGENTS + STEWARDS + LEADERS + EXPERTS
 
 ROLE_MODEL_TIERS = {
-    "refit": "high",
+    "curator": "high",
     **dict.fromkeys(STEWARDS + LEADERS, "medium"),
     **dict.fromkeys(EXPERTS, "low"),
 }
 
 ROLE_PATHS = {
-    "refit": "roles/refit.md",
-    "conductor": "roles/l3/conductor.md",
-    "repo-steward": "roles/l3/repo-steward.md",
-    "refactor-lead": "roles/l2/refactor-lead.md",
-    "prototype-lead": "roles/l2/prototype-lead.md",
-    "review-lead": "roles/l2/review-lead.md",
-    "ops-lead": "roles/l2/ops-lead.md",
-    "analyst": "roles/l1/analyst.md",
-    "researcher": "roles/l1/researcher.md",
-    "coder": "roles/l1/coder.md",
-    "tester": "roles/l1/tester.md",
-    "writer": "roles/l1/writer.md",
-    "git-ops": "roles/l1/git-ops.md",
-    "filer": "roles/l1/filer.md",
+    "curator": "roles/curator.md",
+    "conductor": "roles/stewards/conductor.md",
+    "repo-steward": "roles/stewards/repo-steward.md",
+    "refactor-lead": "roles/leaders/refactor-lead.md",
+    "prototype-lead": "roles/leaders/prototype-lead.md",
+    "review-lead": "roles/leaders/review-lead.md",
+    "ops-lead": "roles/leaders/ops-lead.md",
+    "analyst": "roles/experts/analyst.md",
+    "researcher": "roles/experts/researcher.md",
+    "coder": "roles/experts/coder.md",
+    "tester": "roles/experts/tester.md",
+    "writer": "roles/experts/writer.md",
+    "git-ops": "roles/experts/git-ops.md",
+    "filer": "roles/experts/filer.md",
 }
 
 RUNTIME_DIRS = (
