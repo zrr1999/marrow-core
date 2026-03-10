@@ -206,6 +206,23 @@ That keeps risky update work isolated while preserving one place to observe fail
 
 Repository-local quality tools are intended to be invoked with `uvx` rather than pinned as project runtime dependencies. See `Justfile` for the standard commands for `ruff`, `ty`, and `prek`.
 
+## Testing guidelines
+
+When adding or editing tests in this repository, use these rules:
+
+- test externally visible behavior or ownership boundaries first; only add helper-level unit tests when the helper has non-trivial branching that would be hard to diagnose from a higher-level failure
+- prefer one high-signal test that covers one risk end-to-end over multiple tests that restate the same branch through different helper calls
+- keep single-user compatibility tests and supervisor-mode tests separate; do not duplicate the same assertion in both unless the modes can fail independently
+- add CLI tests for command contracts, exit codes, and rendered artifacts; avoid asserting internal call ordering unless that ordering is itself the contract
+- add runtime/path tests for root-vs-user ownership boundaries, system config paths, workspace log destinations, and deferred workspace refresh behavior, because failures there are high severity
+- delete a lower-level test when a higher-level test would fail for the same bug with a clearer signal; examples include thin wrapper helpers, trivial serialization, and pure passthrough file writes
+- for new architecture work, start from the failure mode: ask what would be expensive or dangerous if it broke in production, then add the smallest test that would catch that break deterministically
+
+Current convention:
+
+- `tests/test_supervisor.py` owns supervisor/root-worker boundary coverage
+- narrower files such as `tests/test_config.py`, `tests/test_runtime.py`, and `tests/test_services.py` keep focused single-responsibility checks that are not already covered there
+
 ## Architecture
 
 See `AGENTS.md` for the full contract and filesystem model.

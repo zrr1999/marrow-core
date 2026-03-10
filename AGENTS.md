@@ -140,6 +140,13 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 - core-owned self-check can wake `curator` early with a repair task when doctor-style checks fail
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
 
+## Testing guidance
+
+- prefer one high-signal behavior test over multiple helper tests for the same failure mode
+- keep supervisor boundary coverage concentrated in `tests/test_supervisor.py`
+- keep single-user compatibility coverage in the narrower module test files
+- add lower-level tests only when a helper has meaningful branching not already covered by a higher-level test
+
 ## Quick start
 
 Fresh install:

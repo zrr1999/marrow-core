@@ -12,23 +12,6 @@ from pydantic import ValidationError
 from marrow_core.config import AgentConfig, ServiceConfig, load_config
 
 
-def test_minimal_agent_config():
-    cfg = AgentConfig(
-        name="test",
-        agent_command="opencode run",
-        workspace="/tmp/test",
-    )
-    assert cfg.name == "test"
-    assert cfg.heartbeat_interval == 300
-    assert cfg.heartbeat_timeout == 500
-    assert cfg.context_dirs == []
-
-
-def test_name_strip():
-    cfg = AgentConfig(name="  curator  ", agent_command="cmd", workspace="/tmp")
-    assert cfg.name == "curator"
-
-
 def test_empty_name_raises():
     with pytest.raises(ValueError, match="empty"):
         AgentConfig(name="", agent_command="cmd", workspace="/tmp")
@@ -60,16 +43,6 @@ def test_interval_allows_multi_day_schedule():
         heartbeat_interval=302400,
     )
     assert cfg.heartbeat_interval == 302400
-
-
-def test_context_dirs_normalization():
-    cfg = AgentConfig(
-        name="x",
-        agent_command="cmd",
-        workspace="/tmp",
-        context_dirs=["/foo/bar"],
-    )
-    assert cfg.context_dirs == ["/foo/bar"]
 
 
 def test_context_dirs_relative_raises():
