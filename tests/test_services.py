@@ -39,5 +39,3 @@ def test_render_systemd_service_files_only_include_primary_unit() -> None:
         "--config /etc/marrow/marrow.toml --json-logs" in files[0].content
     )
     assert "User=marrow" in files[0].content
-
-

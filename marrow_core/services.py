@@ -78,10 +78,7 @@ def _render_launchd_files(
     path_env = DEFAULT_SERVICE_PATH
     username_block = ""
     if service_user:
-        username_block = (
-            "  <key>UserName</key>\n"
-            f"  <string>{service_user}</string>\n\n"
-        )
+        username_block = f"  <key>UserName</key>\n  <string>{service_user}</string>\n\n"
     return [
         ServiceFile(
             name="com.marrow.heart.plist",
