@@ -46,12 +46,11 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             textwrap.dedent(
                 f"""
                 [[agents]]
+                user = "marrow"
                 name = "{name}"
                 heartbeat_interval = {interval}
                 heartbeat_timeout = {timeout}
                 workspace = "{workspace}"
-                run_as_user = "marrow"
-                home = "{workspace}"
                 agent_command = "{workspace}/.opencode/bin/opencode run --agent {name}"
                 context_dirs = ["{workspace}/context.d"]
                 """

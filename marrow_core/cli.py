@@ -32,7 +32,11 @@ from marrow_core.runtime import (
     resolve_task_dir,
 )
 from marrow_core.scaffold import scaffold_workspace, write_config_template
-from marrow_core.services import render_service_files, write_service_files
+from marrow_core.services import (
+    render_service_files,
+    resolve_service_config_path,
+    write_service_files,
+)
 from marrow_core.sync import SyncError, SyncOutcome, SyncResult, run_sync_once
 from marrow_core.task_queue import create_task_file, list_tasks
 from marrow_core.worker import (
@@ -198,8 +202,8 @@ async def _worker_status_publisher(
             status_file,
             {
                 "worker_id": spec.worker_id,
-                "run_as_user": spec.run_as_user,
-                "run_as_group": spec.run_as_group,
+                "user": spec.user,
+                "group": spec.group,
                 "home": spec.home,
                 "workspace": spec.workspace,
                 "agents": spec.agent_names,
@@ -291,7 +295,7 @@ async def _run_worker(
             status_file,
             {
                 "worker_id": spec.worker_id,
-                "run_as_user": spec.run_as_user,
+                "user": spec.user,
                 "workspace": spec.workspace,
                 "agents": spec.agent_names,
                 "pid": os.getpid(),
@@ -592,8 +596,8 @@ def validate(
         typer.echo(f"    timeout  : {agent.heartbeat_timeout}s")
         typer.echo(f"    command  : {agent.agent_command}")
         typer.echo(f"    workspace: {agent.workspace}")
-        if agent.run_as_user:
-            typer.echo(f"    run_as   : {agent.run_as_user}")
+        if agent.user:
+            typer.echo(f"    user     : {agent.user}")
         if agent.home:
             typer.echo(f"    home     : {agent.home}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
@@ -750,7 +754,7 @@ def install_service(
     files = render_service_files(
         platform=platform,
         core_dir=root.core_dir,
-        config_path=config.resolve(),
+        service_config_path=resolve_service_config_path(platform, root.service.config_path),
         service_user=resolve_service_user(root),
         log_dir=resolve_service_log_dir(root),
     )

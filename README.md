@@ -85,15 +85,16 @@ interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
+user = "marrow"
 name = "curator"
 heartbeat_interval = 10800
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-run_as_user = "marrow"
-home = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = ["/Users/marrow/context.d"]
 ```
+
+If `home` is omitted, marrow defaults it to `/Users/<user>`.
 
 Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
@@ -152,6 +153,8 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 The repo uses one long-running service per platform and CLI-managed periodic sync inside `marrow run`.
 In supervisor mode that one long-running service is the root supervisor; workers are child processes, not extra OS service units.
 Use `marrow sync-once` for the bounded update path, and `marrow install-service` only emits the primary runtime service file for each platform.
+The installed service points at a system config file: `/etc/marrow/marrow.toml` on Linux and `/Library/Application Support/marrow/marrow.toml` on macOS.
+The service intentionally execs the installed `marrow` binary from the core virtualenv instead of `uvx --from git+...`, so service startup does not depend on `uv` availability, on-demand package resolution, or network access.
 
 ## Quick start
 

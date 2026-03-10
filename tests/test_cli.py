@@ -85,12 +85,11 @@ def _write_config(
         textwrap.dedent(
             f"""
             [[agents]]
+            user = "marrow"
             name = {json.dumps(name)}
             heartbeat_interval = 300
             heartbeat_timeout = 30
             workspace = {json.dumps(str(workspace))}
-            run_as_user = "marrow"
-            home = {json.dumps(str(workspace))}
             agent_command = {json.dumps(sys.executable)}
             context_dirs = [{json.dumps(str(context_dir))}]
             """
@@ -182,22 +181,6 @@ def test_dry_run_invokes_heartbeat_in_dry_mode(monkeypatch, tmp_path: Path) -> N
 
     assert result.exit_code == 0
     assert calls == [(name, True, True) for name in AUTONOMOUS_AGENTS]
-
-
-def test_run_uses_supervisor_mode(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path, service_mode="supervisor")
-    calls: list[tuple[str, bool | None]] = []
-
-    async def fake_run_supervisor(config_path: Path, *, ipc: bool | None = None) -> None:
-        calls.append((str(config_path), ipc))
-
-    monkeypatch.setattr("marrow_core.cli._run_supervisor", fake_run_supervisor)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-
-    result = runner.invoke(app, ["run", "--config", str(config)])
-
-    assert result.exit_code == 0
-    assert calls == [(str(config), None)]
 
 
 def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
@@ -341,30 +324,6 @@ def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
     assert "rendered 1 service file(s)" in result.stdout
 
 
-def test_install_service_renders_supervisor_unit_without_user(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, service_mode="supervisor")
-    output_dir = tmp_path / "service-out"
-
-    result = runner.invoke(
-        app,
-        [
-            "install-service",
-            "--config",
-            str(config),
-            "--platform",
-            "linux",
-            "--output-dir",
-            str(output_dir),
-        ],
-    )
-
-    assert result.exit_code == 0
-    content = (output_dir / "marrow-heart.service").read_text(encoding="utf-8")
-    assert "User=" not in content
-    expected_log = tmp_path / "service-runtime" / "logs" / "heart.stdout.log"
-    assert f"StandardOutput=append:{expected_log}" in content
-
-
 def test_sync_once_reports_noop(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
 
@@ -383,25 +342,6 @@ def test_sync_once_reports_noop(monkeypatch, tmp_path: Path) -> None:
     assert '"result": "noop"' in result.stdout
 
 
-def test_sync_once_defers_workspace_refresh_in_supervisor_mode(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path, service_mode="supervisor")
-    seen: dict[str, object] = {}
-
-    def fake_run_sync_once(**kwargs):
-        seen.update(kwargs)
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.NOOP, "remote unchanged")
-
-    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-
-    result = runner.invoke(app, ["sync-once", "--config", str(config)])
-
-    assert result.exit_code == 0
-    assert seen["refresh_workspace"] is False
-
-
 def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
 
@@ -417,51 +357,6 @@ def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None
 
     assert result.exit_code == 11
     assert '"result": "restart_required"' in result.stdout
-
-
-def test_setup_in_supervisor_mode_only_prepares_service_runtime(
-    monkeypatch, tmp_path: Path
-) -> None:
-    config = _write_config(tmp_path, service_mode="supervisor")
-    calls: list[str] = []
-
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-    monkeypatch.setattr(
-        "marrow_core.cli.ensure_service_runtime_dirs", lambda root: calls.append("service-runtime")
-    )
-    monkeypatch.setattr(
-        "marrow_core.cli.ensure_workspace_dirs",
-        lambda workspace: calls.append(f"workspace:{workspace}"),
-    )
-    monkeypatch.setattr(
-        "marrow_core.cli.cast_roles_to_workspace",
-        lambda core_dir, workspace: calls.append(f"cast:{workspace}"),
-    )
-
-    result = runner.invoke(app, ["setup", "--config", str(config)])
-
-    assert result.exit_code == 0
-    assert calls == ["service-runtime"]
-
-
-def test_worker_run_requires_agents(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, service_mode="supervisor")
-
-    result = runner.invoke(
-        app,
-        [
-            "worker-run",
-            "--config",
-            str(config),
-            "--status-file",
-            str(tmp_path / "worker.json"),
-            "--request-dir",
-            str(tmp_path / "requests"),
-        ],
-    )
-
-    assert result.exit_code == 2
-    assert "at least one --agent is required" in result.stderr
 
 
 def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Path) -> None:

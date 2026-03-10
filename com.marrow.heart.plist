@@ -11,7 +11,7 @@
     <string>/opt/marrow-core/.venv/bin/marrow</string>
     <string>run</string>
     <string>--config</string>
-    <string>/workspace/marrow.toml</string>
+    <string>/Library/Application Support/marrow/marrow.toml</string>
     <string>--json-logs</string>
   </array>
 

@@ -18,12 +18,11 @@ interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
+user = "marrow"
 name = "curator"
 heartbeat_interval = 10800  # every 3 hours
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
-run_as_user = "marrow"
-home = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = [
   "/Users/marrow/context.d",

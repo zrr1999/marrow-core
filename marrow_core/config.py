@@ -7,7 +7,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -25,7 +25,7 @@ class AgentConfig(BaseModel):
     heartbeat_timeout: int = 500
     agent_command: str
     workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
-    run_as_user: str = ""
+    user: str = Field(default="", validation_alias=AliasChoices("user", "run_as_user"))
     run_as_group: str = ""
     home: str = ""
     context_dirs: list[str] = Field(default_factory=list)
@@ -52,10 +52,17 @@ class AgentConfig(BaseModel):
     def _clamp_timeout(cls, v: int) -> int:
         return _clamp(v, 5, 86400, "heartbeat_timeout")
 
-    @field_validator("run_as_user", "run_as_group", "home", mode="before")
+    @field_validator("user", "run_as_group", "home", mode="before")
     @classmethod
     def _strip_optional_fields(cls, v: Any) -> str:
         return str(v).strip() if v is not None else ""
+
+    @field_validator("user")
+    @classmethod
+    def _validate_user(cls, v: str) -> str:
+        if "/" in v:
+            raise ValueError(f"user must be an account name: {v}")
+        return v
 
     @field_validator("workspace")
     @classmethod
@@ -70,6 +77,12 @@ class AgentConfig(BaseModel):
         if v and not Path(v).is_absolute():
             raise ValueError(f"home must be absolute: {v}")
         return v
+
+    @model_validator(mode="after")
+    def _default_home(self) -> AgentConfig:
+        if not self.home and self.user:
+            self.home = f"/Users/{self.user}"
+        return self
 
     @field_validator("context_dirs", mode="before")
     @classmethod
@@ -164,6 +177,7 @@ class ServiceConfig(BaseModel):
     mode: str = "single_user"
     runtime_root: str = ""
     log_dir: str = ""
+    config_path: str = ""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -175,12 +189,12 @@ class ServiceConfig(BaseModel):
             raise ValueError("service.mode must be 'single_user' or 'supervisor'")
         return mode
 
-    @field_validator("runtime_root", "log_dir", mode="before")
+    @field_validator("runtime_root", "log_dir", "config_path", mode="before")
     @classmethod
     def _strip_optional_path(cls, v: Any) -> str:
         return str(v).strip() if v is not None else ""
 
-    @field_validator("runtime_root", "log_dir")
+    @field_validator("runtime_root", "log_dir", "config_path")
     @classmethod
     def _abs_optional_path(cls, v: str) -> str:
         if v and not Path(v).is_absolute():
@@ -205,12 +219,8 @@ class RootConfig(BaseModel):
         if self.service.mode != "supervisor":
             return self
         for agent in self.agents:
-            if not agent.run_as_user:
-                raise ValueError(
-                    f"supervisor mode requires run_as_user for agent {agent.name!r}"
-                )
-            if not agent.home:
-                raise ValueError(f"supervisor mode requires home for agent {agent.name!r}")
+            if not agent.user:
+                raise ValueError(f"supervisor mode requires user for agent {agent.name!r}")
         return self
 
 

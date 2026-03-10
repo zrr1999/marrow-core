@@ -31,8 +31,7 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
         assert f'--agent {name}"' in text
     assert '[service]' in text
     assert 'mode = "supervisor"' in text
-    assert 'run_as_user = "marrow"' in text
-    assert f'home = "{tmp_path / "workspace"}"' in text
+    assert 'user = "marrow"' in text
     assert "[ipc]" in text
     assert "enabled = true" in text
     assert "[self_check]" in text

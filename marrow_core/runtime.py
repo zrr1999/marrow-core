@@ -45,8 +45,8 @@ def resolve_service_log_dir(root: RootConfig) -> str:
 def resolve_service_user(root: RootConfig) -> str:
     if root.service.mode == "supervisor":
         return ""
-    if root.agents and root.agents[0].run_as_user:
-        return root.agents[0].run_as_user
+    if root.agents and root.agents[0].user:
+        return root.agents[0].user
     return "marrow"
 
 

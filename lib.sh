@@ -58,6 +58,39 @@ else:
 PY
 }
 
+config_service_install_path() {
+  CONFIG_PATH_ENV="${CONFIG_PATH}" python3 - <<'PY'
+from __future__ import annotations
+import os
+import tomllib
+from pathlib import Path
+
+path = Path(os.environ["CONFIG_PATH_ENV"])
+configured_path = ""
+if path.is_file():
+    with path.open("rb") as fh:
+        data = tomllib.load(fh)
+    configured_path = str((data.get("service") or {}).get("config_path", "")).strip()
+
+if configured_path:
+    print(configured_path)
+elif os.uname().sysname == "Darwin":
+    print("/Library/Application Support/marrow/marrow.toml")
+else:
+    print("/etc/marrow/marrow.toml")
+PY
+}
+
+install_config_file() {
+  local dst
+  dst="$(config_service_install_path)"
+  local parent
+  parent="$(dirname "$dst")"
+  sudo mkdir -p "$parent"
+  sudo cp "${CONFIG_PATH}" "$dst"
+  sudo chmod 644 "$dst"
+}
+
 install_daemon() {
   local name="$1"
   local src="${CORE_DIR}/${name}.plist"
@@ -92,6 +125,7 @@ render_service_files() {
 }
 
 install_services() {
+  install_config_file
   render_service_files
 
   if [[ "$(uname -s)" == "Darwin" ]]; then

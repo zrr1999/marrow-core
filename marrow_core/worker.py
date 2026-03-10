@@ -23,8 +23,8 @@ def _safe_token(value: str) -> str:
 class WorkerSpec:
     """One long-running worker identity group."""
 
-    run_as_user: str
-    run_as_group: str
+    user: str
+    group: str
     home: str
     workspace: str
     agent_names: tuple[str, ...]
@@ -33,7 +33,7 @@ class WorkerSpec:
     def worker_id(self) -> str:
         return "__".join(
             (
-                _safe_token(self.run_as_user or "current"),
+                _safe_token(self.user or "current"),
                 _safe_token(Path(self.workspace).name or "workspace"),
                 _safe_token("-".join(self.agent_names)),
             )
@@ -75,17 +75,17 @@ class SupervisorState:
 def group_agents_by_worker(root: RootConfig) -> list[WorkerSpec]:
     grouped: dict[tuple[str, str, str, str], list[str]] = {}
     for agent in root.agents:
-        key = (agent.run_as_user, agent.run_as_group, agent.home, agent.workspace)
+        key = (agent.user, agent.run_as_group, agent.home, agent.workspace)
         grouped.setdefault(key, []).append(agent.name)
     return [
         WorkerSpec(
-            run_as_user=run_as_user,
-            run_as_group=run_as_group,
+            user=user,
+            group=group,
             home=home,
             workspace=workspace,
             agent_names=tuple(agent_names),
         )
-        for (run_as_user, run_as_group, home, workspace), agent_names in grouped.items()
+        for (user, group, home, workspace), agent_names in grouped.items()
     ]
 
 
@@ -93,26 +93,26 @@ def build_worker_env(spec: WorkerSpec, base_env: dict[str, str] | None = None) -
     env = dict(base_env or os.environ)
     if spec.home:
         env["HOME"] = spec.home
-    if spec.run_as_user:
-        env["USER"] = spec.run_as_user
-        env["LOGNAME"] = spec.run_as_user
+    if spec.user:
+        env["USER"] = spec.user
+        env["LOGNAME"] = spec.user
     env["MARROW_WORKSPACE"] = spec.workspace
     env["MARROW_WORKER_ID"] = spec.worker_id
     return env
 
 
 def build_worker_preexec(spec: WorkerSpec):
-    if os.geteuid() != 0 or not spec.run_as_user:
+    if os.geteuid() != 0 or not spec.user:
         return None
 
     def _drop_privileges() -> None:
-        user_info = pwd.getpwnam(spec.run_as_user)
+        user_info = pwd.getpwnam(spec.user)
         gid = user_info.pw_gid
-        if spec.run_as_group:
+        if spec.group:
             import grp
 
-            gid = grp.getgrnam(spec.run_as_group).gr_gid
-        os.initgroups(spec.run_as_user, gid)
+            gid = grp.getgrnam(spec.group).gr_gid
+        os.initgroups(spec.user, gid)
         os.setgid(gid)
         os.setuid(user_info.pw_uid)
 
@@ -134,13 +134,13 @@ def prepare_worker_runtime_paths(runtime_root: Path, spec: WorkerSpec) -> tuple[
     (request_dir / "wake").mkdir(parents=True, exist_ok=True)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.touch(exist_ok=True)
-    if os.geteuid() == 0 and spec.run_as_user:
-        user_info = pwd.getpwnam(spec.run_as_user)
+    if os.geteuid() == 0 and spec.user:
+        user_info = pwd.getpwnam(spec.user)
         gid = user_info.pw_gid
-        if spec.run_as_group:
+        if spec.group:
             import grp
 
-            gid = grp.getgrnam(spec.run_as_group).gr_gid
+            gid = grp.getgrnam(spec.group).gr_gid
         for path in (state_path, request_dir, request_dir / "tasks", request_dir / "wake"):
             os.chown(path, user_info.pw_uid, gid)
     return state_path, request_dir

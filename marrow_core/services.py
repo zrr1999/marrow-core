@@ -23,11 +23,20 @@ def detect_service_platform(platform: str) -> str:
     return platform
 
 
+def resolve_service_config_path(platform: str, configured_path: str = "") -> str:
+    if configured_path:
+        return configured_path
+    target = detect_service_platform(platform)
+    if target == "darwin":
+        return "/Library/Application Support/marrow/marrow.toml"
+    return "/etc/marrow/marrow.toml"
+
+
 def render_service_files(
     *,
     platform: str,
     core_dir: str,
-    config_path: Path,
+    service_config_path: str,
     service_user: str,
     log_dir: str,
 ) -> list[ServiceFile]:
@@ -35,13 +44,13 @@ def render_service_files(
     if target == "darwin":
         return _render_launchd_files(
             core_dir=core_dir,
-            config_path=config_path,
+            service_config_path=service_config_path,
             service_user=service_user,
             log_dir=log_dir,
         )
     return _render_systemd_files(
         core_dir=core_dir,
-        config_path=config_path,
+        service_config_path=service_config_path,
         service_user=service_user,
         log_dir=log_dir,
     )
@@ -60,12 +69,12 @@ def write_service_files(files: list[ServiceFile], output_dir: Path) -> list[Path
 def _render_launchd_files(
     *,
     core_dir: str,
-    config_path: Path,
+    service_config_path: str,
     service_user: str,
     log_dir: str,
 ) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
-    config = str(config_path)
+    config = service_config_path
     path_env = DEFAULT_SERVICE_PATH
     username_block = ""
     if service_user:
@@ -115,12 +124,12 @@ def _render_launchd_files(
 def _render_systemd_files(
     *,
     core_dir: str,
-    config_path: Path,
+    service_config_path: str,
     service_user: str,
     log_dir: str,
 ) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
-    config = str(config_path)
+    config = service_config_path
     user_line = f"User={service_user}\n" if service_user else ""
     return [
         ServiceFile(
