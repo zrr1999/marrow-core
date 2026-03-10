@@ -64,6 +64,7 @@ def test_role_inventory_groups_are_stable():
     assert tuple(STEWARDS) == (
         "conductor",
         "repo-steward",
+        "innovation-steward",
     )
     assert tuple(LEADERS) == (
         "refactor-lead",

@@ -13,6 +13,7 @@ TOP_LEVEL_AGENTS = ("curator",)
 STEWARDS = (
     "conductor",
     "repo-steward",
+    "innovation-steward",
 )
 LEADERS = (
     "refactor-lead",
@@ -44,6 +45,7 @@ ROLE_PATHS = {
     "curator": "roles/curator.md",
     "conductor": "roles/stewards/conductor.md",
     "repo-steward": "roles/stewards/repo-steward.md",
+    "innovation-steward": "roles/stewards/innovation-steward.md",
     "refactor-lead": "roles/leaders/refactor-lead.md",
     "prototype-lead": "roles/leaders/prototype-lead.md",
     "review-lead": "roles/leaders/review-lead.md",
