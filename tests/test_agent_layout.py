@@ -54,17 +54,17 @@ def test_role_inventory_matches_contract():
 
 def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
-    assert ROLE_MODEL_TIERS["conductor"] == "medium"
-    assert ROLE_MODEL_TIERS["repo-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["delivery-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["portfolio-steward"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
 def test_role_inventory_groups_are_stable():
     assert tuple(AUTONOMOUS_AGENTS) == ("curator",)
     assert tuple(STEWARDS) == (
-        "conductor",
-        "repo-steward",
-        "innovation-steward",
+        "delivery-steward",
+        "portfolio-steward",
+        "research-steward",
     )
     assert tuple(LEADERS) == (
         "refactor-lead",
@@ -123,6 +123,20 @@ def test_docs_use_semantic_role_directories_and_avoid_numbered_layers():
 
     for token in ("roles/experts/", "roles/leaders/", "roles/stewards/", "`curator`"):
         assert token in merged
+
+
+def test_docs_encode_round_acceptance_bars():
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    curator = (REPO_ROOT / "roles" / "curator.md").read_text(encoding="utf-8")
+    rules = (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8")
+
+    merged = "\n".join((readme, agents_doc, curator, rules))
+
+    assert "`tasks/queue/`" in merged
+    assert "`tasks/done/`" in merged
+    assert "10 concrete task candidates" in merged
+    assert "5 concrete frontier findings" in merged
 
 
 def test_readme_documents_commands_and_self_check():
