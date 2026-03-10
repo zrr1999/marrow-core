@@ -50,6 +50,8 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
                 heartbeat_interval = {interval}
                 heartbeat_timeout = {timeout}
                 workspace = "{workspace}"
+                run_as_user = "marrow"
+                home = "{workspace}"
                 agent_command = "{workspace}/.opencode/bin/opencode run --agent {name}"
                 context_dirs = ["{workspace}/context.d"]
                 """
@@ -59,6 +61,10 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
         textwrap.dedent(
             f"""
             core_dir = "{core_dir}"
+
+            [service]
+            mode = "supervisor"
+            runtime_root = "/var/lib/marrow"
 
             [ipc]
             enabled = true

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, load_config
+from marrow_core.config import AgentConfig, RootConfig, ServiceConfig, load_config
 
 
 def test_minimal_agent_config():
@@ -82,22 +82,68 @@ def test_context_dirs_relative_raises():
         )
 
 
+def test_service_mode_rejects_unknown() -> None:
+    with pytest.raises(ValueError, match=r"service\.mode"):
+        ServiceConfig(mode="other")
+
+
+def test_supervisor_mode_requires_run_identity() -> None:
+    with pytest.raises(ValidationError, match="run_as_user"):
+        RootConfig.model_validate(
+            {
+                "service": {"mode": "supervisor"},
+                "agents": [
+                    {
+                        "name": "curator",
+                        "agent_command": "cmd",
+                        "workspace": "/Users/marrow",
+                        "home": "/Users/marrow",
+                    }
+                ],
+            }
+        )
+
+
+def test_supervisor_mode_requires_home() -> None:
+    with pytest.raises(ValidationError, match="home"):
+        RootConfig.model_validate(
+            {
+                "service": {"mode": "supervisor"},
+                "agents": [
+                    {
+                        "name": "curator",
+                        "agent_command": "cmd",
+                        "workspace": "/Users/marrow",
+                        "run_as_user": "marrow",
+                    }
+                ],
+            }
+        )
+
+
 def test_load_config(tmp_path: Path):
     toml = tmp_path / "marrow.toml"
     toml.write_text(
         textwrap.dedent("""\
         core_dir = "/opt/marrow-core"
 
+        [service]
+        mode = "supervisor"
+        runtime_root = "/var/lib/marrow"
+
         [[agents]]
         name = "curator"
         agent_command = "opencode run --agent curator"
         workspace = "/Users/marrow"
+        run_as_user = "marrow"
+        home = "/Users/marrow"
         context_dirs = ["/Users/marrow/context.d"]
     """)
     )
     root = load_config(toml)
     assert len(root.agents) == 1
     assert root.agents[0].name == "curator"
+    assert root.service.mode == "supervisor"
     assert root.core_dir == "/opt/marrow-core"
     assert root.ipc.enabled is True
     assert root.self_check.enabled is True

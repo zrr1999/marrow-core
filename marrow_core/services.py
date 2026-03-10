@@ -28,14 +28,23 @@ def render_service_files(
     platform: str,
     core_dir: str,
     config_path: Path,
-    workspace: str,
+    service_user: str,
+    log_dir: str,
 ) -> list[ServiceFile]:
     target = detect_service_platform(platform)
     if target == "darwin":
         return _render_launchd_files(
-            core_dir=core_dir, config_path=config_path, workspace=workspace
+            core_dir=core_dir,
+            config_path=config_path,
+            service_user=service_user,
+            log_dir=log_dir,
         )
-    return _render_systemd_files(core_dir=core_dir, config_path=config_path, workspace=workspace)
+    return _render_systemd_files(
+        core_dir=core_dir,
+        config_path=config_path,
+        service_user=service_user,
+        log_dir=log_dir,
+    )
 
 
 def write_service_files(files: list[ServiceFile], output_dir: Path) -> list[Path]:
@@ -48,10 +57,22 @@ def write_service_files(files: list[ServiceFile], output_dir: Path) -> list[Path
     return written
 
 
-def _render_launchd_files(*, core_dir: str, config_path: Path, workspace: str) -> list[ServiceFile]:
+def _render_launchd_files(
+    *,
+    core_dir: str,
+    config_path: Path,
+    service_user: str,
+    log_dir: str,
+) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
     config = str(config_path)
     path_env = DEFAULT_SERVICE_PATH
+    username_block = ""
+    if service_user:
+        username_block = (
+            "  <key>UserName</key>\n"
+            f"  <string>{service_user}</string>\n\n"
+        )
     return [
         ServiceFile(
             name="com.marrow.heart.plist",
@@ -77,14 +98,13 @@ def _render_launchd_files(*, core_dir: str, config_path: Path, workspace: str) -
                 "  </dict>\n\n"
                 "  <key>WorkingDirectory</key>\n"
                 f"  <string>{core_dir}</string>\n\n"
-                "  <key>UserName</key>\n"
-                "  <string>marrow</string>\n\n"
+                f"{username_block}"
                 "  <key>KeepAlive</key>\n"
                 "  <true/>\n\n"
                 "  <key>StandardOutPath</key>\n"
-                f"  <string>{workspace}/runtime/logs/heart.stdout.log</string>\n"
+                f"  <string>{log_dir}/heart.stdout.log</string>\n"
                 "  <key>StandardErrorPath</key>\n"
-                f"  <string>{workspace}/runtime/logs/heart.stderr.log</string>\n"
+                f"  <string>{log_dir}/heart.stderr.log</string>\n"
                 "</dict>\n"
                 "</plist>\n"
             ),
@@ -92,9 +112,16 @@ def _render_launchd_files(*, core_dir: str, config_path: Path, workspace: str) -
     ]
 
 
-def _render_systemd_files(*, core_dir: str, config_path: Path, workspace: str) -> list[ServiceFile]:
+def _render_systemd_files(
+    *,
+    core_dir: str,
+    config_path: Path,
+    service_user: str,
+    log_dir: str,
+) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
     config = str(config_path)
+    user_line = f"User={service_user}\n" if service_user else ""
     return [
         ServiceFile(
             name="marrow-heart.service",
@@ -104,14 +131,14 @@ def _render_systemd_files(*, core_dir: str, config_path: Path, workspace: str) -
                 "After=network.target\n\n"
                 "[Service]\n"
                 "Type=simple\n"
-                "User=marrow\n"
+                f"{user_line}"
                 f"WorkingDirectory={core_dir}\n"
                 f"Environment=PATH={DEFAULT_SERVICE_PATH}\n"
                 f"ExecStart={binary} run --config {config} --json-logs\n"
                 "Restart=always\n"
                 "RestartSec=5\n"
-                f"StandardOutput=append:{workspace}/runtime/logs/heart.stdout.log\n"
-                f"StandardError=append:{workspace}/runtime/logs/heart.stderr.log\n\n"
+                f"StandardOutput=append:{log_dir}/heart.stdout.log\n"
+                f"StandardError=append:{log_dir}/heart.stderr.log\n\n"
                 "[Install]\n"
                 "WantedBy=multi-user.target\n"
             ),

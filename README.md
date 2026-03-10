@@ -47,11 +47,11 @@ The canonical source of truth is `roles/` plus `roles.toml`.
 ## CLI
 
 ```text
-marrow run              # persistent heartbeat loop
+marrow run              # root supervisor or single-user heartbeat loop
 marrow run-once         # one tick per scheduled agent, then exit
 marrow dry-run          # assemble prompts without running agents
 marrow sync-once        # one bounded sync attempt with structured result codes
-marrow setup            # init workspace dirs and cast runtime roles
+marrow setup            # init root runtime or single-user workspace
 marrow scaffold         # create a new writable workspace skeleton and starter config
 marrow validate         # check config and show summary
 marrow doctor           # verify workspace, context dirs, and agent command availability
@@ -66,6 +66,10 @@ marrow task list        # inspect queued tasks via IPC
 
 ```toml
 core_dir = "/opt/marrow-core"
+
+[service]
+mode = "supervisor"
+runtime_root = "/var/lib/marrow"
 
 [ipc]
 enabled = true
@@ -85,6 +89,8 @@ name = "curator"
 heartbeat_interval = 10800
 heartbeat_timeout = 7200
 workspace = "/Users/marrow"
+run_as_user = "marrow"
+home = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = ["/Users/marrow/context.d"]
 ```
@@ -109,11 +115,12 @@ The old scout-style巡检 loop is replaced by a core-owned self-check loop. It r
 
 - `marrow_core/contracts.py` — canonical role inventory and workspace topology
 - `marrow_core/prompting.py` — context execution and prompt assembly
-- `marrow_core/runtime.py` — socket, queue, and binary path resolution
+- `marrow_core/runtime.py` — socket, queue, service-runtime, and binary path resolution
 - `marrow_core/task_queue.py` — filesystem queue helpers
 - `marrow_core/health.py` — reusable doctor and self-check health checks
 - `marrow_core/services.py` — launchd/systemd rendering
 - `marrow_core/scaffold.py` — workspace scaffold and starter config generation
+- `marrow_core/worker.py` — worker grouping, privilege drop, and worker control files
 - `marrow_core/heartbeat.py`, `marrow_core/cli.py`, `marrow_core/ipc.py` — orchestration layers
 
 ## Workspace layout
@@ -133,7 +140,7 @@ The old scout-style巡检 loop is replaced by a core-owned self-check loop. It r
 └── docs/
 ```
 
-Use the queue plus IPC wake events for active coordination. Filesystem handoff directories are no longer part of the default model.
+Workers keep user-owned runtime logs, queue files, and cast role files inside the workspace. The root supervisor keeps its socket, sync state, worker status files, and heart logs under `service.runtime_root`.
 
 ## Service installation
 
@@ -143,6 +150,7 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 ```
 
 The repo uses one long-running service per platform and CLI-managed periodic sync inside `marrow run`.
+In supervisor mode that one long-running service is the root supervisor; workers are child processes, not extra OS service units.
 Use `marrow sync-once` for the bounded update path, and `marrow install-service` only emits the primary runtime service file for each platform.
 
 ## Quick start
@@ -158,9 +166,9 @@ sudo ./setup.sh
 What this does:
 
 - creates or updates `/opt/marrow-core/.venv`
-- ensures `/Users/marrow/` workspace directories exist
-- casts canonical roles into `/Users/marrow/.opencode/agents/`
-- renders and installs the single heartbeat service for your platform
+- renders and installs the one long-running service for your platform
+- prepares root-owned supervisor runtime under `service.runtime_root`
+- lets the first worker start create `/Users/marrow/` workspace directories and cast runtime roles
 
 Update an existing installation:
 
@@ -188,6 +196,7 @@ python -m marrow_core.cli wake curator --config marrow.toml --reason manual
 ## Sync model
 
 CLI-managed periodic sync runs inside the main heartbeat service by spawning `marrow sync-once` as a subprocess.
+In supervisor mode, sync stays root-owned and returns restart signals instead of refreshing user workspaces directly; the restarted worker then performs the workspace refresh under user ownership.
 That keeps risky update work isolated while preserving one place to observe failures and one service lifecycle to manage.
 
 ## Developer tooling

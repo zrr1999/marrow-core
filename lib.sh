@@ -8,6 +8,7 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:${PATH}"
 
 REPO_URL="https://github.com/zrr1999/marrow-core.git"
 CORE_DIR="/opt/marrow-core"
+CONFIG_PATH="${CORE_DIR}/marrow.toml"
 WORKSPACE="/Users/marrow"
 SERVICE_RENDER_PLATFORM="${SERVICE_RENDER_PLATFORM:-auto}"
 
@@ -37,7 +38,24 @@ ensure_workspace_dirs() {
 cast_roles() {
   local marrow_bin="${CORE_DIR}/.venv/bin/python"
   [[ -x "$marrow_bin" ]] || return 1
-  "$marrow_bin" -m marrow_core.cli setup --config "${CORE_DIR}/marrow.toml"
+  "$marrow_bin" -m marrow_core.cli setup --config "${CONFIG_PATH}"
+}
+
+config_service_mode() {
+  CONFIG_PATH_ENV="${CONFIG_PATH}" python3 - <<'PY'
+from __future__ import annotations
+import os
+import tomllib
+from pathlib import Path
+
+path = Path(os.environ["CONFIG_PATH_ENV"])
+if not path.is_file():
+    print("single_user")
+else:
+    with path.open("rb") as fh:
+        data = tomllib.load(fh)
+    print((data.get("service") or {}).get("mode", "single_user"))
+PY
 }
 
 install_daemon() {
@@ -68,7 +86,7 @@ render_service_files() {
   local marrow_bin="${CORE_DIR}/.venv/bin/marrow"
   [[ -x "$marrow_bin" ]] || return 1
   "$marrow_bin" install-service \
-    --config "${CORE_DIR}/marrow.toml" \
+    --config "${CONFIG_PATH}" \
     --platform "$SERVICE_RENDER_PLATFORM" \
     --output-dir "$CORE_DIR"
 }

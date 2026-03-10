@@ -155,6 +155,47 @@ def test_run_sync_once_requests_restart_for_runtime_changes(monkeypatch, tmp_pat
     assert commands == ["uv"]
 
 
+def test_run_sync_once_defers_workspace_refresh_in_supervisor_mode(
+    monkeypatch, tmp_path: Path
+) -> None:
+    state_file = tmp_path / "state.json"
+    lock_file = tmp_path / "sync.lock"
+    calls: list[tuple[str, str]] = []
+
+    def fake_run_git(core_dir: str, *args: str) -> str:
+        responses = {
+            ("fetch", "origin", "main"): "",
+            ("status", "--short"): "",
+            ("rev-parse", "HEAD"): "abc",
+            ("rev-parse", "origin/main"): "def",
+            ("diff", "--name-only", "HEAD..origin/main"): "roles/curator.md\n",
+            ("merge", "--ff-only", "origin/main"): "updated",
+        }
+        return responses[args]
+
+    monkeypatch.setattr("marrow_core.sync._run_git", fake_run_git)
+    monkeypatch.setattr(
+        "marrow_core.sync.ensure_workspace_dirs",
+        lambda workspace: calls.append(("ensure_workspace_dirs", workspace)),
+    )
+    monkeypatch.setattr(
+        "marrow_core.sync.cast_roles_to_workspace",
+        lambda core_dir, workspace: calls.append(("cast_roles_to_workspace", workspace)),
+    )
+
+    outcome = run_sync_once(
+        core_dir=str(tmp_path / "core"),
+        workspace=str(tmp_path / "workspace"),
+        state_file=state_file,
+        lock_file=lock_file,
+        refresh_workspace=False,
+    )
+
+    assert outcome.result is SyncResult.RESTART_REQUIRED
+    assert outcome.reason == "workspace refresh deferred to worker restart"
+    assert calls == []
+
+
 def test_run_sync_once_fails_when_lock_exists(tmp_path: Path) -> None:
     state_file = tmp_path / "state.json"
     lock_file = tmp_path / "sync.lock"

@@ -21,6 +21,11 @@ from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
 from marrow_core.runtime import (
+    ensure_service_runtime_dirs,
+    marrow_binary,
+    resolve_service_log_dir,
+    resolve_service_runtime_root,
+    resolve_service_user,
     resolve_socket_path,
     resolve_sync_lock_path,
     resolve_sync_state_path,
@@ -29,7 +34,21 @@ from marrow_core.runtime import (
 from marrow_core.scaffold import scaffold_workspace, write_config_template
 from marrow_core.services import render_service_files, write_service_files
 from marrow_core.sync import SyncError, SyncOutcome, SyncResult, run_sync_once
-from marrow_core.task_queue import create_task_file
+from marrow_core.task_queue import create_task_file, list_tasks
+from marrow_core.worker import (
+    SupervisorState,
+    WorkerSpec,
+    build_worker_command,
+    build_worker_env,
+    build_worker_preexec,
+    create_task_request,
+    create_wake_request,
+    drain_worker_requests,
+    group_agents_by_worker,
+    prepare_worker_runtime_paths,
+    publish_worker_state,
+    worker_request_dir,
+)
 from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
@@ -43,13 +62,26 @@ IpcOpt = Annotated[
 ]
 
 
-async def _run(
-    config: Path, *, once: bool = False, dry_run: bool = False, ipc: bool | None = None
-) -> None:
+class _WorkerWakeProxy:
+    def __init__(self, request_dir: Path, agent_name: str) -> None:
+        self._request_dir = request_dir
+        self._agent_name = agent_name
+
+    def set(self) -> None:
+        create_wake_request(self._request_dir, self._agent_name, "")
+
+
+def _load_root_or_exit(config: Path) -> RootConfig:
     if not config.is_file():
         typer.echo(f"config not found: {config}", err=True)
         raise typer.Exit(code=1)
-    root = load_config(config)
+    return load_config(config)
+
+
+async def _run_single_user(
+    config: Path, *, once: bool = False, dry_run: bool = False, ipc: bool | None = None
+) -> None:
+    root = _load_root_or_exit(config)
     if not root.agents:
         typer.echo("no agents configured", err=True)
         raise typer.Exit(code=1)
@@ -86,7 +118,11 @@ async def _run(
         tasks.append(sync_task)
     if not once and not dry_run and root.self_check.enabled:
         self_check_task = asyncio.create_task(
-            _self_check_supervisor(root, Path(task_dir), wake_events),
+            _self_check_supervisor(
+                root,
+                lambda title, body: create_task_file(Path(task_dir), title, body),
+                wake_events,
+            ),
             name="self-check-supervisor",
         )
         tasks.append(self_check_task)
@@ -104,13 +140,12 @@ async def _run(
         if server is not None:
             server.close()
             await server.wait_closed()
-            # Clean up socket file
             sock = Path(resolve_socket_path(root))
             if sock.exists():
                 sock.unlink()
 
 
-def _run_heartbeat(
+def _run_single_user_command(
     config: Path,
     verbose: bool,
     json_logs: bool,
@@ -119,9 +154,245 @@ def _run_heartbeat(
     dry_run: bool = False,
     ipc: bool | None = None,
 ) -> None:
-    """Shared logic for run / run-once / dry-run commands."""
     setup_logging(verbose=verbose, json_logs=json_logs)
-    asyncio.run(_run(config, once=once, dry_run=dry_run, ipc=ipc))
+    asyncio.run(_run_single_user(config, once=once, dry_run=dry_run, ipc=ipc))
+
+
+def _supervisor_task_submitter(root: RootConfig):
+    specs = group_agents_by_worker(root)
+    if len(specs) != 1:
+        raise RuntimeError("supervisor task submission requires exactly one worker")
+    request_dir = worker_request_dir(Path(resolve_service_runtime_root(root)), specs[0])
+    return lambda title, body: create_task_request(request_dir, title, body)
+
+
+def _supervisor_task_lister(root: RootConfig) -> list[dict]:
+    seen: set[str] = set()
+    tasks: list[dict] = []
+    for agent in root.agents:
+        if agent.workspace in seen:
+            continue
+        seen.add(agent.workspace)
+        for item in list_tasks(Path(agent.workspace) / "tasks" / "queue"):
+            item = dict(item)
+            item["workspace"] = agent.workspace
+            tasks.append(item)
+    return tasks
+
+
+def _supervisor_wake_events(root: RootConfig) -> dict[str, _WorkerWakeProxy]:
+    runtime_root = Path(resolve_service_runtime_root(root))
+    events: dict[str, _WorkerWakeProxy] = {}
+    for spec in group_agents_by_worker(root):
+        request_dir = worker_request_dir(runtime_root, spec)
+        for agent_name in spec.agent_names:
+            events[agent_name] = _WorkerWakeProxy(request_dir, agent_name)
+    return events
+
+
+async def _worker_status_publisher(
+    *, status_file: Path, spec: WorkerSpec, state: HeartbeatState, interval: int = 5
+) -> None:
+    while True:
+        publish_worker_state(
+            status_file,
+            {
+                "worker_id": spec.worker_id,
+                "run_as_user": spec.run_as_user,
+                "run_as_group": spec.run_as_group,
+                "home": spec.home,
+                "workspace": spec.workspace,
+                "agents": spec.agent_names,
+                "pid": os.getpid(),
+                "state": state.to_dict(),
+            },
+        )
+        await asyncio.sleep(interval)
+
+
+async def _worker_request_poller(
+    *, request_dir: Path, workspace: str, wake_events: dict[str, asyncio.Event], interval: int = 1
+) -> None:
+    while True:
+        drain_worker_requests(request_dir, workspace, wake_events)
+        await asyncio.sleep(interval)
+
+
+async def _run_worker(
+    config: Path,
+    *,
+    agent_names: tuple[str, ...],
+    status_file: Path,
+    request_dir: Path,
+) -> None:
+    root = _load_root_or_exit(config)
+    selected_names = set(agent_names)
+    selected = [agent for agent in root.agents if agent.name in selected_names]
+    if not selected:
+        typer.echo("no agents selected", err=True)
+        raise typer.Exit(code=2)
+
+    specs = group_agents_by_worker(
+        RootConfig.model_validate(
+            {
+                "core_dir": root.core_dir,
+                "service": root.service.model_dump(),
+                "ipc": root.ipc.model_dump(),
+                "sync": root.sync.model_dump(),
+                "self_check": root.self_check.model_dump(),
+                "agents": [agent.model_dump() for agent in selected],
+            }
+        )
+    )
+    if len(specs) != 1:
+        typer.echo("selected agents must map to exactly one worker", err=True)
+        raise typer.Exit(code=2)
+    spec = specs[0]
+
+    ensure_workspace_dirs(spec.workspace)
+    cast_roles_to_workspace(root.core_dir, spec.workspace)
+
+    state = HeartbeatState()
+    wake_events = {agent.name: asyncio.Event() for agent in selected}
+    tasks = [
+        asyncio.create_task(
+            heartbeat(
+                agent,
+                root.core_dir,
+                state=state,
+                wake_event=wake_events[agent.name],
+            ),
+            name=agent.name,
+        )
+        for agent in selected
+    ]
+    publisher = asyncio.create_task(
+        _worker_status_publisher(status_file=status_file, spec=spec, state=state),
+        name="worker-status-publisher",
+    )
+    poller = asyncio.create_task(
+        _worker_request_poller(
+            request_dir=request_dir,
+            workspace=spec.workspace,
+            wake_events=wake_events,
+        ),
+        name="worker-request-poller",
+    )
+    try:
+        await asyncio.gather(*tasks)
+    finally:
+        publisher.cancel()
+        poller.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await publisher
+        with contextlib.suppress(asyncio.CancelledError):
+            await poller
+        publish_worker_state(
+            status_file,
+            {
+                "worker_id": spec.worker_id,
+                "run_as_user": spec.run_as_user,
+                "workspace": spec.workspace,
+                "agents": spec.agent_names,
+                "pid": os.getpid(),
+                "stopped": True,
+                "state": state.to_dict(),
+            },
+        )
+
+
+async def _spawn_worker_process(config: Path, root: RootConfig, spec: WorkerSpec):
+    runtime_root = Path(resolve_service_runtime_root(root))
+    status_file, request_dir = prepare_worker_runtime_paths(runtime_root, spec)
+    cmd = build_worker_command(
+        marrow_bin=marrow_binary(root.core_dir),
+        config_path=config.resolve(),
+        spec=spec,
+        status_file=status_file,
+        request_dir=request_dir,
+    )
+    return await asyncio.create_subprocess_shell(
+        cmd,
+        cwd=spec.home or spec.workspace,
+        env=build_worker_env(spec),
+        preexec_fn=build_worker_preexec(spec),
+    )
+
+
+async def _run_supervisor(config: Path, *, ipc: bool | None = None) -> None:
+    root = _load_root_or_exit(config)
+    if not root.agents:
+        typer.echo("no agents configured", err=True)
+        raise typer.Exit(code=1)
+
+    ensure_service_runtime_dirs(root)
+    runtime_root = Path(resolve_service_runtime_root(root))
+    state = SupervisorState(runtime_root)
+    wake_events = _supervisor_wake_events(root)
+    ipc_enabled = ipc if ipc is not None else root.ipc.enabled
+    server = None
+    if ipc_enabled:
+        server = await start_ipc_server(
+            resolve_socket_path(root),
+            resolve_task_dir(root),
+            state,
+            wake_events,
+            task_submitter=_supervisor_task_submitter(root),
+            task_lister=lambda: _supervisor_task_lister(root),
+        )
+
+    worker_specs = group_agents_by_worker(root)
+    processes = {
+        spec.worker_id: await _spawn_worker_process(config, root, spec) for spec in worker_specs
+    }
+    waiters = {
+        worker_id: asyncio.create_task(proc.wait(), name=f"worker:{worker_id}")
+        for worker_id, proc in processes.items()
+    }
+    sync_task = None
+    self_check_task = None
+    if root.sync.enabled:
+        sync_task = asyncio.create_task(_sync_supervisor(config), name="sync-supervisor")
+    if root.self_check.enabled:
+        self_check_task = asyncio.create_task(
+            _self_check_supervisor(root, _supervisor_task_submitter(root), wake_events),
+            name="self-check-supervisor",
+        )
+
+    tracked = list(waiters.values())
+    if sync_task is not None:
+        tracked.append(sync_task)
+    if self_check_task is not None:
+        tracked.append(self_check_task)
+
+    try:
+        done, pending = await asyncio.wait(tracked, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            exc = task.exception()
+            if exc is not None:
+                raise exc
+        worker_exit = next((task for task in done if task in waiters.values()), None)
+        if worker_exit is not None:
+            raise typer.Exit(code=1)
+        for task in pending:
+            await task
+    finally:
+        for task in [sync_task, self_check_task, *waiters.values()]:
+            if task is not None and not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
+        for proc in processes.values():
+            if proc.returncode is None:
+                proc.terminate()
+                with contextlib.suppress(ProcessLookupError):
+                    await proc.wait()
+        if server is not None:
+            server.close()
+            await server.wait_closed()
+            sock = Path(resolve_socket_path(root))
+            if sock.exists():
+                sock.unlink()
 
 
 async def _sync_supervisor(config: Path) -> None:
@@ -150,6 +421,7 @@ async def _invoke_sync_once(root: RootConfig) -> SyncOutcome:
             workspace=root.agents[0].workspace,
             state_file=Path(resolve_sync_state_path(root)),
             lock_file=Path(resolve_sync_lock_path(root)),
+            refresh_workspace=root.service.mode != "supervisor",
         )
     except SyncError as exc:
         return SyncOutcome(SyncResult.FAILED, str(exc))
@@ -183,8 +455,8 @@ def _self_check_task_body(agent_name: str, issues: list[str]) -> str:
 
 async def _self_check_supervisor(
     root: RootConfig,
-    task_dir: Path,
-    wake_events: dict[str, asyncio.Event],
+    submit_task,
+    wake_events,
 ) -> None:
     last_failure_signature = ""
     while True:
@@ -192,8 +464,7 @@ async def _self_check_supervisor(
         if issues:
             signature = "\n".join(issues)
             if signature != last_failure_signature:
-                task = create_task_file(
-                    task_dir,
+                task = submit_task(
                     "Core self-check requires repair",
                     _self_check_task_body(root.self_check.wake_agent, issues),
                 )
@@ -217,7 +488,12 @@ def run(
     ipc: IpcOpt = None,
 ) -> None:
     """Run all agents in a persistent heartbeat loop."""
-    _run_heartbeat(config, verbose, json_logs, ipc=ipc)
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    root = _load_root_or_exit(config)
+    if root.service.mode == "supervisor":
+        asyncio.run(_run_supervisor(config, ipc=ipc))
+        return
+    asyncio.run(_run_single_user(config, ipc=ipc))
 
 
 @app.command(name="run-once")
@@ -227,7 +503,7 @@ def run_once(
     json_logs: JsonLogsOpt = False,
 ) -> None:
     """Execute one tick per agent then exit."""
-    _run_heartbeat(config, verbose, json_logs, once=True)
+    _run_single_user_command(config, verbose, json_logs, once=True)
 
 
 @app.command(name="dry-run")
@@ -237,7 +513,40 @@ def dry_run(
     json_logs: JsonLogsOpt = False,
 ) -> None:
     """Build and print prompts without running agents."""
-    _run_heartbeat(config, verbose, json_logs, once=True, dry_run=True)
+    _run_single_user_command(config, verbose, json_logs, once=True, dry_run=True)
+
+
+@app.command(name="worker-run", hidden=True)
+def worker_run(
+    config: ConfigOpt = Path("marrow.toml"),
+    agents: Annotated[
+        list[str] | None, typer.Option("--agent", help="Agent names for this worker")
+    ] = None,
+    status_file: Annotated[
+        Path | None, typer.Option("--status-file", help="Worker status file")
+    ] = None,
+    request_dir: Annotated[
+        Path | None, typer.Option("--request-dir", help="Worker control request directory")
+    ] = None,
+    verbose: VerboseOpt = False,
+    json_logs: JsonLogsOpt = False,
+) -> None:
+    """Run one grouped worker under the target user identity."""
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    if not agents:
+        typer.echo("at least one --agent is required", err=True)
+        raise typer.Exit(code=2)
+    if status_file is None or request_dir is None:
+        typer.echo("--status-file and --request-dir are required", err=True)
+        raise typer.Exit(code=2)
+    asyncio.run(
+        _run_worker(
+            config,
+            agent_names=tuple(agents),
+            status_file=status_file,
+            request_dir=request_dir,
+        )
+    )
 
 
 @app.command()
@@ -248,6 +557,10 @@ def setup(
     """Initialize workspace dirs and cast roles into runtime agent configs."""
     setup_logging(verbose=verbose)
     root = load_config(config)
+    if root.service.mode == "supervisor":
+        ensure_service_runtime_dirs(root)
+        typer.echo(f"OK: supervisor runtime ready at {resolve_service_runtime_root(root)}")
+        return
     for agent in root.agents:
         if not verify_workspace(agent.workspace):
             typer.echo(f"FAIL: workspace invalid for {agent.name}", err=True)
@@ -272,12 +585,17 @@ def validate(
     if not root.agents:
         typer.echo("FAIL: no agents configured", err=True)
         raise typer.Exit(code=2)
+    typer.echo(f"Service mode: {root.service.mode}")
     for agent in root.agents:
         typer.echo(f"\n  Agent: {agent.name}")
         typer.echo(f"    interval : {agent.heartbeat_interval}s")
         typer.echo(f"    timeout  : {agent.heartbeat_timeout}s")
         typer.echo(f"    command  : {agent.agent_command}")
         typer.echo(f"    workspace: {agent.workspace}")
+        if agent.run_as_user:
+            typer.echo(f"    run_as   : {agent.run_as_user}")
+        if agent.home:
+            typer.echo(f"    home     : {agent.home}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
     typer.echo("\nVALIDATE OK")
 
@@ -433,7 +751,8 @@ def install_service(
         platform=platform,
         core_dir=root.core_dir,
         config_path=config.resolve(),
-        workspace=root.agents[0].workspace,
+        service_user=resolve_service_user(root),
+        log_dir=resolve_service_log_dir(root),
     )
     written = write_service_files(files, output_dir)
     typer.echo(f"rendered {len(written)} service file(s) to {output_dir}")
@@ -459,6 +778,7 @@ def sync_once(
             workspace=workspace,
             state_file=Path(resolve_sync_state_path(root)),
             lock_file=Path(resolve_sync_lock_path(root)),
+            refresh_workspace=root.service.mode != "supervisor",
         )
     except SyncError as exc:
         typer.echo(str(exc), err=True)

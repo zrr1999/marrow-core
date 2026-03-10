@@ -92,21 +92,30 @@ def write_sync_state(path: Path, outcome: SyncOutcome) -> None:
 
 
 def run_sync_once(
-    *, core_dir: str, workspace: str, state_file: Path, lock_file: Path
+    *,
+    core_dir: str,
+    workspace: str,
+    state_file: Path,
+    lock_file: Path,
+    refresh_workspace: bool = True,
 ) -> SyncOutcome:
     if not _acquire_lock(lock_file):
         outcome = SyncOutcome(SyncResult.FAILED, "sync already in progress", (), _utc_now(), "")
         write_sync_state(state_file, outcome)
         return outcome
     try:
-        outcome = _run_sync_once_locked(core_dir=core_dir, workspace=workspace)
+        outcome = _run_sync_once_locked(
+            core_dir=core_dir,
+            workspace=workspace,
+            refresh_workspace=refresh_workspace,
+        )
         write_sync_state(state_file, outcome)
         return outcome
     finally:
         _release_lock(lock_file)
 
 
-def _run_sync_once_locked(*, core_dir: str, workspace: str) -> SyncOutcome:
+def _run_sync_once_locked(*, core_dir: str, workspace: str, refresh_workspace: bool) -> SyncOutcome:
     _run_git(core_dir, "fetch", "origin", "main")
 
     if _git_status_short(core_dir):
@@ -121,18 +130,28 @@ def _run_sync_once_locked(*, core_dir: str, workspace: str) -> SyncOutcome:
     changed_files = _changed_files_since_head(core_dir)
     _run_git(core_dir, "merge", "--ff-only", "origin/main")
 
-    ensure_workspace_dirs(workspace)
-    cast_roles_to_workspace(core_dir, workspace)
-
     deps_changed = _paths_require_restart(changed_files)
     services_changed = _paths_require_service_rerender(changed_files)
     role_changed = any(path.startswith("roles/") for path in changed_files)
     workspace_changed = role_changed
 
+    if refresh_workspace:
+        ensure_workspace_dirs(workspace)
+        cast_roles_to_workspace(core_dir, workspace)
+
     if deps_changed:
         _run_uv_sync(core_dir)
     if services_changed:
         _render_services(core_dir)
+
+    if not refresh_workspace and (role_changed or workspace_changed):
+        return SyncOutcome(
+            SyncResult.RESTART_REQUIRED,
+            "workspace refresh deferred to worker restart",
+            changed_files,
+            _utc_now(),
+            _utc_now(),
+        )
 
     return classify_sync_result(
         SyncObservation(

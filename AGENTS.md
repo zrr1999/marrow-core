@@ -134,7 +134,9 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 
 - macOS: `com.marrow.heart.plist`
 - Linux: `marrow-heart.service`
-- `marrow run` owns CLI-managed periodic sync by invoking `sync-once` in a subprocess
+- `marrow run` is either the single-user heartbeat process or the root supervisor service
+- supervisor mode keeps one long-running service and spawns per-user workers directly instead of rendering extra worker units
+- CLI-managed periodic sync stays inside `marrow run` by invoking `sync-once` in a subprocess
 - core-owned self-check can wake `curator` early with a repair task when doctor-style checks fail
 - all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
 
