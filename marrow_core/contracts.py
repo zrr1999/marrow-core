@@ -79,15 +79,3 @@ WORKSPACE_DIRS = (
     "context.d",
     WORKSPACE_AGENT_DIR,
 )
-
-ROLE_LAYERS = {
-    "curator": "top-level",
-    **dict.fromkeys(STEWARDS, "steward"),
-    **dict.fromkeys(LEADERS, "leader"),
-    **dict.fromkeys(EXPERTS, "expert"),
-}
-
-
-def role_layer(name: str) -> str:
-    """Return the semantic layer for a known role."""
-    return ROLE_LAYERS.get(name, "unknown")

@@ -10,7 +10,6 @@ from marrow_core.contracts import (
     AUTONOMOUS_AGENTS,
     EXPERTS,
     LEADERS,
-    ROLE_LAYERS,
     ROLE_MODEL_TIERS,
     ROLE_PATHS,
     STEWARDS,
@@ -82,13 +81,6 @@ def test_role_inventory_groups_are_stable():
         "git-ops",
         "filer",
     )
-
-
-def test_role_layers_align_with_contract():
-    assert ROLE_LAYERS["curator"] == "top-level"
-    assert ROLE_LAYERS["conductor"] == "steward"
-    assert ROLE_LAYERS["refactor-lead"] == "leader"
-    assert ROLE_LAYERS["coder"] == "expert"
 
 
 def test_lib_shell_workspace_dirs_match_contract():

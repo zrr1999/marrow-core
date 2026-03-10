@@ -4,23 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import Mapping
 from pathlib import Path
 
 from loguru import logger
 
 
-async def gather_context(
-    context_dirs: list[str],
-    timeout: int = 15,
-    *,
-    extra_env: Mapping[str, str] | None = None,
-) -> list[str]:
+async def gather_context(context_dirs: list[str], timeout: int = 15) -> list[str]:
     """Run executable context scripts and collect their stdout blocks."""
     blocks: list[str] = []
-    env = os.environ.copy()
-    if extra_env:
-        env.update({key: value for key, value in extra_env.items() if value})
     for raw in context_dirs:
         directory = Path(raw)
         if not directory.is_dir():
@@ -32,7 +23,6 @@ async def gather_context(
                     str(script),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
-                    env=env,
                 )
                 out, err = await asyncio.wait_for(proc.communicate(), timeout=timeout)
                 text = (out or b"").decode("utf-8", errors="replace").strip()
