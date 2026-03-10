@@ -212,12 +212,13 @@ async def test_list_tasks_can_filter_by_assignee(ipc_server):
     assert data["tasks"][0]["title"] == "alpha"
 
 
-async def test_post_task_rejects_invalid_delegation(ipc_server):
+async def test_post_task_keeps_routing_metadata_lightweight(ipc_server):
     sock, _, _, _ = ipc_server
     payload = json.dumps({"title": "bad", "owner": "curator", "assignee": "coder"})
     data = await _ipc_request(sock, "POST", "/tasks", payload)
-    assert "error" in data
-    assert "invalid delegation" in data["error"]
+    assert data["ok"] is True
+    assert data["owner"] == "curator"
+    assert data["assignee"] == "coder"
 
 
 async def test_not_found(ipc_server):

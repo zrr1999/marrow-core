@@ -34,7 +34,7 @@ Delegation policy:
 - one accountable owner per workstream
 - max delegation depth: 3 hops
 
-Default runtime scheduling only runs `curator`, and config validation keeps scheduled agents in the top-level layer.
+Default runtime scheduling only runs `curator`. Keep the stronger responsibility split in prompts rather than hard runtime constraints.
 
 ## Canonical role layer
 

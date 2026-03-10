@@ -87,79 +87,7 @@ ROLE_LAYERS = {
     **dict.fromkeys(EXPERTS, "expert"),
 }
 
-STEWARD_LEADER_ROUTES = {
-    "conductor": (
-        "refactor-lead",
-        "ops-lead",
-        "review-lead",
-        "prototype-lead",
-    ),
-    "repo-steward": (
-        "review-lead",
-        "ops-lead",
-        "refactor-lead",
-        "prototype-lead",
-    ),
-    "innovation-steward": (
-        "prototype-lead",
-        "review-lead",
-        "refactor-lead",
-        "ops-lead",
-    ),
-}
-
-LEADER_EXPERT_ROUTES = {
-    "refactor-lead": (
-        "analyst",
-        "coder",
-        "tester",
-        "writer",
-        "git-ops",
-        "filer",
-    ),
-    "prototype-lead": (
-        "researcher",
-        "analyst",
-        "coder",
-        "tester",
-        "writer",
-    ),
-    "review-lead": (
-        "analyst",
-        "researcher",
-        "writer",
-        "tester",
-        "git-ops",
-    ),
-    "ops-lead": (
-        "analyst",
-        "coder",
-        "tester",
-        "git-ops",
-        "filer",
-        "writer",
-    ),
-}
-
-DIRECT_REPORTS = {
-    "curator": STEWARDS,
-    **STEWARD_LEADER_ROUTES,
-    **LEADER_EXPERT_ROUTES,
-}
-
 
 def role_layer(name: str) -> str:
     """Return the semantic layer for a known role."""
     return ROLE_LAYERS.get(name, "unknown")
-
-
-def allowed_delegate_targets(name: str) -> tuple[str, ...]:
-    """Return the direct children a role may assign to."""
-    return DIRECT_REPORTS.get(name, ())
-
-
-def can_assign_task(owner: str, assignee: str) -> bool:
-    """Return True when a task owner may assign directly to the assignee."""
-    if owner == assignee:
-        return True
-    return assignee in DIRECT_REPORTS.get(owner, ())

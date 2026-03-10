@@ -69,6 +69,8 @@ marrow-core uses semantic role directories instead of numbered layers.
 - maximum delegation depth: 3 hops
 - one accountable owner per workstream
 
+These are prompt-level operating rules. Runtime support should stay light and avoid over-constraining delegation.
+
 ## Delegation Rules
 
 - `curator` is the default scheduled owner and routes work through stewards.

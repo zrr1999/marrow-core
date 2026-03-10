@@ -21,7 +21,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from loguru import logger
 
-from marrow_core.contracts import ROLE_PATHS, STEWARDS, can_assign_task
+from marrow_core.contracts import STEWARDS
 from marrow_core.task_queue import create_task_file, list_tasks
 
 if TYPE_CHECKING:
@@ -66,14 +66,6 @@ def _normalize_task_request(req: dict[str, Any]) -> tuple[dict[str, str] | None,
     owner = str(req.get("owner", "")).strip() or "curator"
     assignee = str(req.get("assignee", "")).strip() or owner
     delegated_by = str(req.get("delegated_by", "")).strip()
-
-    for field_name, role_name in (("owner", owner), ("assignee", assignee)):
-        if role_name not in ROLE_PATHS:
-            return None, f"{field_name} must be a known role: {role_name}"
-    if delegated_by and delegated_by not in ROLE_PATHS:
-        return None, f"delegated_by must be a known role: {delegated_by}"
-    if not can_assign_task(owner, assignee):
-        return None, f"invalid delegation: {owner} cannot assign directly to {assignee}"
 
     acceptance = str(req.get("acceptance", "")).strip().lower()
     if not acceptance:

@@ -11,9 +11,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-from marrow_core.contracts import TOP_LEVEL_AGENTS
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -159,21 +157,6 @@ class RootConfig(BaseModel):
     self_check: SelfCheckConfig = Field(default_factory=SelfCheckConfig)
 
     model_config = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def _validate_runtime_agents(self) -> RootConfig:
-        allowed = set(TOP_LEVEL_AGENTS)
-        for agent in self.agents:
-            if agent.name not in allowed:
-                raise ValueError(
-                    f"scheduled agent must be top-level: {agent.name} not in {sorted(allowed)}"
-                )
-        if self.self_check.wake_agent and self.self_check.wake_agent not in allowed:
-            raise ValueError(
-                "self_check.wake_agent must target a scheduled top-level agent: "
-                f"{self.self_check.wake_agent}"
-            )
-        return self
 
 
 def load_config(path: Path) -> RootConfig:
