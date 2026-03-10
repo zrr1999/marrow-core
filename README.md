@@ -19,9 +19,9 @@ marrow-core uses semantic role directories instead of numbered layers.
 
 | Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
-| top-level | `roles/` | `curator` | scheduled orchestration, repair, backlog shaping |
-| stewards | `roles/stewards/` | `conductor`, `repo-steward` | domain ownership, routing, closure, external follow-through |
-| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | bounded planning and integration for a domain |
+| top-level | `roles/` | `curator` | scheduled orchestration, human communication, routing, light acceptance |
+| stewards | `roles/stewards/` | `conductor`, `repo-steward`, `innovation-steward` | lane ownership, decomposition, heavy acceptance, closure |
+| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | domain analysis, implementation ownership, integration |
 | experts | `roles/experts/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
 Delegation policy:
@@ -34,7 +34,7 @@ Delegation policy:
 - one accountable owner per workstream
 - max delegation depth: 3 hops
 
-Default runtime scheduling only runs `curator`, but the config format still supports multiple top-level scheduled agents for future multi-user or multi-root deployments.
+Default runtime scheduling only runs `curator`. Keep the stronger responsibility split in prompts rather than hard runtime constraints.
 
 ## Canonical role layer
 
@@ -98,6 +98,28 @@ If `home` is omitted, marrow defaults it to `/Users/<user>`.
 
 Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
+## Routing contract
+
+- `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
+- `curator` should touch every steward lane in each active round, and keep scan / innovation lanes searching for more work when delivery work temporarily不足.
+- `conductor` owns deterministic delivery intake and routes concrete execution work to leaders.
+- `repo-steward` owns repository scanning, CI/review watchlists, and opportunity intake.
+- `innovation-steward` owns reflection, experiments, and research-oriented intake.
+- leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
+- experts execute bounded subtasks only and never delegate.
+- keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
+
+Default routing:
+
+- user intent -> `curator`
+- deterministic delivery -> `conductor`
+- scan / CI / review / repo opportunities -> `repo-steward`
+- reflection / experiment / research -> `innovation-steward`
+- `conductor` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
+- `repo-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
+- `innovation-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
+- leaders should pass experts bounded local context snapshots rather than raw global state.
+
 ## Runtime contract
 
 `marrow-core` uses `role-forge` as the casting runtime. Canonical role files in `roles/` are cast into `.opencode/agents/`, then execution is handed off to the external `opencode` CLI configured by each agent's `agent_command`.
@@ -142,6 +164,8 @@ The old scout-style巡检 loop is replaced by a core-owned self-check loop. It r
 ```
 
 Workers keep user-owned runtime logs, queue files, and cast role files inside the workspace. The root supervisor keeps its socket, sync state, worker status files, and heart logs under `service.runtime_root`.
+
+Use the queue plus IPC wake events for active coordination. Open task cards can carry routing metadata such as `owner`, `assignee`, `acceptance`, `status`, and `task_type` so each layer sees the right work.
 
 ## Service installation
 
