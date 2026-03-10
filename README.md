@@ -94,11 +94,13 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 ## Routing contract
 
 - `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
+- `curator` should touch every steward lane in each active round, and keep scan / innovation lanes searching for more work when delivery work temporarily不足.
 - `conductor` owns deterministic delivery intake and routes concrete execution work to leaders.
 - `repo-steward` owns repository scanning, CI/review watchlists, and opportunity intake.
 - `innovation-steward` owns reflection, experiments, and research-oriented intake.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
+- keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
 
 Default routing:
 
@@ -109,6 +111,7 @@ Default routing:
 - `conductor` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
 - `repo-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
 - `innovation-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
+- leaders should pass experts bounded local context snapshots rather than raw global state.
 
 ## Runtime contract
 

@@ -34,8 +34,9 @@ def _base_prompt_for_agent(name: str) -> str:
             "You are the top-level curator. Work only at the routing, prioritization, "
             "human-communication, and light-acceptance layer. Do not spend the tick on "
             "deep task analysis, long document reading, or direct implementation. "
-            "Translate human intent into steward-facing work, check actual completion evidence, "
-            "and keep output cadence high."
+            "Translate human intent into steward-facing work, touch every steward lane "
+            "in each active round, check actual completion evidence, keep output cadence high, "
+            "and keep per-repository PR load controlled."
         )
     if name in STEWARDS:
         return (
@@ -47,15 +48,17 @@ def _base_prompt_for_agent(name: str) -> str:
         return (
             "You are a leader. Analyze the assigned task yourself, decide the execution plan, "
             "and integrate the result personally. You may delegate only narrow "
-            "sub-steps to experts. When delegating, provide enough context, "
+            "sub-steps to experts. When delegating, provide a bounded local context snapshot "
+            "plus enough context, "
             "constraints, deliverables, and acceptance signals "
             "for the child to execute without guessing."
         )
     if layer == "expert":
         return (
             "You are an expert worker. Execute the bounded subtask exactly as assigned, "
-            "return concrete "
-            "evidence or blockers, and do not redefine scope or delegate further."
+            "return concrete evidence or blockers, request more context when the brief "
+            "is insufficient, "
+            "and do not redefine scope or delegate further."
         )
     return (
         "Execute one bounded round of work within your configured role. "

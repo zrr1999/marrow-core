@@ -83,6 +83,14 @@ These are prompt-level operating rules. Runtime support should stay light and av
 - Use `tasks/queue` plus IPC wake events for active coordination.
 - Experts never spawn other agents.
 
+## Curator Round Policy
+
+- In every active round, `curator` must touch every steward lane: `conductor`, `repo-steward`, and `innovation-steward`.
+- If a steward has no immediately actionable work, `curator` should still give it bounded follow-up such as another scan pass, another experiment cycle, or another search-for-work pass.
+- `curator` may run multiple manager cycles in one session. Keep routing work until the current session has produced enough concrete output, such as merged progress, new PR movement, reports, experiment results, or other durable artifacts.
+- `curator` is allowed to keep scan and innovation lanes running for multiple passes while simultaneously dispatching delivery work from the newly discovered items.
+- `curator` should limit parallel change surface per project. Keep in-flight PRs and equivalent merge tracks under control; default cap: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
+
 ## Routing Matrix
 
 Use the following default routing unless the task explicitly demands otherwise.
@@ -103,6 +111,14 @@ Use the following default routing unless the task explicitly demands otherwise.
 
 - Every delegated expert task must include objective, relevant context, constraints, deliverable, acceptance signal, and stop condition.
 - Leaders support downward execution by packaging enough information that the child can act without re-reading the entire upstream task.
+- Prefer a bounded local context snapshot over raw global context: file paths, minimal code excerpts, expected edits, tests to run, and known constraints.
+- If the local context is still insufficient, the expert must stop immediately and request clarification instead of guessing.
+
+## Acceptance Posture
+
+- `curator` performs light acceptance against human intent, output usefulness, and delivery direction.
+- Stewards perform heavy acceptance. They should demand objective evidence, run or require concrete checks when appropriate, and reject weak or incomplete submissions.
+- Leaders perform integration acceptance on expert outputs before anything moves upward.
 
 ## Communication
 

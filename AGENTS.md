@@ -72,9 +72,11 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 Operating contract:
 
 - `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
+- `curator` should touch every steward lane in each active round and keep scan / innovation lanes searching for more work when needed.
 - stewards are the heavy-acceptance layer and own lane-specific decomposition.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
+- default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
 
 ## Runtime boundaries
 
