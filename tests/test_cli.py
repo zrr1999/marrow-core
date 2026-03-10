@@ -224,7 +224,23 @@ def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
 
     result = runner.invoke(
         app,
-        ["task", "add", "Fix bug", "--body", "details", "--config", str(config)],
+        [
+            "task",
+            "add",
+            "Fix bug",
+            "--body",
+            "details",
+            "--owner",
+            "curator",
+            "--assignee",
+            "conductor",
+            "--acceptance",
+            "light",
+            "--task-type",
+            "delivery",
+            "--config",
+            str(config),
+        ],
     )
 
     assert result.exit_code == 0
@@ -232,7 +248,16 @@ def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
     assert request["socket"] == str(socket_path)
     assert request["method"] == "POST"
     assert request["path"] == "/tasks"
-    assert json.loads(request["body"]) == {"title": "Fix bug", "body": "details"}
+    assert json.loads(request["body"]) == {
+        "title": "Fix bug",
+        "body": "details",
+        "owner": "curator",
+        "assignee": "conductor",
+        "acceptance": "light",
+        "task_type": "delivery",
+        "delegated_by": "",
+        "status": "queued",
+    }
 
 
 def test_task_list_prints_queue_entries(monkeypatch, tmp_path: Path) -> None:
@@ -243,17 +268,32 @@ def test_task_list_prints_queue_entries(monkeypatch, tmp_path: Path) -> None:
     async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
         assert socket == str(socket_path)
         assert method == "GET"
-        assert path == "/tasks"
+        assert path == "/tasks?assignee=conductor&status=queued"
         assert body == ""
-        return {"tasks": [{"file": "task-1.md", "title": "First task"}]}
+        return {
+            "tasks": [
+                {
+                    "file": "task-1.md",
+                    "title": "First task",
+                    "owner": "curator",
+                    "assignee": "conductor",
+                    "status": "queued",
+                    "task_type": "delivery",
+                }
+            ]
+        }
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
-    result = runner.invoke(app, ["task", "list", "--config", str(config)])
+    result = runner.invoke(
+        app,
+        ["task", "list", "--assignee", "conductor", "--status", "queued", "--config", str(config)],
+    )
 
     assert result.exit_code == 0
     assert "task-1.md" in result.stdout
     assert "First task" in result.stdout
+    assert "curator -> conductor" in result.stdout
 
 
 def test_scaffold_creates_workspace_and_config(tmp_path: Path) -> None:

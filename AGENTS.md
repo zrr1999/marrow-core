@@ -32,14 +32,15 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 
 | Role | Purpose | Can delegate to |
 |------|---------|-----------------|
-| `curator` | orchestration, repair, backlog shaping, multi-round closure | `stewards` |
+| `curator` | human communication, routing, output pacing, light acceptance | `stewards` |
 
 ### stewards — `roles/stewards/`
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
-| `conductor` | delivery workstream ownership, integration, closure | `leaders`, exceptional direct `experts` |
-| `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
+| `conductor` | deterministic delivery intake, decomposition, heavy acceptance | `leaders` |
+| `repo-steward` | repository scanning, CI/review watchlists, opportunity intake | `leaders` |
+| `innovation-steward` | reflection, experiments, research intake | `leaders` |
 
 ### leaders — `roles/leaders/`
 
@@ -67,6 +68,13 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 - upward calls forbidden
 - one accountable owner per workstream
 - delegation depth capped at 3 hops
+
+Operating contract:
+
+- `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
+- stewards are the heavy-acceptance layer and own lane-specific decomposition.
+- leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
+- experts execute bounded tasks only and never redefine scope.
 
 ## Runtime boundaries
 

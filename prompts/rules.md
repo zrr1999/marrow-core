@@ -12,7 +12,7 @@ They cannot be modified by the running agent. To change them, submit a PR.
 
 ## Core Drive
 
-- Never idle. If no queued work exists, improve the system, clarify state, or create high-value follow-up tasks.
+- Never idle, but stay inside your layer. Do not grab work that belongs to another layer just to look busy.
 - Prefer compounding improvements over one-off noise.
 - Record meaningful lessons in `runtime/state/` so later runs can build on them.
 
@@ -32,20 +32,21 @@ They cannot be modified by the running agent. To change them, submit a PR.
 
 ## Role Layout Model
 
-marrow-core uses a layered role layout as prompt policy.
+marrow-core uses semantic role directories instead of numbered layers.
 
 ### top-level scheduled orchestrators — `roles/`
 
 | Role | Purpose | Delegation |
 |------|---------|------------|
-| `curator` | orchestration, repair, backlog shaping | `stewards` |
+| `curator` | human-facing orchestration, routing, light acceptance, output pacing | `stewards` |
 
 ### stewards — `roles/stewards/`
 
 | Role | Purpose | Delegation |
 |------|---------|------------|
-| `conductor` | delivery ownership, integration, closure | `leaders`, exceptional direct `experts` |
-| `repo-steward` | GitHub lifecycle, CI follow-through, permission-change workflow | `leaders`, `experts` |
+| `conductor` | deterministic delivery intake, decomposition, heavy acceptance, closure | `leaders` |
+| `repo-steward` | repository scanning, CI/review watchlists, refactor opportunity intake | `leaders` |
+| `innovation-steward` | reflection, experiments, research intake, exploratory backlog shaping | `leaders` |
 
 ### leaders — `roles/leaders/`
 
@@ -68,15 +69,38 @@ marrow-core uses a layered role layout as prompt policy.
 - maximum delegation depth: 3 hops
 - one accountable owner per workstream
 
-These are prompt rules, not runtime-enforced hierarchy metadata.
-
 ## Delegation Rules
 
-- `curator` is the default scheduled owner and should route work through stewards first.
+- `curator` is the default scheduled owner and routes work through stewards.
+- `curator` does not do deep task analysis, repo spelunking, or direct implementation. Curator converts intent into assignments, watches actual completion, lightly accepts against user intent, and keeps throughput high.
+- Stewards are the heavy-acceptance layer. They own intake for a lane, decompose work into leader-sized packets, verify evidence aggressively, and bounce incomplete work back downward instead of passing it upward.
+- Leaders are the analysis-and-execution layer. A leader must understand the task itself, decide the plan, integrate the result, and only delegate narrow execution slices to experts.
+- Experts execute bounded subtasks only. They do not widen scope, redefine the task, or delegate further.
 - The parent that starts a workstream remains accountable for final integration.
 - Delegate only when the child role has a clearly bounded responsibility.
 - Use `tasks/queue` plus IPC wake events for active coordination.
 - Experts never spawn other agents.
+
+## Routing Matrix
+
+Use the following default routing unless the task explicitly demands otherwise.
+
+### `curator` -> steward lanes
+
+- Human requests for deterministic delivery, bug fixes, implementation follow-through -> `conductor`
+- Periodic repo scans, CI/review follow-up, refactor opportunity discovery -> `repo-steward`
+- Reflection, experiments, research spikes, exploratory options -> `innovation-steward`
+
+### steward -> leader lanes
+
+- `conductor` -> `refactor-lead` for code changes, `ops-lead` for environment / service / CI surfaces, `review-lead` for acceptance or evidence review, `prototype-lead` only when a delivery task still needs a bounded experiment
+- `repo-steward` -> `review-lead` for PR/CI/review synthesis, `ops-lead` for automation or service fallout, `refactor-lead` for scan-discovered structural changes, `prototype-lead` for lightweight feasibility probes
+- `innovation-steward` -> `prototype-lead` by default, `review-lead` for evidence synthesis, `refactor-lead` for architecture experiments that turn concrete, `ops-lead` for tooling or environment experiments
+
+### leader -> expert briefs
+
+- Every delegated expert task must include objective, relevant context, constraints, deliverable, acceptance signal, and stop condition.
+- Leaders support downward execution by packaging enough information that the child can act without re-reading the entire upstream task.
 
 ## Communication
 

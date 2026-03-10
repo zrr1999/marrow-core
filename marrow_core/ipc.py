@@ -17,9 +17,11 @@ import contextlib
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlsplit
 
 from loguru import logger
 
+from marrow_core.contracts import ROLE_PATHS, STEWARDS, can_assign_task
 from marrow_core.task_queue import create_task_file, list_tasks
 
 if TYPE_CHECKING:
@@ -37,6 +39,67 @@ _STATUS_TEXT = {
     405: "Method Not Allowed",
     500: "Internal Server Error",
 }
+
+_TASK_ACCEPTANCE_LEVELS = {"light", "heavy"}
+_TASK_STATUSES = {"queued", "active", "blocked", "done"}
+_TASK_TYPES = {"intake", "delivery", "scan", "innovation", "repair"}
+
+
+def _default_task_type(role_name: str) -> str:
+    if role_name == "curator":
+        return "intake"
+    if role_name == "innovation-steward" or role_name == "prototype-lead":
+        return "innovation"
+    if role_name == "repo-steward" or role_name == "review-lead":
+        return "scan"
+    if role_name in STEWARDS:
+        return "delivery"
+    return "delivery"
+
+
+def _normalize_task_request(req: dict[str, Any]) -> tuple[dict[str, str] | None, str | None]:
+    title = str(req.get("title", "")).strip()
+    if not title:
+        return None, "title is required"
+
+    body = str(req.get("body", "")).strip()
+    owner = str(req.get("owner", "")).strip() or "curator"
+    assignee = str(req.get("assignee", "")).strip() or owner
+    delegated_by = str(req.get("delegated_by", "")).strip()
+
+    for field_name, role_name in (("owner", owner), ("assignee", assignee)):
+        if role_name not in ROLE_PATHS:
+            return None, f"{field_name} must be a known role: {role_name}"
+    if delegated_by and delegated_by not in ROLE_PATHS:
+        return None, f"delegated_by must be a known role: {delegated_by}"
+    if not can_assign_task(owner, assignee):
+        return None, f"invalid delegation: {owner} cannot assign directly to {assignee}"
+
+    acceptance = str(req.get("acceptance", "")).strip().lower()
+    if not acceptance:
+        acceptance = "light" if owner == "curator" else "heavy"
+    if acceptance not in _TASK_ACCEPTANCE_LEVELS:
+        return None, f"acceptance must be one of {sorted(_TASK_ACCEPTANCE_LEVELS)}"
+
+    status = str(req.get("status", "")).strip().lower() or "queued"
+    if status not in _TASK_STATUSES:
+        return None, f"status must be one of {sorted(_TASK_STATUSES)}"
+
+    task_type = str(req.get("task_type", "")).strip().lower() or _default_task_type(assignee)
+    if task_type not in _TASK_TYPES:
+        return None, f"task_type must be one of {sorted(_TASK_TYPES)}"
+
+    metadata = {
+        "owner": owner,
+        "assignee": assignee,
+        "acceptance": acceptance,
+        "status": status,
+        "task_type": task_type,
+    }
+    if delegated_by:
+        metadata["delegated_by"] = delegated_by
+
+    return {"title": title, "body": body, "metadata": metadata}, None
 
 
 def _send(
@@ -77,7 +140,10 @@ async def _handle(
         parts = request_line.decode("utf-8", errors="replace").strip().split()
         if len(parts) < 2:
             return
-        method, path = parts[0], parts[1]
+        method, raw_path = parts[0], parts[1]
+        parsed_path = urlsplit(raw_path)
+        path = parsed_path.path
+        params = parse_qs(parsed_path.query)
 
         # Read headers
         content_length = 0
@@ -103,7 +169,18 @@ async def _handle(
             _send(writer, 200, state.to_dict())
 
         elif path == "/tasks" and method == "GET":
-            _send(writer, 200, {"tasks": list_tasks(task_dir)})
+            _send(
+                writer,
+                200,
+                {
+                    "tasks": list_tasks(
+                        task_dir,
+                        assignee=params.get("assignee", [""])[0],
+                        owner=params.get("owner", [""])[0],
+                        status=params.get("status", [""])[0],
+                    )
+                },
+            )
 
         elif path == "/tasks" and method == "POST":
             try:
@@ -111,14 +188,22 @@ async def _handle(
             except json.JSONDecodeError:
                 _send(writer, 400, {"error": "invalid JSON"})
                 return
-            title = req.get("title", "").strip() if isinstance(req, dict) else ""
-            if not title:
-                _send(writer, 400, {"error": "title is required"})
+            if not isinstance(req, dict):
+                _send(writer, 400, {"error": "request body must be a JSON object"})
                 return
-            body_text = req.get("body", "").strip() if isinstance(req, dict) else ""
-            fp = create_task_file(task_dir, title, body_text)
+            normalized, error = _normalize_task_request(req)
+            if error:
+                _send(writer, 400, {"error": error})
+                return
+            assert normalized is not None
+            fp = create_task_file(
+                task_dir,
+                normalized["title"],
+                normalized["body"],
+                metadata=normalized["metadata"],
+            )
             logger.info("task submitted via ipc: {}", fp.name)
-            _send(writer, 200, {"ok": True, "file": fp.name})
+            _send(writer, 200, {"ok": True, "file": fp.name, **normalized["metadata"]})
 
         elif path == "/wake" and method == "POST":
             try:

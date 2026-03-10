@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, load_config
+from marrow_core.config import AgentConfig, RootConfig, load_config
 
 
 def test_minimal_agent_config():
@@ -101,6 +101,37 @@ def test_load_config(tmp_path: Path):
     assert root.core_dir == "/opt/marrow-core"
     assert root.ipc.enabled is True
     assert root.self_check.enabled is True
+
+
+def test_root_config_rejects_non_top_level_scheduled_agent() -> None:
+    with pytest.raises(ValidationError, match="scheduled agent must be top-level"):
+        RootConfig.model_validate(
+            {
+                "agents": [
+                    {
+                        "name": "conductor",
+                        "agent_command": "cmd",
+                        "workspace": "/tmp",
+                    }
+                ]
+            }
+        )
+
+
+def test_root_config_rejects_non_top_level_wake_agent() -> None:
+    with pytest.raises(ValidationError, match=r"self_check\.wake_agent"):
+        RootConfig.model_validate(
+            {
+                "agents": [
+                    {
+                        "name": "curator",
+                        "agent_command": "cmd",
+                        "workspace": "/tmp",
+                    }
+                ],
+                "self_check": {"wake_agent": "review-lead"},
+            }
+        )
 
 
 def test_extra_forbid(tmp_path: Path):

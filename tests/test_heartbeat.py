@@ -75,7 +75,11 @@ async def test_tick_dry_run_prints_prompt(monkeypatch, tmp_path: Path, capsys) -
         context_dirs=[str(tmp_path / "context.d")],
     )
 
-    async def fake_gather_context(context_dirs: list[str], timeout: int = 15) -> list[str]:
+    async def fake_gather_context(
+        context_dirs: list[str], timeout: int = 15, *, extra_env=None
+    ) -> list[str]:
+        assert extra_env["MARROW_AGENT_NAME"] == "scout"
+        assert extra_env["MARROW_WORKSPACE"] == str(tmp_path)
         return ["--- [queue] ---\nTask 1"]
 
     monkeypatch.setattr("marrow_core.heartbeat.gather_context", fake_gather_context)
@@ -101,7 +105,10 @@ async def test_tick_runs_agent_and_prunes_logs(monkeypatch, tmp_path: Path) -> N
     run_agent_call: dict[str, object] = {}
     prune_call: dict[str, object] = {}
 
-    async def fake_gather_context(context_dirs: list[str], timeout: int = 15) -> list[str]:
+    async def fake_gather_context(
+        context_dirs: list[str], timeout: int = 15, *, extra_env=None
+    ) -> list[str]:
+        assert extra_env["MARROW_AGENT_NAME"] == "scout"
         return []
 
     async def fake_run_agent(argv, *, message, timeout, cwd, log_dir, session_id):

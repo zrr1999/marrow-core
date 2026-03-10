@@ -196,6 +196,13 @@ async def _self_check_supervisor(
                     task_dir,
                     "Core self-check requires repair",
                     _self_check_task_body(root.self_check.wake_agent, issues),
+                    metadata={
+                        "owner": root.self_check.wake_agent,
+                        "assignee": root.self_check.wake_agent,
+                        "acceptance": "light",
+                        "status": "queued",
+                        "task_type": "repair",
+                    },
                 )
                 logger.warning(
                     "core self-check failed with {} issue(s); queued {}",
@@ -505,10 +512,45 @@ app.add_typer(task_app, name="task")
 def task_add(
     title: Annotated[str, typer.Argument(help="Task title")],
     body: Annotated[str, typer.Option("--body", "-b", help="Task description")] = "",
+    owner: Annotated[
+        str,
+        typer.Option("--owner", help="Role accountable for accepting this task"),
+    ] = "curator",
+    assignee: Annotated[
+        str,
+        typer.Option("--assignee", help="Role that should pick up the task"),
+    ] = "",
+    acceptance: Annotated[
+        str,
+        typer.Option("--acceptance", help="Acceptance strength: light or heavy"),
+    ] = "",
+    task_type: Annotated[
+        str,
+        typer.Option("--task-type", help="Task lane: intake, delivery, scan, innovation, repair"),
+    ] = "",
+    delegated_by: Annotated[
+        str,
+        typer.Option("--delegated-by", help="Immediate parent that created the delegation"),
+    ] = "",
+    status: Annotated[
+        str,
+        typer.Option("--status", help="Initial task status"),
+    ] = "queued",
     config: ConfigOpt = Path("marrow.toml"),
 ) -> None:
     """Submit a new task to the queue."""
-    payload = json.dumps({"title": title, "body": body})
+    payload = json.dumps(
+        {
+            "title": title,
+            "body": body,
+            "owner": owner,
+            "assignee": assignee,
+            "acceptance": acceptance,
+            "task_type": task_type,
+            "delegated_by": delegated_by,
+            "status": status,
+        }
+    )
     data = _run_ipc_command(config, "POST", "/tasks", payload)
     if data.get("ok"):
         typer.echo(f"✅ task submitted: {data.get('file', '')}")
@@ -519,16 +561,42 @@ def task_add(
 
 @task_app.command("list")
 def task_list(
+    owner: Annotated[
+        str,
+        typer.Option("--owner", help="Filter by accountable owner"),
+    ] = "",
+    assignee: Annotated[
+        str,
+        typer.Option("--assignee", help="Filter by assigned role"),
+    ] = "",
+    status: Annotated[
+        str,
+        typer.Option("--status", help="Filter by task status"),
+    ] = "",
     config: ConfigOpt = Path("marrow.toml"),
 ) -> None:
     """List tasks in the queue."""
-    data = _run_ipc_command(config, "GET", "/tasks")
+    query_parts = []
+    if owner:
+        query_parts.append(f"owner={owner}")
+    if assignee:
+        query_parts.append(f"assignee={assignee}")
+    if status:
+        query_parts.append(f"status={status}")
+    path = "/tasks" if not query_parts else f"/tasks?{'&'.join(query_parts)}"
+    data = _run_ipc_command(config, "GET", path)
     tasks = data.get("tasks", [])
     if not tasks:
         typer.echo("(no tasks in queue)")
         return
     for t in tasks:
-        typer.echo(f"  {t.get('file', '?')}  {t.get('title', '?')}")
+        typer.echo(
+            "  "
+            f"{t.get('file', '?')}  "
+            f"[{t.get('status', '?')}/{t.get('task_type', '?')}]  "
+            f"{t.get('owner', '?')} -> {t.get('assignee', '?')}  "
+            f"{t.get('title', '?')}"
+        )
 
 
 def main() -> None:

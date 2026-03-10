@@ -21,10 +21,16 @@ from marrow_core.task_queue import create_task_file, list_tasks
 
 def test_create_task_file(tmp_path: Path):
     queue = tmp_path / "tasks" / "queue"
-    fp = create_task_file(queue, "My Task", "Details here")
+    fp = create_task_file(
+        queue,
+        "My Task",
+        "Details here",
+        metadata={"owner": "curator", "assignee": "conductor", "acceptance": "light"},
+    )
     assert fp.exists()
     assert fp.suffix == ".md"
     content = fp.read_text()
+    assert "owner: curator" in content
     assert "# My Task" in content
     assert "Details here" in content
 
@@ -51,8 +57,8 @@ def test_list_tasks_empty(tmp_path: Path):
 
 def test_list_tasks(tmp_path: Path):
     queue = tmp_path / "queue"
-    create_task_file(queue, "Task A", "")
-    create_task_file(queue, "Task B", "body")
+    create_task_file(queue, "Task A", "", metadata={"assignee": "curator"})
+    create_task_file(queue, "Task B", "body", metadata={"assignee": "conductor"})
     tasks = list_tasks(queue)
     assert len(tasks) == 2
     titles = {t["title"] for t in tasks}
@@ -138,10 +144,19 @@ async def test_status(ipc_server):
 
 async def test_post_task(ipc_server):
     sock, task_dir, _, _ = ipc_server
-    payload = json.dumps({"title": "test task", "body": "some details"})
+    payload = json.dumps(
+        {
+            "title": "test task",
+            "body": "some details",
+            "owner": "curator",
+            "assignee": "conductor",
+        }
+    )
     data = await _ipc_request(sock, "POST", "/tasks", payload)
     assert data["ok"] is True
     assert "file" in data
+    assert data["owner"] == "curator"
+    assert data["assignee"] == "conductor"
     # Verify file was created
     files = list(task_dir.glob("*.md"))
     assert len(files) == 1
@@ -170,11 +185,39 @@ async def test_list_tasks_via_ipc_empty(ipc_server):
 
 async def test_list_tasks_after_add(ipc_server):
     sock, _, _, _ = ipc_server
-    payload = json.dumps({"title": "alpha"})
+    payload = json.dumps({"title": "alpha", "owner": "curator", "assignee": "conductor"})
     await _ipc_request(sock, "POST", "/tasks", payload)
     data = await _ipc_request(sock, "GET", "/tasks")
     assert len(data["tasks"]) == 1
     assert data["tasks"][0]["title"] == "alpha"
+    assert data["tasks"][0]["assignee"] == "conductor"
+
+
+async def test_list_tasks_can_filter_by_assignee(ipc_server):
+    sock, _, _, _ = ipc_server
+    await _ipc_request(
+        sock,
+        "POST",
+        "/tasks",
+        json.dumps({"title": "alpha", "owner": "curator", "assignee": "conductor"}),
+    )
+    await _ipc_request(
+        sock,
+        "POST",
+        "/tasks",
+        json.dumps({"title": "beta", "owner": "curator", "assignee": "repo-steward"}),
+    )
+    data = await _ipc_request(sock, "GET", "/tasks?assignee=conductor")
+    assert len(data["tasks"]) == 1
+    assert data["tasks"][0]["title"] == "alpha"
+
+
+async def test_post_task_rejects_invalid_delegation(ipc_server):
+    sock, _, _, _ = ipc_server
+    payload = json.dumps({"title": "bad", "owner": "curator", "assignee": "coder"})
+    data = await _ipc_request(sock, "POST", "/tasks", payload)
+    assert "error" in data
+    assert "invalid delegation" in data["error"]
 
 
 async def test_not_found(ipc_server):

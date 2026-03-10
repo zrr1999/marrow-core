@@ -8,8 +8,10 @@ from pathlib import Path
 from marrow_core.config import load_config
 from marrow_core.contracts import (
     AUTONOMOUS_AGENTS,
+    DIRECT_REPORTS,
     EXPERTS,
     LEADERS,
+    ROLE_LAYERS,
     ROLE_MODEL_TIERS,
     ROLE_PATHS,
     STEWARDS,
@@ -64,6 +66,7 @@ def test_role_inventory_groups_are_stable():
     assert tuple(STEWARDS) == (
         "conductor",
         "repo-steward",
+        "innovation-steward",
     )
     assert tuple(LEADERS) == (
         "refactor-lead",
@@ -80,6 +83,16 @@ def test_role_inventory_groups_are_stable():
         "git-ops",
         "filer",
     )
+
+
+def test_role_layers_and_direct_reports_align_with_contract():
+    assert ROLE_LAYERS["curator"] == "top-level"
+    assert ROLE_LAYERS["conductor"] == "steward"
+    assert ROLE_LAYERS["refactor-lead"] == "leader"
+    assert ROLE_LAYERS["coder"] == "expert"
+    assert DIRECT_REPORTS["curator"] == STEWARDS
+    assert "prototype-lead" in DIRECT_REPORTS["innovation-steward"]
+    assert "coder" in DIRECT_REPORTS["refactor-lead"]
 
 
 def test_lib_shell_workspace_dirs_match_contract():

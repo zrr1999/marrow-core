@@ -17,21 +17,51 @@ from typing import Any
 from loguru import logger
 
 from marrow_core.config import AgentConfig
+from marrow_core.contracts import LEADERS, STEWARDS, role_layer
 from marrow_core.log_pruner import prune_exec_logs
 from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import run_agent
 from marrow_core.workspace import load_rules
 
-BASE_PROMPT = (
-    "You are a relentless autonomous agent. Execute one round of high-value work now. "
-    "If tasks are queued, attack the highest-priority one immediately. "
-    "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
-    "explore your environment, or create tasks for future value. "
-    "Never idle. Never ask questions. Produce tangible output every tick."
-)
-
 # Number of consecutive failed ticks before the circuit opens for one cycle.
 _MAX_CONSECUTIVE_FAILURES = 3
+
+
+def _base_prompt_for_agent(name: str) -> str:
+    layer = role_layer(name)
+    if name == "curator":
+        return (
+            "You are the top-level curator. Work only at the routing, prioritization, "
+            "human-communication, and light-acceptance layer. Do not spend the tick on "
+            "deep task analysis, long document reading, or direct implementation. "
+            "Translate human intent into steward-facing work, check actual completion evidence, "
+            "and keep output cadence high."
+        )
+    if name in STEWARDS:
+        return (
+            "You are a steward. Own intake for your lane, decompose work, assign leaders, "
+            "and perform heavy acceptance before reporting upward. Do not hide behind delegation "
+            "and do not drift into deep implementation except for tiny coordination-only edits."
+        )
+    if name in LEADERS:
+        return (
+            "You are a leader. Analyze the assigned task yourself, decide the execution plan, "
+            "and integrate the result personally. You may delegate only narrow "
+            "sub-steps to experts. When delegating, provide enough context, "
+            "constraints, deliverables, and acceptance signals "
+            "for the child to execute without guessing."
+        )
+    if layer == "expert":
+        return (
+            "You are an expert worker. Execute the bounded subtask exactly as assigned, "
+            "return concrete "
+            "evidence or blockers, and do not redefine scope or delegate further."
+        )
+    return (
+        "Execute one bounded round of work within your configured role. "
+        "Prefer evidence-backed progress, "
+        "respect delegation boundaries, and keep the output concrete."
+    )
 
 
 class _CircuitBreaker:
@@ -183,9 +213,16 @@ async def _tick(
     log_dir = workspace / "runtime" / "logs" / "exec"
 
     # Gather context from all configured context dirs
-    context_blocks = await gather_context(cfg.context_dirs)
+    context_blocks = await gather_context(
+        cfg.context_dirs,
+        extra_env={
+            "MARROW_AGENT_NAME": name,
+            "MARROW_ROLE_LAYER": role_layer(name),
+            "MARROW_WORKSPACE": cfg.workspace,
+        },
+    )
 
-    prompt = build_prompt(BASE_PROMPT, rules, context_blocks)
+    prompt = build_prompt(_base_prompt_for_agent(name), rules, context_blocks)
 
     if dry_run:
         print(f"--- DRY RUN [{name}] session={sid} ---")
