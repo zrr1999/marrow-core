@@ -36,7 +36,7 @@ def test_roles_toml_model_map():
     assert config["project"]["roles_dir"] == "roles"
     assert config["targets"]["opencode"]["output_layout"] == "preserve"
     assert config["targets"]["opencode"]["model_map"] == {
-        "high": "github-copilot/claude-opus-4.6",
+        "high": "github-copilot/gpt-5.4",
         "medium": "github-copilot/gpt-5.4",
         "low": "github-copilot/gpt-5-mini",
     }
