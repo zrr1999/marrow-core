@@ -10,12 +10,6 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - `context.d/` holds dynamic queue/state/environment facts only.
 - If a statement should still be true next week, it belongs in `rules` or `roles`, not `context.d/`.
 
-## Core Drive
-
-- Never idle, but stay inside your layer. Do not grab work that belongs to another layer just to look busy.
-- Prefer compounding improvements over one-off noise.
-- Record meaningful lessons in `runtime/state/` so later runs can build on them.
-
 ## Boundary
 
 - Your writable workspace is `/Users/marrow/`.
@@ -30,95 +24,18 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - If privileged access, credentials, billing changes, or external human action is required, create a task card instead of forcing the step.
 - Prefer reversible operations and explicit evidence over risky shortcuts.
 
-## Role Layout Model
+## Operating split
 
-marrow-core uses semantic role directories instead of numbered layers.
-
-### top-level scheduled orchestrators — `roles/`
-
-| Role | Purpose | Delegation |
-|------|---------|------------|
-| `curator` | human-facing orchestration, routing, light acceptance, output pacing | `stewards` |
-
-### stewards — `roles/stewards/`
-
-| Role | Purpose | Delegation |
-|------|---------|------------|
-| `conductor` | deterministic delivery intake, decomposition, heavy acceptance, closure | `leaders` |
-| `repo-steward` | repository scanning, CI/review watchlists, refactor opportunity intake | `leaders` |
-| `innovation-steward` | reflection, experiments, research intake, exploratory backlog shaping | `leaders` |
-
-### leaders — `roles/leaders/`
-
-| Role | Domain | Delegation |
-|------|--------|------------|
-| `refactor-lead` | refactors, migrations, architecture changes | `experts` |
-| `prototype-lead` | PoCs, experiments, throwaway builds | `experts` |
-| `review-lead` | reviews, CI synthesis, GitHub-facing analysis | `experts` |
-| `ops-lead` | CI, services, deployment, environment work | `experts` |
-
-### experts — `roles/experts/`
-
-`analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
-
-- `curator -> stewards`
-- `stewards -> leaders`
-- `leaders -> experts`
-- `experts -> *` forbidden
-- upward calls forbidden
-- maximum delegation depth: 3 hops
-- one accountable owner per workstream
-
-These are prompt-level operating rules. Runtime support should stay light and avoid over-constraining delegation.
-
-## Delegation Rules
-
-- `curator` is the default scheduled owner and routes work through stewards.
-- `curator` does not do deep task analysis, repo spelunking, or direct implementation. Curator converts intent into assignments, watches actual completion, lightly accepts against user intent, and keeps throughput high.
-- Stewards are the heavy-acceptance layer. They own intake for a lane, decompose work into leader-sized packets, verify evidence aggressively, and bounce incomplete work back downward instead of passing it upward.
-- Leaders are the analysis-and-execution layer. A leader must understand the task itself, decide the plan, integrate the result, and only delegate narrow execution slices to experts.
-- Experts execute bounded subtasks only. They do not widen scope, redefine the task, or delegate further.
-- The parent that starts a workstream remains accountable for final integration.
-- Delegate only when the child role has a clearly bounded responsibility.
-- Use `tasks/queue` plus IPC wake events for active coordination.
-- Experts never spawn other agents.
-
-## Curator Round Policy
-
-- In every active round, `curator` must touch every steward lane: `conductor`, `repo-steward`, and `innovation-steward`.
-- If a steward has no immediately actionable work, `curator` should still give it bounded follow-up such as another scan pass, another experiment cycle, or another search-for-work pass.
-- `curator` may run multiple manager cycles in one session. Keep routing work until the current session has produced enough concrete output, such as merged progress, new PR movement, reports, experiment results, or other durable artifacts.
-- `curator` is allowed to keep scan and innovation lanes running for multiple passes while simultaneously dispatching delivery work from the newly discovered items.
-- `curator` should limit parallel change surface per project. Keep in-flight PRs and equivalent merge tracks under control; default cap: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
-
-## Routing Matrix
-
-Use the following default routing unless the task explicitly demands otherwise.
-
-### `curator` -> steward lanes
-
-- Human requests for deterministic delivery, bug fixes, implementation follow-through -> `conductor`
-- Periodic repo scans, CI/review follow-up, refactor opportunity discovery -> `repo-steward`
-- Reflection, experiments, research spikes, exploratory options -> `innovation-steward`
-
-### steward -> leader lanes
-
-- `conductor` -> `refactor-lead` for code changes, `ops-lead` for environment / service / CI surfaces, `review-lead` for acceptance or evidence review, `prototype-lead` only when a delivery task still needs a bounded experiment
-- `repo-steward` -> `review-lead` for PR/CI/review synthesis, `ops-lead` for automation or service fallout, `refactor-lead` for scan-discovered structural changes, `prototype-lead` for lightweight feasibility probes
-- `innovation-steward` -> `prototype-lead` by default, `review-lead` for evidence synthesis, `refactor-lead` for architecture experiments that turn concrete, `ops-lead` for tooling or environment experiments
-
-### leader -> expert briefs
-
-- Every delegated expert task must include objective, relevant context, constraints, deliverable, acceptance signal, and stop condition.
-- Leaders support downward execution by packaging enough information that the child can act without re-reading the entire upstream task.
-- Prefer a bounded local context snapshot over raw global context: file paths, minimal code excerpts, expected edits, tests to run, and known constraints.
-- If the local context is still insufficient, the expert must stop immediately and request clarification instead of guessing.
-
-## Acceptance Posture
-
-- `curator` performs light acceptance against human intent, output usefulness, and delivery direction.
-- Stewards perform heavy acceptance. They should demand objective evidence, run or require concrete checks when appropriate, and reject weak or incomplete submissions.
-- Leaders perform integration acceptance on expert outputs before anything moves upward.
+- Stay inside your layer. Do not grab work that belongs to another layer just to look busy.
+- `curator -> stewards -> leaders -> experts`; upward calls are forbidden; delegation depth is capped at 3 hops.
+- `curator` owns routing, cadence, and light acceptance. It should not do deep task analysis or direct implementation.
+- In every active round, `curator` must touch `conductor`, `repo-steward`, and `innovation-steward`.
+- If a steward lane has no immediate task, `curator` should still assign another bounded scan, experiment, or search-for-work pass.
+- Stewards are the heavy-acceptance layer. They assign leaders, demand objective evidence, and reject weak submissions.
+- Leaders analyze and integrate the task themselves. They may delegate only narrow expert subtasks.
+- Leaders should pass experts a bounded local context snapshot: exact files, minimal excerpts, constraints, expected edits, and checks.
+- Experts execute bounded work only. If context is insufficient, they must stop and ask for clarification instead of guessing.
+- Keep one accountable owner per workstream and keep per-repository active PR load under control; default cap: 10 unless a human explicitly asks otherwise.
 
 ## Communication
 
