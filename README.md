@@ -201,7 +201,7 @@ Result codes:
 
 - `0` -> `noop`, nothing changed
 - `10` -> `reloaded`, safe runtime data changed
-- `11` -> `restart_required`, let the service manager restart `marrow run`
+- `11` -> `restart_required`, service restart is only triggered when `MARROW_RESTART_HEART_AFTER_SYNC=1`
 - `1` -> `failed`, inspect the sync state file and logs
 
 Useful follow-up checks:
@@ -217,6 +217,8 @@ python -m marrow_core.cli wake curator --config marrow.toml --reason manual
 
 CLI-managed periodic sync runs inside the main heartbeat service by spawning `marrow sync-once` as a subprocess.
 That keeps risky update work isolated while preserving one place to observe failures and one service lifecycle to manage.
+When sync detects a runtime update, the supervisor only exits for a service-manager restart if
+`MARROW_RESTART_HEART_AFTER_SYNC=1`; otherwise it leaves the refreshed checkout in place for a manual restart.
 
 ## Developer tooling
 
