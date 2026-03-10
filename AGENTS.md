@@ -41,6 +41,7 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 | `delivery-steward` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
 | `portfolio-steward` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake | `leaders` |
 | `research-steward` | frontier learning, experiments, research intake | `leaders` |
+| `acceptance-steward` | strict steward audits, quality gates, improvement guidance | `leaders` |
 
 ### leaders — `roles/leaders/`
 
@@ -77,6 +78,7 @@ Operating contract:
 - `delivery-steward` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
 - `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing.
 - `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, or follow-up tasks per active round.
+- `acceptance-steward` must audit other stewards strictly, fail weak output, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
 - default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.

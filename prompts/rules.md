@@ -29,13 +29,14 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - Stay inside your layer. Do not grab work that belongs to another layer just to look busy.
 - `curator -> stewards -> leaders -> experts`; upward calls are forbidden; delegation depth is capped at 3 hops.
 - `curator` owns routing, cadence, and light acceptance. It should not do deep task analysis or direct implementation.
-- In every active round, `curator` must touch `delivery-steward`, `portfolio-steward`, and `research-steward`.
+- In every active round, `curator` must touch `delivery-steward`, `portfolio-steward`, `research-steward`, and `acceptance-steward`.
 - If a steward lane has no immediate task, `curator` should still assign another bounded scan, experiment, or search-for-work pass.
 - `curator` must set an explicit output floor per steward, reject weak submissions, and keep delegating until the current round is actually complete.
 - A round is not complete while `tasks/queue/` still contains task files. Re-check the queue after each steward cycle instead of assuming prior work drained it.
-- Default output floors: `delivery-steward` drains `tasks/queue/`, moves completed tasks to `tasks/done/`, and reports a final zero-queue check; `portfolio-steward` produces at least 10 concrete task candidates or follow-up packets; `research-steward` produces at least 5 concrete frontier findings, experiment briefs, or follow-up tasks.
+- Default output floors: `delivery-steward` drains `tasks/queue/`, moves completed tasks to `tasks/done/`, and reports a final zero-queue check; `portfolio-steward` produces at least 10 concrete task candidates or follow-up packets; `research-steward` produces at least 5 concrete frontier findings, experiment briefs, or follow-up tasks; `acceptance-steward` completes at least 3 steward audits with strict pass or fail decisions and improvement guidance for any failed review.
 - Stewards are the heavy-acceptance layer. They assign leaders, demand objective evidence, and reject weak submissions.
-- `delivery-steward` owns queue drain and closure; `portfolio-steward` owns repo portfolio scans, PR or issue movement, and update or refactor intake; `research-steward` owns frontier learning, experiments, and exploratory recommendations.
+- `delivery-steward` owns queue drain and closure; `portfolio-steward` owns repo portfolio scans, PR or issue movement, and update or refactor intake; `research-steward` owns frontier learning, experiments, and exploratory recommendations; `acceptance-steward` owns strict audits of other steward outputs.
+- `curator` may assign multiple `acceptance-steward` passes to the same steward output. If any acceptance pass fails the work and the blocker is actionable, the steward must improve and re-submit instead of carrying the weakness forward.
 - Leaders analyze and integrate the task themselves. They may delegate only narrow expert subtasks.
 - Leaders should pass experts a bounded local context snapshot: exact files, minimal excerpts, constraints, expected edits, and checks.
 - Experts execute bounded work only. If context is insufficient, they must stop and ask for clarification instead of guessing.

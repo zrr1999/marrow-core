@@ -14,6 +14,7 @@ STEWARDS = (
     "delivery-steward",
     "portfolio-steward",
     "research-steward",
+    "acceptance-steward",
 )
 LEADERS = (
     "refactor-lead",
@@ -46,6 +47,7 @@ ROLE_PATHS = {
     "delivery-steward": "roles/stewards/delivery-steward.md",
     "portfolio-steward": "roles/stewards/portfolio-steward.md",
     "research-steward": "roles/stewards/research-steward.md",
+    "acceptance-steward": "roles/stewards/acceptance-steward.md",
     "refactor-lead": "roles/leaders/refactor-lead.md",
     "prototype-lead": "roles/leaders/prototype-lead.md",
     "review-lead": "roles/leaders/review-lead.md",

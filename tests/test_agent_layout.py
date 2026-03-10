@@ -56,6 +56,7 @@ def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
     assert ROLE_MODEL_TIERS["delivery-steward"] == "medium"
     assert ROLE_MODEL_TIERS["portfolio-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["acceptance-steward"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
@@ -65,6 +66,7 @@ def test_role_inventory_groups_are_stable():
         "delivery-steward",
         "portfolio-steward",
         "research-steward",
+        "acceptance-steward",
     )
     assert tuple(LEADERS) == (
         "refactor-lead",
@@ -137,6 +139,8 @@ def test_docs_encode_round_acceptance_bars():
     assert "`tasks/done/`" in merged
     assert "10 concrete task candidates" in merged
     assert "5 concrete frontier findings" in merged
+    assert "3 strict steward audits" in merged
+    assert "multiple `acceptance-steward` passes" in merged
 
 
 def test_readme_documents_commands_and_self_check():
