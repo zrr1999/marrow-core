@@ -14,6 +14,7 @@ STEWARDS = (
     "delivery-steward",
     "portfolio-steward",
     "research-steward",
+    "context-steward",
     "acceptance-steward",
 )
 LEADERS = (
@@ -21,6 +22,8 @@ LEADERS = (
     "prototype-lead",
     "review-lead",
     "ops-lead",
+    "context-lead",
+    "memory-lead",
 )
 EXPERTS = (
     "analyst",
@@ -47,11 +50,14 @@ ROLE_PATHS = {
     "delivery-steward": "roles/stewards/delivery-steward.md",
     "portfolio-steward": "roles/stewards/portfolio-steward.md",
     "research-steward": "roles/stewards/research-steward.md",
+    "context-steward": "roles/stewards/context-steward.md",
     "acceptance-steward": "roles/stewards/acceptance-steward.md",
     "refactor-lead": "roles/leaders/refactor-lead.md",
     "prototype-lead": "roles/leaders/prototype-lead.md",
     "review-lead": "roles/leaders/review-lead.md",
     "ops-lead": "roles/leaders/ops-lead.md",
+    "context-lead": "roles/leaders/context-lead.md",
+    "memory-lead": "roles/leaders/memory-lead.md",
     "analyst": "roles/experts/analyst.md",
     "researcher": "roles/experts/researcher.md",
     "coder": "roles/experts/coder.md",

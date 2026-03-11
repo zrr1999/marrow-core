@@ -56,7 +56,10 @@ def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
     assert ROLE_MODEL_TIERS["delivery-steward"] == "medium"
     assert ROLE_MODEL_TIERS["portfolio-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["context-steward"] == "medium"
     assert ROLE_MODEL_TIERS["acceptance-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["context-lead"] == "medium"
+    assert ROLE_MODEL_TIERS["memory-lead"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
@@ -66,6 +69,7 @@ def test_role_inventory_groups_are_stable():
         "delivery-steward",
         "portfolio-steward",
         "research-steward",
+        "context-steward",
         "acceptance-steward",
     )
     assert tuple(LEADERS) == (
@@ -73,6 +77,8 @@ def test_role_inventory_groups_are_stable():
         "prototype-lead",
         "review-lead",
         "ops-lead",
+        "context-lead",
+        "memory-lead",
     )
     assert tuple(EXPERTS) == (
         "analyst",

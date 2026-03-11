@@ -20,8 +20,8 @@ marrow-core uses semantic role directories instead of numbered layers.
 | Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
 | top-level | `roles/` | `curator` | scheduled orchestration, human communication, routing, light acceptance |
-| stewards | `roles/stewards/` | `delivery-steward`, `portfolio-steward`, `research-steward`, `acceptance-steward` | lane ownership, decomposition, heavy acceptance, closure |
-| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | domain analysis, implementation ownership, integration |
+| stewards | `roles/stewards/` | `delivery-steward`, `portfolio-steward`, `research-steward`, `context-steward`, `acceptance-steward` | lane ownership, decomposition, heavy acceptance, closure |
+| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead`, `context-lead`, `memory-lead` | domain analysis, implementation ownership, integration |
 | experts | `roles/experts/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
 Delegation policy:
@@ -106,6 +106,7 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 - `delivery-steward` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
 - `portfolio-steward` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, update or refactor opportunity intake, repo-bucket coverage, and outward-facing showcase surfaces.
 - `research-steward` owns frontier learning, experiments, research-oriented intake, and durable internal materials.
+- `context-steward` owns writable context hygiene, memory compaction, prompt-surface placement, contradiction cleanup, and upkeep of context-affecting workspace notes.
 - `acceptance-steward` owns strict review of steward outputs, rejects weak work, issues concrete improvement guidance, and audits the round scorecard plus workload balance.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
@@ -116,7 +117,7 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 - outward-facing showcase progress must include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
 - durable internal materials must include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
 - steward workloads should stay in the same order of magnitude during the first cycle of a round; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
-- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `acceptance-steward` must complete delivery, portfolio, research, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
+- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `context-steward` must produce at least 3 concrete context hygiene fixes or follow-up packets and explicitly report remaining stale, duplicated, or contradictory context; `acceptance-steward` must complete delivery, portfolio, research, context, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
 - curator may dispatch multiple `acceptance-steward` passes over the same steward output; failed audits require the steward to improve and re-submit.
 - curator may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round, with an explicit target per acceptance assignment.
 
@@ -126,10 +127,12 @@ Default routing:
 - deterministic delivery -> `delivery-steward`
 - repo scans / CI / review / repo opportunities -> `portfolio-steward`
 - frontier learning / experiment / research -> `research-steward`
+- writable context hygiene / memory lifecycle / prompt-surface upkeep -> `context-steward`
 - steward audits / strict acceptance -> `acceptance-steward`
 - `delivery-steward` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
 - `portfolio-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
 - `research-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
+- `context-steward` -> `context-lead` / `memory-lead`
 - `acceptance-steward` -> audit other stewards and route rework back through `curator`
 - leaders should pass experts bounded local context snapshots rather than raw global state.
 

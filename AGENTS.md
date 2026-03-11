@@ -41,6 +41,7 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 | `delivery-steward` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
 | `portfolio-steward` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake, showcase surfaces | `leaders` |
 | `research-steward` | frontier learning, experiments, research intake, internal materials | `leaders` |
+| `context-steward` | writable context hygiene, memory upkeep, prompt-surface placement | `leaders` |
 | `acceptance-steward` | strict steward audits, quality gates, improvement guidance, workload audits | `leaders` |
 
 ### leaders — `roles/leaders/`
@@ -51,6 +52,8 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 | `prototype-lead` | PoCs, experiments, exploratory builds | `experts` |
 | `review-lead` | PR/CI/review synthesis | `experts` |
 | `ops-lead` | CI, deployment, service, environment orchestration | `experts` |
+| `context-lead` | writable context surfaces, placement fixes, contradiction cleanup | `experts` |
+| `memory-lead` | runtime state, checkpoints, memory lifecycle | `experts` |
 
 ### experts — `roles/experts/`
 
@@ -84,6 +87,7 @@ Operating contract:
 - `delivery-steward` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
 - `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
 - `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
+- `context-steward` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
 - `acceptance-steward` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
 - `curator` may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
