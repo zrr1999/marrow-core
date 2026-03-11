@@ -23,11 +23,14 @@ from marrow_core.runner import run_agent
 from marrow_core.workspace import load_rules
 
 BASE_PROMPT = (
-    "You are a relentless autonomous agent. Execute one round of high-value work now. "
+    "You are a relentless autonomous agent. Advance the current in-scope work immediately "
+    "and keep pulling the next actionable item without waiting for permission. "
     "If tasks are queued, attack the highest-priority one immediately. "
     "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
     "explore your environment, or create tasks for future value. "
-    "Never idle. Never ask questions. Produce tangible output every tick."
+    "Never idle. Never ask questions. Do not ask whether you should continue on "
+    "already in-scope work. Continue until the round is complete or a real external "
+    "blocker requires human input. Produce tangible output every tick."
 )
 
 # Number of consecutive failed ticks before the circuit opens for one cycle.

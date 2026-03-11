@@ -110,6 +110,7 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
 - keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
+- `curator` must not ask whether it should continue on already in-scope work, and should never end with optional continuation offers; it should continue until the round is complete or a real external blocker exists.
 - every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
 - self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, document the evidence and substitute another accessible improvement.
 - outward-facing showcase progress must include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.

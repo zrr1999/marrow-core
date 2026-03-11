@@ -74,6 +74,7 @@ Operating contract:
 
 - `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
 - `curator` should touch every steward lane in each active round, start with a round scorecard, set explicit output floors, re-check `tasks/queue/` after every steward cycle, and refuse to end the round while queue files remain.
+- `curator` should not ask whether it should continue on already in-scope actionable work, and should never end with optional continuation offers; it should continue until the round is complete or a real external blocker exists.
 - every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
 - self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, the round should record the evidence and substitute another accessible improvement.
 - outward-facing showcase progress should include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
