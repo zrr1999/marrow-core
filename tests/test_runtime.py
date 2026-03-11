@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from marrow_core.config import RootConfig
-from marrow_core.runtime import marrow_binary, resolve_socket_path, resolve_task_dir
+from marrow_core.runtime import (
+    marrow_binary,
+    resolve_socket_path,
+    resolve_task_dir,
+)
 
 
 def test_runtime_paths_default_to_primary_workspace() -> None:

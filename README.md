@@ -47,11 +47,11 @@ The canonical source of truth is `roles/` plus `roles.toml`.
 ## CLI
 
 ```text
-marrow run              # persistent heartbeat loop
+marrow run              # root supervisor or single-user heartbeat loop
 marrow run-once         # one tick per scheduled agent, then exit
 marrow dry-run          # assemble prompts without running agents
 marrow sync-once        # one bounded sync attempt with structured result codes
-marrow setup            # init workspace dirs and cast runtime roles
+marrow setup            # init root runtime or single-user workspace
 marrow scaffold         # create a new writable workspace skeleton and starter config
 marrow validate         # check config and show summary
 marrow doctor           # verify workspace, context dirs, and agent command availability
@@ -67,6 +67,10 @@ marrow task list        # inspect queued tasks via IPC
 ```toml
 core_dir = "/opt/marrow-core"
 
+[service]
+mode = "supervisor"
+runtime_root = "/var/lib/marrow"
+
 [ipc]
 enabled = true
 
@@ -81,6 +85,7 @@ interval_seconds = 3600
 failure_backoff_seconds = 300
 
 [[agents]]
+user = "marrow"
 name = "curator"
 heartbeat_interval = 10800
 heartbeat_timeout = 7200
@@ -88,6 +93,8 @@ workspace = "/Users/marrow"
 agent_command = "/Users/marrow/.opencode/bin/opencode run --agent curator"
 context_dirs = ["/Users/marrow/context.d"]
 ```
+
+If `home` is omitted, marrow defaults it to `/Users/<user>`.
 
 Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
@@ -142,11 +149,12 @@ The old scout-style巡检 loop is replaced by a core-owned self-check loop. It r
 
 - `marrow_core/contracts.py` — canonical role inventory and workspace topology
 - `marrow_core/prompting.py` — context execution and prompt assembly
-- `marrow_core/runtime.py` — socket, queue, and binary path resolution
+- `marrow_core/runtime.py` — socket, queue, service-runtime, and binary path resolution
 - `marrow_core/task_queue.py` — filesystem queue helpers
 - `marrow_core/health.py` — reusable doctor and self-check health checks
 - `marrow_core/services.py` — launchd/systemd rendering
 - `marrow_core/scaffold.py` — workspace scaffold and starter config generation
+- `marrow_core/worker.py` — worker grouping, privilege drop, and worker control files
 - `marrow_core/heartbeat.py`, `marrow_core/cli.py`, `marrow_core/ipc.py` — orchestration layers
 
 ## Workspace layout
@@ -166,6 +174,8 @@ The old scout-style巡检 loop is replaced by a core-owned self-check loop. It r
 └── docs/
 ```
 
+Workers keep user-owned runtime logs, queue files, and cast role files inside the workspace. The root supervisor keeps its socket, sync state, worker status files, and heart logs under `service.runtime_root`.
+
 Use the queue plus IPC wake events for active coordination. Open task cards can carry routing metadata such as `owner`, `assignee`, `acceptance`, `status`, and `task_type` so each layer sees the right work.
 
 ## Service installation
@@ -176,7 +186,10 @@ marrow install-service --config marrow.toml --platform linux --output-dir ./serv
 ```
 
 The repo uses one long-running service per platform and CLI-managed periodic sync inside `marrow run`.
+In supervisor mode that one long-running service is the root supervisor; workers are child processes, not extra OS service units.
 Use `marrow sync-once` for the bounded update path, and `marrow install-service` only emits the primary runtime service file for each platform.
+The installed service points at a system config file: `/etc/marrow/marrow.toml` on Linux and `/Library/Application Support/marrow/marrow.toml` on macOS.
+The service intentionally execs the installed `marrow` binary from the core virtualenv instead of `uvx --from git+...`, so service startup does not depend on `uv` availability, on-demand package resolution, or network access.
 
 ## Quick start
 
@@ -191,9 +204,9 @@ sudo ./setup.sh
 What this does:
 
 - creates or updates `/opt/marrow-core/.venv`
-- ensures `/Users/marrow/` workspace directories exist
-- casts canonical roles into `/Users/marrow/.opencode/agents/`
-- renders and installs the single heartbeat service for your platform
+- renders and installs the one long-running service for your platform
+- prepares root-owned supervisor runtime under `service.runtime_root`
+- lets the first worker start create `/Users/marrow/` workspace directories and cast runtime roles
 
 Update an existing installation:
 
@@ -206,7 +219,7 @@ Result codes:
 
 - `0` -> `noop`, nothing changed
 - `10` -> `reloaded`, safe runtime data changed
-- `11` -> `restart_required`, let the service manager restart `marrow run`
+- `11` -> `restart_required`, service restart is only triggered when `MARROW_RESTART_HEART_AFTER_SYNC=1`
 - `1` -> `failed`, inspect the sync state file and logs
 
 Useful follow-up checks:
@@ -221,11 +234,31 @@ python -m marrow_core.cli wake curator --config marrow.toml --reason manual
 ## Sync model
 
 CLI-managed periodic sync runs inside the main heartbeat service by spawning `marrow sync-once` as a subprocess.
+In supervisor mode, sync stays root-owned and returns restart signals instead of refreshing user workspaces directly; the restarted worker then performs the workspace refresh under user ownership.
 That keeps risky update work isolated while preserving one place to observe failures and one service lifecycle to manage.
+When sync detects a runtime update, the supervisor only exits for a service-manager restart if
+`MARROW_RESTART_HEART_AFTER_SYNC=1`; otherwise it leaves the refreshed checkout in place for a manual restart.
 
 ## Developer tooling
 
 Repository-local quality tools are intended to be invoked with `uvx` rather than pinned as project runtime dependencies. See `Justfile` for the standard commands for `ruff`, `ty`, and `prek`.
+
+## Testing guidelines
+
+When adding or editing tests in this repository, use these rules:
+
+- test externally visible behavior or ownership boundaries first; only add helper-level unit tests when the helper has non-trivial branching that would be hard to diagnose from a higher-level failure
+- prefer one high-signal test that covers one risk end-to-end over multiple tests that restate the same branch through different helper calls
+- keep single-user compatibility tests and supervisor-mode tests separate; do not duplicate the same assertion in both unless the modes can fail independently
+- add CLI tests for command contracts, exit codes, and rendered artifacts; avoid asserting internal call ordering unless that ordering is itself the contract
+- add runtime/path tests for root-vs-user ownership boundaries, system config paths, workspace log destinations, and deferred workspace refresh behavior, because failures there are high severity
+- delete a lower-level test when a higher-level test would fail for the same bug with a clearer signal; examples include thin wrapper helpers, trivial serialization, and pure passthrough file writes
+- for new architecture work, start from the failure mode: ask what would be expensive or dangerous if it broke in production, then add the smallest test that would catch that break deterministically
+
+Current convention:
+
+- `tests/test_supervisor.py` owns supervisor/root-worker boundary coverage
+- narrower files such as `tests/test_config.py`, `tests/test_runtime.py`, and `tests/test_services.py` keep focused single-responsibility checks that are not already covered there
 
 ## Architecture
 

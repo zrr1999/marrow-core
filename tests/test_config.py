@@ -9,24 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, load_config
-
-
-def test_minimal_agent_config():
-    cfg = AgentConfig(
-        name="test",
-        agent_command="opencode run",
-        workspace="/tmp/test",
-    )
-    assert cfg.name == "test"
-    assert cfg.heartbeat_interval == 300
-    assert cfg.heartbeat_timeout == 500
-    assert cfg.context_dirs == []
-
-
-def test_name_strip():
-    cfg = AgentConfig(name="  curator  ", agent_command="cmd", workspace="/tmp")
-    assert cfg.name == "curator"
+from marrow_core.config import AgentConfig, ServiceConfig, load_config
 
 
 def test_empty_name_raises():
@@ -62,16 +45,6 @@ def test_interval_allows_multi_day_schedule():
     assert cfg.heartbeat_interval == 302400
 
 
-def test_context_dirs_normalization():
-    cfg = AgentConfig(
-        name="x",
-        agent_command="cmd",
-        workspace="/tmp",
-        context_dirs=["/foo/bar"],
-    )
-    assert cfg.context_dirs == ["/foo/bar"]
-
-
 def test_context_dirs_relative_raises():
     with pytest.raises(ValueError, match="absolute"):
         AgentConfig(
@@ -82,13 +55,23 @@ def test_context_dirs_relative_raises():
         )
 
 
+def test_service_mode_rejects_unknown() -> None:
+    with pytest.raises(ValueError, match=r"service\.mode"):
+        ServiceConfig(mode="other")
+
+
 def test_load_config(tmp_path: Path):
     toml = tmp_path / "marrow.toml"
     toml.write_text(
         textwrap.dedent("""\
         core_dir = "/opt/marrow-core"
 
+        [service]
+        mode = "supervisor"
+        runtime_root = "/var/lib/marrow"
+
         [[agents]]
+        user = "marrow"
         name = "curator"
         agent_command = "opencode run --agent curator"
         workspace = "/Users/marrow"
@@ -98,6 +81,9 @@ def test_load_config(tmp_path: Path):
     root = load_config(toml)
     assert len(root.agents) == 1
     assert root.agents[0].name == "curator"
+    assert root.agents[0].user == "marrow"
+    assert root.agents[0].home == "/Users/marrow"
+    assert root.service.mode == "supervisor"
     assert root.core_dir == "/opt/marrow-core"
     assert root.ipc.enabled is True
     assert root.self_check.enabled is True

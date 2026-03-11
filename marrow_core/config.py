@@ -1,8 +1,4 @@
-"""Configuration loading and validation.
-
-Keeps it simple: one TOML file, one RootConfig, multiple AgentConfig.
-All paths must be absolute. Intervals are clamped with loud warnings.
-"""
+"""Configuration loading and validation."""
 
 from __future__ import annotations
 
@@ -11,7 +7,7 @@ import warnings
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -29,6 +25,9 @@ class AgentConfig(BaseModel):
     heartbeat_timeout: int = 500
     agent_command: str
     workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
+    user: str = Field(default="", validation_alias=AliasChoices("user", "run_as_user"))
+    run_as_group: str = ""
+    home: str = ""
     context_dirs: list[str] = Field(default_factory=list)
     log_retention_days: int = 7  # exec-log age-based pruning (0 = disabled)
     log_max_count: int = 200  # exec-log count-based pruning (0 = disabled)
@@ -53,12 +52,37 @@ class AgentConfig(BaseModel):
     def _clamp_timeout(cls, v: int) -> int:
         return _clamp(v, 5, 86400, "heartbeat_timeout")
 
+    @field_validator("user", "run_as_group", "home", mode="before")
+    @classmethod
+    def _strip_optional_fields(cls, v: Any) -> str:
+        return str(v).strip() if v is not None else ""
+
+    @field_validator("user")
+    @classmethod
+    def _validate_user(cls, v: str) -> str:
+        if "/" in v:
+            raise ValueError(f"user must be an account name: {v}")
+        return v
+
     @field_validator("workspace")
     @classmethod
     def _abs_workspace(cls, v: str) -> str:
         if not Path(v).is_absolute():
             raise ValueError(f"workspace must be absolute: {v}")
         return v
+
+    @field_validator("home")
+    @classmethod
+    def _abs_home(cls, v: str) -> str:
+        if v and not Path(v).is_absolute():
+            raise ValueError(f"home must be absolute: {v}")
+        return v
+
+    @model_validator(mode="after")
+    def _default_home(self) -> AgentConfig:
+        if not self.home and self.user:
+            self.home = f"/Users/{self.user}"
+        return self
 
     @field_validator("context_dirs", mode="before")
     @classmethod
@@ -147,16 +171,57 @@ class SelfCheckConfig(BaseModel):
         return [str(x).strip() for x in v if str(x).strip()]
 
 
+class ServiceConfig(BaseModel):
+    """Long-running service configuration."""
+
+    mode: str = "single_user"
+    runtime_root: str = ""
+    log_dir: str = ""
+    config_path: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _normalize_mode(cls, v: Any) -> str:
+        mode = str(v).strip() if v is not None else "single_user"
+        if mode not in {"single_user", "supervisor"}:
+            raise ValueError("service.mode must be 'single_user' or 'supervisor'")
+        return mode
+
+    @field_validator("runtime_root", "log_dir", "config_path", mode="before")
+    @classmethod
+    def _strip_optional_path(cls, v: Any) -> str:
+        return str(v).strip() if v is not None else ""
+
+    @field_validator("runtime_root", "log_dir", "config_path")
+    @classmethod
+    def _abs_optional_path(cls, v: str) -> str:
+        if v and not Path(v).is_absolute():
+            raise ValueError(f"service path must be absolute: {v}")
+        return v
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
     core_dir: str = "/opt/marrow-core"
+    service: ServiceConfig = Field(default_factory=ServiceConfig)
     agents: list[AgentConfig] = Field(default_factory=list)
     ipc: IpcConfig = Field(default_factory=IpcConfig)
     sync: SyncConfig = Field(default_factory=SyncConfig)
     self_check: SelfCheckConfig = Field(default_factory=SelfCheckConfig)
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def _validate_supervisor_agents(self) -> RootConfig:
+        if self.service.mode != "supervisor":
+            return self
+        for agent in self.agents:
+            if not agent.user:
+                raise ValueError(f"supervisor mode requires user for agent {agent.name!r}")
+        return self
 
 
 def load_config(path: Path) -> RootConfig:

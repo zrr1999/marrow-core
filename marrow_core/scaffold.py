@@ -46,6 +46,7 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             textwrap.dedent(
                 f"""
                 [[agents]]
+                user = "marrow"
                 name = "{name}"
                 heartbeat_interval = {interval}
                 heartbeat_timeout = {timeout}
@@ -59,6 +60,10 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
         textwrap.dedent(
             f"""
             core_dir = "{core_dir}"
+
+            [service]
+            mode = "supervisor"
+            runtime_root = "/var/lib/marrow"
 
             [ipc]
             enabled = true

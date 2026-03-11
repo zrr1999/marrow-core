@@ -1,0 +1,51 @@
+name: Feature Request
+description: Propose an improvement or new capability for marrow-core.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please focus on the problem, the desired outcome, and any constraints or trade-offs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What pain point or limitation are you hitting today?
+      placeholder: It is hard to understand why a queued task was routed to a specific role.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you would like to see.
+      placeholder: Add a verbose routing trace that records which steward and leader were selected and why.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you considered workarounds or other approaches?
+      placeholder: Today we inspect queue files manually, but that does not explain runtime decisions.
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case and impact
+      description: Who benefits from this and how would it help in practice?
+      placeholder: This would help operators debug unexpected routing and reduce time spent reading logs.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope, constraints, or acceptance notes
+      description: Note compatibility concerns, design constraints, or success criteria.
+      placeholder: Should work on both macOS and Linux without changing existing config formats.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add mockups, references, prior art, or related issues if available.

@@ -15,11 +15,17 @@ from typer.testing import CliRunner
 from marrow_core.cli import app
 from marrow_core.config import RootConfig
 from marrow_core.contracts import AUTONOMOUS_AGENTS
+from marrow_core.task_queue import create_task_file
 
 runner = CliRunner()
 
 
-def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
+def _write_config(
+    tmp_path: Path,
+    *,
+    socket_path: Path | None = None,
+    service_mode: str = "single_user",
+) -> Path:
     workspace = tmp_path / "workspace"
     context_dir = workspace / "context.d"
     context_dir.mkdir(parents=True)
@@ -66,11 +72,20 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
         wake_agent = "curator"
         """
     )
+    service_block = textwrap.dedent(
+        f"""
+
+        [service]
+        mode = {json.dumps(service_mode)}
+        runtime_root = {json.dumps(str(tmp_path / "service-runtime"))}
+        """
+    )
 
     agents = "\n\n".join(
         textwrap.dedent(
             f"""
             [[agents]]
+            user = "marrow"
             name = {json.dumps(name)}
             heartbeat_interval = 300
             heartbeat_timeout = 30
@@ -87,6 +102,7 @@ def _write_config(tmp_path: Path, *, socket_path: Path | None = None) -> Path:
         textwrap.dedent(
             f"""
             core_dir = {json.dumps(str(tmp_path / "core"))}
+            {service_block}
             {ipc_block}
             {self_check_block}
             {sync_block}
@@ -395,6 +411,51 @@ def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> No
     assert sleeps == [30]
 
 
+def test_sync_supervisor_restarts_only_when_env_enabled(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+
+    async def fake_invoke_sync_once(root):
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
+
+    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
+    monkeypatch.setenv("MARROW_RESTART_HEART_AFTER_SYNC", "1")
+
+    result: object | None = None
+    try:
+        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
+    except BaseException as exc:  # pragma: no branch - expected exit path
+        result = exc
+
+    assert result is not None
+    assert isinstance(result, __import__("typer").Exit)
+    assert getattr(result, "exit_code", None) == 0
+
+
+def test_sync_supervisor_skips_restart_when_env_disabled(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    sleeps: list[int] = []
+
+    async def fake_invoke_sync_once(root):
+        from marrow_core.sync import SyncOutcome, SyncResult
+
+        return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
+
+    async def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
+    monkeypatch.delenv("MARROW_RESTART_HEART_AFTER_SYNC", raising=False)
+    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
+
+    with contextlib.suppress(asyncio.CancelledError):
+        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
+
+    assert sleeps == [3600]
+
+
 def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -428,7 +489,11 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
 
     with contextlib.suppress(asyncio.CancelledError):
         asyncio.run(
-            __import__("marrow_core.cli").cli._self_check_supervisor(root, task_dir, wake_events)
+            __import__("marrow_core.cli").cli._self_check_supervisor(
+                root,
+                lambda title, body: create_task_file(task_dir, title, body),
+                wake_events,
+            )
         )
 
     files = list(task_dir.glob("*.md"))
@@ -468,6 +533,7 @@ def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: P
         "workspace": str(tmp_path / "workspace"),
         "state_file": tmp_path / "workspace" / "runtime" / "state" / "sync-status.json",
         "lock_file": tmp_path / "workspace" / "runtime" / "state" / "sync.lock",
+        "refresh_workspace": True,
     }
     assert call["run_sync_once_kwargs"] == call["kwargs"]
 

@@ -68,6 +68,9 @@ async def _handle(
     task_dir: Path,
     state: HeartbeatState,
     wake_events: dict[str, asyncio.Event],
+    *,
+    task_submitter=None,
+    task_lister=None,
 ) -> None:
     """Handle one HTTP request over the Unix socket."""
     try:
@@ -103,7 +106,8 @@ async def _handle(
             _send(writer, 200, state.to_dict())
 
         elif path == "/tasks" and method == "GET":
-            _send(writer, 200, {"tasks": list_tasks(task_dir)})
+            tasks = task_lister() if task_lister is not None else list_tasks(task_dir)
+            _send(writer, 200, {"tasks": tasks})
 
         elif path == "/tasks" and method == "POST":
             try:
@@ -116,7 +120,11 @@ async def _handle(
                 _send(writer, 400, {"error": "title is required"})
                 return
             body_text = req.get("body", "").strip() if isinstance(req, dict) else ""
-            fp = create_task_file(task_dir, title, body_text)
+            fp = (
+                task_submitter(title, body_text)
+                if task_submitter is not None
+                else create_task_file(task_dir, title, body_text)
+            )
             logger.info("task submitted via ipc: {}", fp.name)
             _send(writer, 200, {"ok": True, "file": fp.name})
 
@@ -167,6 +175,9 @@ async def start_ipc_server(
     task_dir: str,
     state: HeartbeatState,
     wake_events: dict[str, asyncio.Event],
+    *,
+    task_submitter=None,
+    task_lister=None,
 ) -> asyncio.Server:
     """Start the IPC server on a Unix domain socket."""
     sock = Path(socket_path)
@@ -178,7 +189,15 @@ async def start_ipc_server(
     td = Path(task_dir)
 
     async def handler(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
-        await _handle(r, w, td, state, wake_events)
+        await _handle(
+            r,
+            w,
+            td,
+            state,
+            wake_events,
+            task_submitter=task_submitter,
+            task_lister=task_lister,
+        )
 
     server = await asyncio.start_unix_server(handler, path=str(sock))
     logger.info("ipc server listening on {}", sock)
