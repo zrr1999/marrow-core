@@ -1,0 +1,55 @@
+name: Question / Support
+description: Ask for help with setup, configuration, behavior, or troubleshooting.
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Need help? Please include enough detail for someone else to understand your goal, setup, and what you have already checked.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task or outcome you are aiming for.
+      placeholder: I am trying to install marrow-core as a launchd service on macOS.
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you need help with?
+      description: Ask the question clearly and include the confusing behavior or documentation gap.
+      placeholder: Which command should I use to render the service file and where should it be installed?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and environment
+      description: Include OS, install method, version, relevant config, and anything else needed to answer accurately.
+      placeholder: |
+        - OS: macOS 15.3
+        - Install method: source checkout
+        - marrow-core version or commit: main @ abc1234
+        - Relevant command: `marrow install-service --platform darwin`
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Mention docs read, commands run, or troubleshooting steps already attempted.
+      placeholder: I read the README service section, ran `marrow doctor`, and searched existing issues.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output or logs
+      description: Paste command output or log snippets if they help explain the question.
+      render: shell
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add links, screenshots, or other details if helpful.
