@@ -411,7 +411,15 @@ async def _sync_supervisor(config: Path) -> None:
             await asyncio.sleep(root.sync.interval_seconds)
             continue
         if outcome.result is SyncResult.RESTART_REQUIRED:
-            raise typer.Exit(code=0)
+            if os.getenv("MARROW_RESTART_HEART_AFTER_SYNC") == "1":
+                logger.info("sync requested restart; exiting for service manager restart")
+                raise typer.Exit(code=0)
+            logger.info(
+                "sync requested restart but skipped it; "
+                "set MARROW_RESTART_HEART_AFTER_SYNC=1 to enable"
+            )
+            await asyncio.sleep(root.sync.interval_seconds)
+            continue
         await asyncio.sleep(root.sync.failure_backoff_seconds)
 
 
