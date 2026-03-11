@@ -1,0 +1,88 @@
+name: Bug Report
+description: Report a reproducible problem in marrow-core.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please include a minimal reproduction, what you expected, and what happened instead.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the problem.
+      placeholder: Running `marrow sync-once` exits with code 1 after updating to the latest release.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List the exact steps needed to reproduce the issue.
+      placeholder: |
+        1. Install marrow-core with `uv tool install marrow-core`
+        2. Run `marrow sync-once --config marrow.toml`
+        3. Observe the failure
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+      placeholder: The command should complete successfully and report `noop`.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include errors, logs, or screenshots if helpful.
+      placeholder: The command exits with code 1 and logs `permission denied`.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Share the environment details needed to debug the issue.
+      placeholder: |
+        - OS: macOS 15.3 / Ubuntu 24.04
+        - Python: 3.12.8
+        - marrow-core version or commit: v0.1.0
+        - Install method: uv tool / source checkout
+        - Model or agent command: `opencode run --agent curator`
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: Paste any relevant config snippets, sanitized if needed.
+      render: toml
+      placeholder: |
+        [sync]
+        enabled = true
+        interval_seconds = 3600
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics and logs
+      description: Paste related command output, stack traces, or log excerpts.
+      render: shell
+      placeholder: |
+        marrow doctor --config marrow.toml
+        python -m marrow_core.cli status --config marrow.toml
+  - type: textarea
+    id: attempts
+    attributes:
+      label: What have you already tried?
+      description: Mention workarounds, retries, or related investigation.
+      placeholder: Restarted the service, re-ran setup, and compared against a fresh workspace.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add anything else that may help reproduce or diagnose the issue.
