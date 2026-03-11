@@ -146,6 +146,8 @@ def test_docs_encode_round_scorecard_and_acceptance_bars():
     assert "at least 3 durable internal materials" in merged
     assert "round scorecard audits" in merged
     assert "multiple `acceptance-steward` passes" in merged
+    assert "multiple `acceptance-steward` instances in parallel" in merged
+    assert "different steward outputs" in merged
 
 
 def test_readme_documents_commands_and_self_check():

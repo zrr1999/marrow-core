@@ -84,6 +84,7 @@ Operating contract:
 - `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
 - `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
 - `acceptance-steward` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
+- `curator` may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
 - default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.

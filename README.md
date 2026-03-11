@@ -117,6 +117,7 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 - steward workloads should stay in the same order of magnitude during the first cycle of a round; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
 - default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `acceptance-steward` must complete delivery, portfolio, research, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
 - curator may dispatch multiple `acceptance-steward` passes over the same steward output; failed audits require the steward to improve and re-submit.
+- curator may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round, with an explicit target per acceptance assignment.
 
 Default routing:
 

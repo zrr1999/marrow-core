@@ -43,6 +43,7 @@ They cannot be modified by the running agent. To change them, submit a PR.
 - Stewards are the heavy-acceptance layer. They assign leaders, demand objective evidence, and reject weak submissions.
 - `delivery-steward` owns queue drain and closure; `portfolio-steward` owns repo portfolio scans, PR or issue movement, update or refactor intake, repo-bucket coverage, and outward-facing showcase surfaces; `research-steward` owns frontier learning, experiments, exploratory recommendations, and durable internal materials; `acceptance-steward` owns strict audits of other steward outputs and workload sufficiency.
 - `curator` may assign multiple `acceptance-steward` passes to the same steward output. If any acceptance pass fails the work and the blocker is actionable, the steward must improve and re-submit instead of carrying the weakness forward.
+- `curator` may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round. Each parallel acceptance assignment should have an explicit target so audit ownership stays clear.
 - Leaders analyze and integrate the task themselves. They may delegate only narrow expert subtasks.
 - Leaders should pass experts a bounded local context snapshot: exact files, minimal excerpts, constraints, expected edits, and checks.
 - Experts execute bounded work only. If context is insufficient, they must stop and ask for clarification instead of guessing.
