@@ -127,7 +127,7 @@ def test_docs_use_semantic_role_directories_and_avoid_numbered_layers():
         assert token in merged
 
 
-def test_docs_encode_round_acceptance_bars():
+def test_docs_encode_round_scorecard_and_acceptance_bars():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
     curator = (REPO_ROOT / "roles" / "curator.md").read_text(encoding="utf-8")
@@ -137,9 +137,14 @@ def test_docs_encode_round_acceptance_bars():
 
     assert "`tasks/queue/`" in merged
     assert "`tasks/done/`" in merged
+    assert "round scorecard" in merged
+    assert "outward-facing showcase" in merged
+    assert "durable internal materials" in merged
+    assert "roughly 2:1" in merged
     assert "10 concrete task candidates" in merged
     assert "5 concrete frontier findings" in merged
-    assert "3 strict steward audits" in merged
+    assert "at least 3 durable internal materials" in merged
+    assert "round scorecard audits" in merged
     assert "multiple `acceptance-steward` passes" in merged
 
 

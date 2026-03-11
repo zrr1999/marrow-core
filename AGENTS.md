@@ -39,9 +39,9 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
 | `delivery-steward` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
-| `portfolio-steward` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake | `leaders` |
-| `research-steward` | frontier learning, experiments, research intake | `leaders` |
-| `acceptance-steward` | strict steward audits, quality gates, improvement guidance | `leaders` |
+| `portfolio-steward` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake, showcase surfaces | `leaders` |
+| `research-steward` | frontier learning, experiments, research intake, internal materials | `leaders` |
+| `acceptance-steward` | strict steward audits, quality gates, improvement guidance, workload audits | `leaders` |
 
 ### leaders — `roles/leaders/`
 
@@ -73,12 +73,17 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 Operating contract:
 
 - `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
-- `curator` should touch every steward lane in each active round, set explicit output floors, re-check `tasks/queue/` after every steward cycle, and refuse to end the round while queue files remain.
+- `curator` should touch every steward lane in each active round, start with a round scorecard, set explicit output floors, re-check `tasks/queue/` after every steward cycle, and refuse to end the round while queue files remain.
+- every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
+- self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, the round should record the evidence and substitute another accessible improvement.
+- outward-facing showcase progress should include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
+- durable internal materials should include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
+- first-cycle steward workloads should stay in the same order of magnitude; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
 - stewards are the heavy-acceptance layer and own lane-specific decomposition.
 - `delivery-steward` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
-- `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing.
-- `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, or follow-up tasks per active round.
-- `acceptance-steward` must audit other stewards strictly, fail weak output, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
+- `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
+- `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
+- `acceptance-steward` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
 - default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.

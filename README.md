@@ -94,16 +94,21 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 ## Routing contract
 
 - `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
-- `curator` should touch every steward lane in each active round, define an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
+- `curator` should touch every steward lane in each active round, define a round scorecard with an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
 - A round is not complete while `tasks/queue/` still contains task files. No silent carry-over queue is allowed by default.
 - `delivery-steward` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
-- `portfolio-steward` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, and update or refactor opportunity intake.
-- `research-steward` owns frontier learning, experiments, and research-oriented intake.
-- `acceptance-steward` owns strict review of steward outputs, rejects weak work, and issues concrete improvement guidance.
+- `portfolio-steward` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, update or refactor opportunity intake, repo-bucket coverage, and outward-facing showcase surfaces.
+- `research-steward` owns frontier learning, experiments, research-oriented intake, and durable internal materials.
+- `acceptance-steward` owns strict review of steward outputs, rejects weak work, issues concrete improvement guidance, and audits the round scorecard plus workload balance.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
 - keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
-- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, or follow-up tasks; `acceptance-steward` must complete at least 3 strict steward audits with pass or fail decisions and improvement advice on every failed review.
+- every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
+- self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, document the evidence and substitute another accessible improvement.
+- outward-facing showcase progress must include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
+- durable internal materials must include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
+- steward workloads should stay in the same order of magnitude during the first cycle of a round; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
+- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `acceptance-steward` must complete delivery, portfolio, research, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
 - curator may dispatch multiple `acceptance-steward` passes over the same steward output; failed audits require the steward to improve and re-submit.
 
 Default routing:
