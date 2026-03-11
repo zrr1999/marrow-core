@@ -11,9 +11,10 @@ WORKSPACE_AGENT_DIR = ".opencode/agents"
 
 TOP_LEVEL_AGENTS = ("curator",)
 STEWARDS = (
-    "conductor",
-    "repo-steward",
-    "innovation-steward",
+    "delivery-steward",
+    "portfolio-steward",
+    "research-steward",
+    "acceptance-steward",
 )
 LEADERS = (
     "refactor-lead",
@@ -43,9 +44,10 @@ ROLE_MODEL_TIERS = {
 
 ROLE_PATHS = {
     "curator": "roles/curator.md",
-    "conductor": "roles/stewards/conductor.md",
-    "repo-steward": "roles/stewards/repo-steward.md",
-    "innovation-steward": "roles/stewards/innovation-steward.md",
+    "delivery-steward": "roles/stewards/delivery-steward.md",
+    "portfolio-steward": "roles/stewards/portfolio-steward.md",
+    "research-steward": "roles/stewards/research-steward.md",
+    "acceptance-steward": "roles/stewards/acceptance-steward.md",
     "refactor-lead": "roles/leaders/refactor-lead.md",
     "prototype-lead": "roles/leaders/prototype-lead.md",
     "review-lead": "roles/leaders/review-lead.md",

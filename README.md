@@ -20,7 +20,7 @@ marrow-core uses semantic role directories instead of numbered layers.
 | Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
 | top-level | `roles/` | `curator` | scheduled orchestration, human communication, routing, light acceptance |
-| stewards | `roles/stewards/` | `conductor`, `repo-steward`, `innovation-steward` | lane ownership, decomposition, heavy acceptance, closure |
+| stewards | `roles/stewards/` | `delivery-steward`, `portfolio-steward`, `research-steward`, `acceptance-steward` | lane ownership, decomposition, heavy acceptance, closure |
 | leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | domain analysis, implementation ownership, integration |
 | experts | `roles/experts/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
@@ -101,23 +101,29 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 ## Routing contract
 
 - `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
-- `curator` should touch every steward lane in each active round, and keep scan / innovation lanes searching for more work when delivery work temporarily不足.
-- `conductor` owns deterministic delivery intake and routes concrete execution work to leaders.
-- `repo-steward` owns repository scanning, CI/review watchlists, and opportunity intake.
-- `innovation-steward` owns reflection, experiments, and research-oriented intake.
+- `curator` should touch every steward lane in each active round, define an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
+- A round is not complete while `tasks/queue/` still contains task files. No silent carry-over queue is allowed by default.
+- `delivery-steward` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
+- `portfolio-steward` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, and update or refactor opportunity intake.
+- `research-steward` owns frontier learning, experiments, and research-oriented intake.
+- `acceptance-steward` owns strict review of steward outputs, rejects weak work, and issues concrete improvement guidance.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
 - keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
+- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, or follow-up tasks; `acceptance-steward` must complete at least 3 strict steward audits with pass or fail decisions and improvement advice on every failed review.
+- curator may dispatch multiple `acceptance-steward` passes over the same steward output; failed audits require the steward to improve and re-submit.
 
 Default routing:
 
 - user intent -> `curator`
-- deterministic delivery -> `conductor`
-- scan / CI / review / repo opportunities -> `repo-steward`
-- reflection / experiment / research -> `innovation-steward`
-- `conductor` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
-- `repo-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
-- `innovation-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
+- deterministic delivery -> `delivery-steward`
+- repo scans / CI / review / repo opportunities -> `portfolio-steward`
+- frontier learning / experiment / research -> `research-steward`
+- steward audits / strict acceptance -> `acceptance-steward`
+- `delivery-steward` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
+- `portfolio-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
+- `research-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
+- `acceptance-steward` -> audit other stewards and route rework back through `curator`
 - leaders should pass experts bounded local context snapshots rather than raw global state.
 
 ## Runtime contract
