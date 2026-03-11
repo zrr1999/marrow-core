@@ -14,7 +14,7 @@ from typing import Annotated
 import typer
 from loguru import logger
 
-from marrow_core.caster import cast_roles_to_workspace
+from marrow_core.caster import CastResult, cast_roles_to_workspace
 from marrow_core.config import RootConfig, load_config
 from marrow_core.health import collect_health_issues
 from marrow_core.heartbeat import HeartbeatState, heartbeat
@@ -80,6 +80,53 @@ def _load_root_or_exit(config: Path) -> RootConfig:
         typer.echo(f"config not found: {config}", err=True)
         raise typer.Exit(code=1)
     return load_config(config)
+
+
+def _sync_workspace(root: RootConfig, workspace: str) -> CastResult:
+    ensure_workspace_dirs(workspace)
+    result = cast_roles_to_workspace(root.core_dir, workspace)
+    if result.skipped_permission:
+        logger.warning(
+            'workspace sync degraded for "{}": {} permission-denied paths skipped',
+            workspace,
+            len(result.skipped_permission),
+        )
+    if result.errors:
+        logger.warning(
+            'workspace sync degraded for "{}": {} file operation errors',
+            workspace,
+            len(result.errors),
+        )
+    return result
+
+
+async def _prepare_worker_workspace(config: Path, root: RootConfig, spec: WorkerSpec) -> None:
+    if os.geteuid() == 0 and spec.user:
+        proc = await asyncio.create_subprocess_exec(
+            marrow_binary(root.core_dir),
+            "workspace-sync",
+            "--config",
+            str(config.resolve()),
+            "--workspace",
+            spec.workspace,
+            cwd=str(config.resolve().parent),
+            env=build_worker_env(spec),
+            preexec_fn=build_worker_preexec(spec),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        stdout_text = stdout.decode("utf-8", errors="replace").strip()
+        stderr_text = stderr.decode("utf-8", errors="replace").strip()
+        if stdout_text:
+            logger.info('workspace prepare [{}]: {}', spec.worker_id, stdout_text)
+        if stderr_text:
+            logger.warning('workspace prepare [{}]: {}', spec.worker_id, stderr_text)
+        if proc.returncode != 0:
+            message = stderr_text or stdout_text or "workspace prepare failed"
+            raise RuntimeError(message)
+        return
+    _sync_workspace(root, spec.workspace)
 
 
 async def _run_single_user(
@@ -253,9 +300,6 @@ async def _run_worker(
         raise typer.Exit(code=2)
     spec = specs[0]
 
-    ensure_workspace_dirs(spec.workspace)
-    cast_roles_to_workspace(root.core_dir, spec.workspace)
-
     state = HeartbeatState()
     wake_events = {agent.name: asyncio.Event() for agent in selected}
     tasks = [
@@ -346,9 +390,10 @@ async def _run_supervisor(config: Path, *, ipc: bool | None = None) -> None:
         )
 
     worker_specs = group_agents_by_worker(root)
-    processes = {
-        spec.worker_id: await _spawn_worker_process(config, root, spec) for spec in worker_specs
-    }
+    processes = {}
+    for spec in worker_specs:
+        await _prepare_worker_workspace(config, root, spec)
+        processes[spec.worker_id] = await _spawn_worker_process(config, root, spec)
     waiters = {
         worker_id: asyncio.create_task(proc.wait(), name=f"worker:{worker_id}")
         for worker_id, proc in processes.items()
@@ -407,7 +452,7 @@ async def _sync_supervisor(config: Path) -> None:
             await asyncio.sleep(root.sync.interval_seconds)
             continue
         if outcome.result is SyncResult.RELOADED:
-            await _reload_runtime(root)
+            await _reload_runtime(config, root)
             await asyncio.sleep(root.sync.interval_seconds)
             continue
         if outcome.result is SyncResult.RESTART_REQUIRED:
@@ -439,10 +484,9 @@ async def _invoke_sync_once(root: RootConfig) -> SyncOutcome:
         return SyncOutcome(SyncResult.FAILED, str(exc))
 
 
-async def _reload_runtime(root: RootConfig) -> None:
-    for agent in root.agents:
-        ensure_workspace_dirs(agent.workspace)
-        cast_roles_to_workspace(root.core_dir, agent.workspace)
+async def _reload_runtime(config: Path, root: RootConfig) -> None:
+    for spec in group_agents_by_worker(root):
+        await _prepare_worker_workspace(config, root, spec)
 
 
 def _wake_agent(wake_events: dict[str, asyncio.Event], agent_name: str, *, reason: str) -> bool:
@@ -561,6 +605,33 @@ def worker_run(
     )
 
 
+@app.command(name="workspace-sync", hidden=True)
+def workspace_sync(
+    config: ConfigOpt = Path("marrow.toml"),
+    workspace: Annotated[Path, typer.Option("--workspace", help="Workspace to prepare")] = ...,
+    verbose: VerboseOpt = False,
+    json_logs: JsonLogsOpt = False,
+) -> None:
+    """Ensure workspace dirs exist and cast runtime role files."""
+    setup_logging(verbose=verbose, json_logs=json_logs)
+    root = _load_root_or_exit(config)
+    workspace_str = str(workspace)
+    if not any(agent.workspace == workspace_str for agent in root.agents):
+        typer.echo(f"workspace not configured: {workspace_str}", err=True)
+        raise typer.Exit(code=2)
+    try:
+        result = _sync_workspace(root, workspace_str)
+    except (FileNotFoundError, ImportError, RuntimeError, ValueError) as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(
+        "workspace sync ok: "
+        f"written={len(result.written)} "
+        f"skipped={len(result.skipped_permission)} "
+        f"errors={len(result.errors)}"
+    )
+
+
 @app.command()
 def setup(
     config: ConfigOpt = Path("marrow.toml"),
@@ -573,13 +644,25 @@ def setup(
         ensure_service_runtime_dirs(root)
         typer.echo(f"OK: supervisor runtime ready at {resolve_service_runtime_root(root)}")
         return
+    seen: set[str] = set()
     for agent in root.agents:
-        if not verify_workspace(agent.workspace):
+        if agent.workspace in seen:
+            continue
+        seen.add(agent.workspace)
+        if Path(agent.workspace).exists() and not verify_workspace(agent.workspace):
             typer.echo(f"FAIL: workspace invalid for {agent.name}", err=True)
             continue
-        ensure_workspace_dirs(agent.workspace)
-        cast_roles_to_workspace(root.core_dir, agent.workspace)
-        typer.echo(f"OK: {agent.name} workspace ready at {agent.workspace}")
+        try:
+            result = _sync_workspace(root, agent.workspace)
+        except (FileNotFoundError, ImportError, RuntimeError, ValueError) as exc:
+            typer.echo(f"FAIL: {exc}", err=True)
+            continue
+        typer.echo(
+            f"OK: workspace ready at {agent.workspace} "
+            f"(written={len(result.written)} "
+            f"skipped={len(result.skipped_permission)} "
+            f"errors={len(result.errors)})"
+        )
 
 
 @app.command()

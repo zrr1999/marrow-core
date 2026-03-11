@@ -12,6 +12,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+from marrow_core.caster import CastResult
 from marrow_core.cli import app
 from marrow_core.config import RootConfig
 from marrow_core.contracts import AUTONOMOUS_AGENTS
@@ -370,7 +371,8 @@ def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Pa
 
         return SyncOutcome(SyncResult.RELOADED, "workspace metadata refreshed")
 
-    async def fake_reload_runtime(root) -> None:
+    async def fake_reload_runtime(config_path: Path, root) -> None:
+        assert config_path == config
         reloads.extend(agent.name for agent in root.agents)
 
     async def fake_sleep(seconds: int) -> None:
@@ -386,6 +388,79 @@ def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Pa
 
     assert reloads == list(AUTONOMOUS_AGENTS)
     assert sleeps == [3600]
+
+
+def test_workspace_sync_runs_prepare_for_single_workspace(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    calls: list[tuple[str, str]] = []
+
+    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr(
+        "marrow_core.cli.ensure_workspace_dirs",
+        lambda workspace: calls.append(("ensure", workspace)),
+    )
+    monkeypatch.setattr(
+        "marrow_core.cli.cast_roles_to_workspace",
+        lambda core_dir, workspace: (
+            calls.append(("cast", workspace))
+            or CastResult(
+                written=[Path(workspace) / ".opencode" / "agents" / "curator.md"],
+                skipped_permission=[],
+                errors=[],
+            )
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["workspace-sync", "--config", str(config), "--workspace", str(tmp_path / "workspace")],
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("ensure", str(tmp_path / "workspace")), ("cast", str(tmp_path / "workspace"))]
+    assert "workspace sync ok: written=1 skipped=0 errors=0" in result.stdout
+
+
+def test_workspace_sync_returns_zero_on_permission_skips(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+
+    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr(
+        "marrow_core.cli.cast_roles_to_workspace",
+        lambda core_dir, workspace: CastResult(
+            written=[],
+            skipped_permission=[Path(workspace) / ".opencode" / "agents" / "curator.md"],
+            errors=[],
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["workspace-sync", "--config", str(config), "--workspace", str(tmp_path / "workspace")],
+    )
+
+    assert result.exit_code == 0
+    assert "workspace sync ok: written=0 skipped=1 errors=0" in result.stdout
+
+
+def test_workspace_sync_returns_nonzero_on_config_errors(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+
+    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr(
+        "marrow_core.cli.cast_roles_to_workspace",
+        lambda core_dir, workspace: (_ for _ in ()).throw(
+            FileNotFoundError("roles.toml not found")
+        ),
+    )
+
+    result = runner.invoke(
+        app,
+        ["workspace-sync", "--config", str(config), "--workspace", str(tmp_path / "workspace")],
+    )
+
+    assert result.exit_code == 1
+    assert "roles.toml not found" in result.output
 
 
 def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> None:
