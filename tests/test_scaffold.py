@@ -29,6 +29,9 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
     for name in AUTONOMOUS_AGENTS:
         assert f'name = "{name}"' in text
         assert f'--agent {name}"' in text
+    assert "[service]" in text
+    assert 'mode = "supervisor"' in text
+    assert 'user = "marrow"' in text
     assert "[ipc]" in text
     assert "enabled = true" in text
     assert "[self_check]" in text

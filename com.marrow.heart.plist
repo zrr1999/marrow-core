@@ -11,7 +11,7 @@
     <string>/opt/marrow-core/.venv/bin/marrow</string>
     <string>run</string>
     <string>--config</string>
-    <string>/opt/marrow-core/marrow.toml</string>
+    <string>/Library/Application Support/marrow/marrow.toml</string>
     <string>--json-logs</string>
   </array>
 
@@ -23,15 +23,12 @@
   <key>WorkingDirectory</key>
   <string>/opt/marrow-core</string>
 
-  <key>UserName</key>
-  <string>marrow</string>
-
   <key>KeepAlive</key>
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Users/marrow/runtime/logs/heart.stdout.log</string>
+  <string>/var/lib/marrow/logs/heart.stdout.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/marrow/runtime/logs/heart.stderr.log</string>
+  <string>/var/lib/marrow/logs/heart.stderr.log</string>
 </dict>
 </plist>
