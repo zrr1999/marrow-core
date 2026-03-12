@@ -20,8 +20,8 @@ marrow-core uses semantic role directories instead of numbered layers.
 | Layer | Directory | Roles | Responsibility |
 |------|-----------|-------|----------------|
 | top-level | `roles/` | `curator` | scheduled orchestration, human communication, routing, light acceptance |
-| stewards | `roles/stewards/` | `delivery-steward`, `portfolio-steward`, `research-steward`, `acceptance-steward` | lane ownership, decomposition, heavy acceptance, closure |
-| leaders | `roles/leaders/` | `refactor-lead`, `prototype-lead`, `review-lead`, `ops-lead` | domain analysis, implementation ownership, integration |
+| stewards | `roles/stewards/` | `delivery`, `portfolio`, `research`, `context`, `acceptance` | lane ownership, decomposition, heavy acceptance, closure |
+| leaders | `roles/leaders/` | `refactor`, `prototype`, `review`, `ops`, `hygiene`, `memory` | domain analysis, implementation ownership, integration |
 | experts | `roles/experts/` | `analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer` | tightly scoped execution with no further delegation |
 
 Delegation policy:
@@ -100,30 +100,41 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
 ## Routing contract
 
+- When a bare role name would be ambiguous in prose, prefer scoped references such as `stewards/context`, `stewards/acceptance`, `leaders/review`, or `leaders/ops`.
 - `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
-- `curator` should touch every steward lane in each active round, define an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
+- `curator` should touch every steward lane in each active round, define a round scorecard with an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
 - A round is not complete while `tasks/queue/` still contains task files. No silent carry-over queue is allowed by default.
-- `delivery-steward` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
-- `portfolio-steward` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, and update or refactor opportunity intake.
-- `research-steward` owns frontier learning, experiments, and research-oriented intake.
-- `acceptance-steward` owns strict review of steward outputs, rejects weak work, and issues concrete improvement guidance.
+- `delivery` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
+- `portfolio` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, update or refactor opportunity intake, repo-bucket coverage, and outward-facing showcase surfaces.
+- `research` owns frontier learning, experiments, research-oriented intake, and durable internal materials.
+- `stewards/context` owns writable context hygiene, memory compaction, prompt-surface placement, contradiction cleanup, and upkeep of context-affecting workspace notes.
+- `stewards/acceptance` owns strict review of steward outputs, rejects weak work, issues concrete improvement guidance, and audits the round scorecard plus workload balance.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
 - keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
-- default output floors: `delivery-steward` must drain `tasks/queue/` and report a final zero-queue check; `portfolio-steward` must produce at least 10 concrete task candidates or follow-up packets; `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, or follow-up tasks; `acceptance-steward` must complete at least 3 strict steward audits with pass or fail decisions and improvement advice on every failed review.
-- curator may dispatch multiple `acceptance-steward` passes over the same steward output; failed audits require the steward to improve and re-submit.
+- `curator` must not ask whether it should continue on already in-scope work, and should never end with optional continuation offers; it should continue until the round is complete or a real external blocker exists.
+- every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
+- self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, document the evidence and substitute another accessible improvement.
+- outward-facing showcase progress must include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
+- durable internal materials must include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
+- steward workloads should stay in the same order of magnitude during the first cycle of a round; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
+- default output floors: `delivery` must drain `tasks/queue/` and report a final zero-queue check; `portfolio` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `stewards/context` must produce at least 3 concrete context hygiene fixes or follow-up packets and explicitly report remaining stale, duplicated, or contradictory context; `stewards/acceptance` must complete delivery, portfolio, research, context, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
+- curator may dispatch multiple `stewards/acceptance` passes over the same steward output; failed audits require the steward to improve and re-submit.
+- curator may also launch multiple `stewards/acceptance` instances in parallel to audit different steward outputs in the same round, with an explicit target per acceptance assignment.
 
 Default routing:
 
 - user intent -> `curator`
-- deterministic delivery -> `delivery-steward`
-- repo scans / CI / review / repo opportunities -> `portfolio-steward`
-- frontier learning / experiment / research -> `research-steward`
-- steward audits / strict acceptance -> `acceptance-steward`
-- `delivery-steward` -> `refactor-lead` / `ops-lead` / `review-lead` / `prototype-lead`
-- `portfolio-steward` -> `review-lead` / `ops-lead` / `refactor-lead` / `prototype-lead`
-- `research-steward` -> `prototype-lead` / `review-lead` / `refactor-lead` / `ops-lead`
-- `acceptance-steward` -> audit other stewards and route rework back through `curator`
+- deterministic delivery -> `delivery`
+- repo scans / CI / review / repo opportunities -> `portfolio`
+- frontier learning / experiment / research -> `research`
+- writable context hygiene / memory lifecycle / prompt-surface upkeep -> `stewards/context`
+- steward audits / strict acceptance -> `stewards/acceptance`
+- `delivery` -> `leaders/refactor` / `leaders/ops` / `leaders/review` / `leaders/prototype`
+- `portfolio` -> `leaders/review` / `leaders/ops` / `leaders/refactor` / `leaders/prototype`
+- `research` -> `leaders/prototype` / `leaders/review` / `leaders/refactor` / `leaders/ops`
+- `stewards/context` -> `leaders/hygiene` / `leaders/memory`
+- `stewards/acceptance` -> audit other stewards and route rework back through `curator`
 - leaders should pass experts bounded local context snapshots rather than raw global state.
 
 ## Runtime contract
@@ -138,7 +149,7 @@ The effective execution path is:
 
 ## Core self-check
 
-The old scout-style巡检 loop is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
+The old scout-style inspection loop is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
 
 ## Runtime boundaries
 

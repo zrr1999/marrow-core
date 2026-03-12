@@ -49,5 +49,5 @@ def test_queue_context_stays_queue_focused(tmp_path: Path) -> None:
     output = run_queue_script(tmp_path)
 
     assert "Task queue lives in tasks/queue/" in output
-    assert "Delegated to delivery-steward" not in output
-    assert "Messages from delivery-steward" not in output
+    assert "Delegated to delivery" not in output
+    assert "Messages from delivery" not in output

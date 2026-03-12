@@ -12,6 +12,7 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
+from marrow_core.caster import CastResult
 from marrow_core.cli import app
 from marrow_core.config import RootConfig
 from marrow_core.runtime import (
@@ -280,7 +281,10 @@ def test_install_service_and_setup_follow_supervisor_boundaries(
     )
     monkeypatch.setattr(
         "marrow_core.cli.cast_roles_to_workspace",
-        lambda core_dir, workspace: calls.append(f"cast:{workspace}"),
+        lambda core_dir, workspace: (
+            calls.append(f"cast:{workspace}")
+            or CastResult(written=[], skipped_permission=[], errors=[])
+        ),
     )
 
     setup_result = runner.invoke(app, ["setup", "--config", str(config)])
@@ -322,3 +326,117 @@ def test_sync_once_defers_workspace_refresh_in_supervisor_mode(monkeypatch, tmp_
 
     assert result.exit_code == 0
     assert seen["refresh_workspace"] is False
+
+
+def test_run_worker_does_not_cast_workspace(monkeypatch, tmp_path: Path) -> None:
+    config = _write_supervisor_config(tmp_path)
+
+    async def fake_heartbeat(*args, **kwargs) -> None:
+        return None
+
+    def fail_workspace_prepare(*args, **kwargs):
+        raise AssertionError("workspace prepare should not run inside worker")
+
+    monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
+    monkeypatch.setattr("marrow_core.cli.ensure_workspace_dirs", fail_workspace_prepare)
+    monkeypatch.setattr("marrow_core.cli.cast_roles_to_workspace", fail_workspace_prepare)
+
+    asyncio.run(
+        __import__("marrow_core.cli").cli._run_worker(
+            config,
+            agent_names=("curator",),
+            status_file=tmp_path / "worker.json",
+            request_dir=tmp_path / "requests",
+        )
+    )
+
+
+def test_supervisor_prepares_workspace_before_spawning_worker(monkeypatch, tmp_path: Path) -> None:
+    order: list[str] = []
+    root = RootConfig.model_validate(
+        {
+            "service": {"mode": "supervisor"},
+            "sync": {"enabled": False},
+            "self_check": {"enabled": False},
+            "agents": [
+                {
+                    "user": "marrow",
+                    "name": "curator",
+                    "agent_command": "cmd",
+                    "workspace": str(tmp_path / "workspace"),
+                }
+            ],
+        }
+    )
+
+    class FakeProc:
+        returncode = 0
+
+        async def wait(self) -> int:
+            return 0
+
+        def terminate(self) -> None:
+            self.returncode = 0
+
+    async def fake_prepare(config_path: Path, loaded_root: RootConfig, spec) -> None:
+        assert loaded_root is root
+        order.append(f"prepare:{spec.worker_id}")
+
+    async def fake_spawn(config_path: Path, loaded_root: RootConfig, spec):
+        assert loaded_root is root
+        order.append(f"spawn:{spec.worker_id}")
+        return FakeProc()
+
+    monkeypatch.setattr("marrow_core.cli._load_root_or_exit", lambda path: root)
+    monkeypatch.setattr("marrow_core.cli.ensure_service_runtime_dirs", lambda loaded_root: None)
+    monkeypatch.setattr("marrow_core.cli._supervisor_wake_events", lambda loaded_root: {})
+    monkeypatch.setattr("marrow_core.cli._prepare_worker_workspace", fake_prepare)
+    monkeypatch.setattr("marrow_core.cli._spawn_worker_process", fake_spawn)
+
+    with pytest.raises(__import__("typer").Exit):
+        asyncio.run(__import__("marrow_core.cli").cli._run_supervisor(Path("cfg.toml"), ipc=False))
+
+    assert len(order) == 2
+    assert order[0].startswith("prepare:")
+    assert order[1].startswith("spawn:")
+
+
+def test_prepare_worker_workspace_permission_skip_is_nonfatal(monkeypatch, tmp_path: Path) -> None:
+    config = _write_supervisor_config(tmp_path)
+    root = __import__("marrow_core.cli").cli.load_config(config)
+    spec = group_agents_by_worker(root)[0]
+    seen: dict[str, object] = {}
+
+    class FakeProc:
+        returncode = 0
+
+        async def communicate(self):
+            return (
+                b"workspace sync ok: written=0 skipped=1 errors=0\n",
+                b"cast skipped permission-denied file /tmp/workspace/.opencode/agents/curator.md\n",
+            )
+
+    async def fake_exec(*argv, **kwargs):
+        seen["argv"] = argv
+        seen["kwargs"] = kwargs
+        return FakeProc()
+
+    monkeypatch.setattr("marrow_core.cli.os.geteuid", lambda: 0)
+    monkeypatch.setattr(
+        "marrow_core.cli.marrow_binary",
+        lambda core_dir: "/opt/marrow-core/.venv/bin/marrow",
+    )
+    monkeypatch.setattr("marrow_core.cli.build_worker_env", lambda spec: {"HOME": spec.home})
+    monkeypatch.setattr("marrow_core.cli.build_worker_preexec", lambda spec: "drop-privileges")
+    monkeypatch.setattr("marrow_core.cli.asyncio.create_subprocess_exec", fake_exec)
+
+    asyncio.run(__import__("marrow_core.cli").cli._prepare_worker_workspace(config, root, spec))
+
+    assert seen["argv"][:4] == (
+        "/opt/marrow-core/.venv/bin/marrow",
+        "workspace-sync",
+        "--config",
+        str(config.resolve()),
+    )
+    assert seen["kwargs"]["preexec_fn"] == "drop-privileges"
+    assert seen["kwargs"]["env"] == {"HOME": spec.home}

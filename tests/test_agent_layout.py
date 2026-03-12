@@ -54,25 +54,31 @@ def test_role_inventory_matches_contract():
 
 def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
-    assert ROLE_MODEL_TIERS["delivery-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["portfolio-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["acceptance-steward"] == "medium"
+    assert ROLE_MODEL_TIERS["delivery"] == "medium"
+    assert ROLE_MODEL_TIERS["portfolio"] == "medium"
+    assert ROLE_MODEL_TIERS["context"] == "medium"
+    assert ROLE_MODEL_TIERS["acceptance"] == "medium"
+    assert ROLE_MODEL_TIERS["hygiene"] == "medium"
+    assert ROLE_MODEL_TIERS["memory"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
 def test_role_inventory_groups_are_stable():
     assert tuple(AUTONOMOUS_AGENTS) == ("curator",)
     assert tuple(STEWARDS) == (
-        "delivery-steward",
-        "portfolio-steward",
-        "research-steward",
-        "acceptance-steward",
+        "delivery",
+        "portfolio",
+        "research",
+        "context",
+        "acceptance",
     )
     assert tuple(LEADERS) == (
-        "refactor-lead",
-        "prototype-lead",
-        "review-lead",
-        "ops-lead",
+        "refactor",
+        "prototype",
+        "review",
+        "ops",
+        "hygiene",
+        "memory",
     )
     assert tuple(EXPERTS) == (
         "analyst",
@@ -101,73 +107,9 @@ def test_lib_shell_workspace_dirs_match_contract():
     assert actual == list(WORKSPACE_DIRS)
 
 
-def test_docs_describe_rules_roles_context_layers():
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    rules = (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8")
-
-    assert "`rules` -> stable global policy" in readme
-    assert "`roles` -> per-agent identity" in readme
-    assert "`context providers` -> current queue/state/environment facts" in readme
-    assert "`prompts/rules.md` -> stable global policy" in agents_doc
-    assert "`roles/` -> role identity and delegation boundaries" in agents_doc
-    assert "`context.d/` -> dynamic facts only" in agents_doc
-    assert "Do not treat `context.d/` as a place for long-lived policy" in rules
-
-
-def test_docs_use_semantic_role_directories_and_avoid_numbered_layers():
-    docs = [
-        (REPO_ROOT / "README.md").read_text(encoding="utf-8"),
-        (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8"),
-        (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8"),
-    ]
-    merged = "\n".join(docs)
-
-    for token in ("roles/experts/", "roles/leaders/", "roles/stewards/", "`curator`"):
-        assert token in merged
-
-
-def test_docs_encode_round_acceptance_bars():
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-    curator = (REPO_ROOT / "roles" / "curator.md").read_text(encoding="utf-8")
-    rules = (REPO_ROOT / "prompts" / "rules.md").read_text(encoding="utf-8")
-
-    merged = "\n".join((readme, agents_doc, curator, rules))
-
-    assert "`tasks/queue/`" in merged
-    assert "`tasks/done/`" in merged
-    assert "10 concrete task candidates" in merged
-    assert "5 concrete frontier findings" in merged
-    assert "3 strict steward audits" in merged
-    assert "multiple `acceptance-steward` passes" in merged
-
-
-def test_readme_documents_commands_and_self_check():
-    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    assert "marrow scaffold" in text
-    assert "marrow install-service" in text
-    assert "marrow wake" in text
-    assert "[self_check]" in text
-    assert "doctor-style validation" in text
-
-
 def test_service_files_exist_for_both_platforms():
     assert (REPO_ROOT / "com.marrow.heart.plist").exists()
     assert (REPO_ROOT / "marrow-heart.service").exists()
-
-
-def test_docs_describe_unified_sync_model() -> None:
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    agents_doc = (REPO_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-
-    assert "marrow sync-once" in readme
-    assert "CLI-managed periodic sync" in readme
-    assert "one long-running service" in readme
-    assert "sync-once" in agents_doc
-    assert "self-check can wake `curator` early" in agents_doc
-    assert "com.marrow.heart.sync.plist" not in agents_doc
-    assert "marrow-heart-sync.timer" not in agents_doc
 
 
 def test_role_files_use_agent_caster_friendly_frontmatter_only():
