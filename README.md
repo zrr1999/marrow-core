@@ -148,7 +148,7 @@ The effective execution path is:
 
 ## Core self-check
 
-The old scout-style巡检 loop is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
+The old scout-style inspection loop is replaced by a core-owned self-check loop. It reuses doctor-style validation for configured agents and can run extra commands from config. When a check fails, the runtime creates a repair task and wakes the configured top-level agent early.
 
 ## Runtime boundaries
 
