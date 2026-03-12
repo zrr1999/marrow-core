@@ -54,31 +54,31 @@ def test_role_inventory_matches_contract():
 
 def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
-    assert ROLE_MODEL_TIERS["delivery-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["portfolio-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["context-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["acceptance-steward"] == "medium"
-    assert ROLE_MODEL_TIERS["context-lead"] == "medium"
-    assert ROLE_MODEL_TIERS["memory-lead"] == "medium"
+    assert ROLE_MODEL_TIERS["delivery"] == "medium"
+    assert ROLE_MODEL_TIERS["portfolio"] == "medium"
+    assert ROLE_MODEL_TIERS["context"] == "medium"
+    assert ROLE_MODEL_TIERS["acceptance"] == "medium"
+    assert ROLE_MODEL_TIERS["hygiene"] == "medium"
+    assert ROLE_MODEL_TIERS["memory"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
 def test_role_inventory_groups_are_stable():
     assert tuple(AUTONOMOUS_AGENTS) == ("curator",)
     assert tuple(STEWARDS) == (
-        "delivery-steward",
-        "portfolio-steward",
-        "research-steward",
-        "context-steward",
-        "acceptance-steward",
+        "delivery",
+        "portfolio",
+        "research",
+        "context",
+        "acceptance",
     )
     assert tuple(LEADERS) == (
-        "refactor-lead",
-        "prototype-lead",
-        "review-lead",
-        "ops-lead",
-        "context-lead",
-        "memory-lead",
+        "refactor",
+        "prototype",
+        "review",
+        "ops",
+        "hygiene",
+        "memory",
     )
     assert tuple(EXPERTS) == (
         "analyst",

@@ -38,22 +38,22 @@ Directory layout is an architecture aid, not runtime-enforced metadata.
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
-| `delivery-steward` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
-| `portfolio-steward` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake, showcase surfaces | `leaders` |
-| `research-steward` | frontier learning, experiments, research intake, internal materials | `leaders` |
-| `context-steward` | writable context hygiene, memory upkeep, prompt-surface placement | `leaders` |
-| `acceptance-steward` | strict steward audits, quality gates, improvement guidance, workload audits | `leaders` |
+| `delivery` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
+| `portfolio` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake, showcase surfaces | `leaders` |
+| `research` | frontier learning, experiments, research intake, internal materials | `leaders` |
+| `context` | writable context hygiene, memory upkeep, prompt-surface placement | `leaders` |
+| `acceptance` | strict steward audits, quality gates, improvement guidance, workload audits | `leaders` |
 
 ### leaders — `roles/leaders/`
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
-| `refactor-lead` | refactors, migrations, architecture change | `experts` |
-| `prototype-lead` | PoCs, experiments, exploratory builds | `experts` |
-| `review-lead` | PR/CI/review synthesis | `experts` |
-| `ops-lead` | CI, deployment, service, environment orchestration | `experts` |
-| `context-lead` | writable context surfaces, placement fixes, contradiction cleanup | `experts` |
-| `memory-lead` | runtime state, checkpoints, memory lifecycle | `experts` |
+| `refactor` | refactors, migrations, architecture change | `experts` |
+| `prototype` | PoCs, experiments, exploratory builds | `experts` |
+| `review` | PR/CI/review synthesis | `experts` |
+| `ops` | CI, deployment, service, environment orchestration | `experts` |
+| `hygiene` | writable context surfaces, placement fixes, contradiction cleanup | `experts` |
+| `memory` | runtime state, checkpoints, memory lifecycle | `experts` |
 
 ### experts — `roles/experts/`
 
@@ -84,12 +84,12 @@ Operating contract:
 - durable internal materials should include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
 - first-cycle steward workloads should stay in the same order of magnitude; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
 - stewards are the heavy-acceptance layer and own lane-specific decomposition.
-- `delivery-steward` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
-- `portfolio-steward` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
-- `research-steward` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
-- `context-steward` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
-- `acceptance-steward` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
-- `curator` may also launch multiple `acceptance-steward` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
+- `delivery` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
+- `portfolio` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
+- `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
+- `context` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
+- `acceptance` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
+- `curator` may also launch multiple `acceptance` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
 - default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
