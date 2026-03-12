@@ -119,9 +119,9 @@ async def _prepare_worker_workspace(config: Path, root: RootConfig, spec: Worker
         stdout_text = stdout.decode("utf-8", errors="replace").strip()
         stderr_text = stderr.decode("utf-8", errors="replace").strip()
         if stdout_text:
-            logger.info('workspace prepare [{}]: {}', spec.worker_id, stdout_text)
+            logger.info("workspace prepare [{}]: {}", spec.worker_id, stdout_text)
         if stderr_text:
-            logger.warning('workspace prepare [{}]: {}', spec.worker_id, stderr_text)
+            logger.warning("workspace prepare [{}]: {}", spec.worker_id, stderr_text)
         if proc.returncode != 0:
             message = stderr_text or stdout_text or "workspace prepare failed"
             raise RuntimeError(message)

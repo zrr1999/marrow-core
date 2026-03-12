@@ -100,14 +100,15 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 
 ## Routing contract
 
+- When a bare role name would be ambiguous in prose, prefer scoped references such as `stewards/context`, `stewards/acceptance`, `leaders/review`, or `leaders/ops`.
 - `curator` owns intent, routing, cadence, and light acceptance. It should not spend ticks on deep analysis or direct implementation.
 - `curator` should touch every steward lane in each active round, define a round scorecard with an explicit output floor for each lane, and re-check `tasks/queue/` after every steward cycle.
 - A round is not complete while `tasks/queue/` still contains task files. No silent carry-over queue is allowed by default.
 - `delivery` owns deterministic delivery intake, heavy acceptance, queue drain, and moving completed task files into `tasks/done/`.
 - `portfolio` owns repository portfolio scanning, CI/review watchlists, PR or issue movement, update or refactor opportunity intake, repo-bucket coverage, and outward-facing showcase surfaces.
 - `research` owns frontier learning, experiments, research-oriented intake, and durable internal materials.
-- `context` owns writable context hygiene, memory compaction, prompt-surface placement, contradiction cleanup, and upkeep of context-affecting workspace notes.
-- `acceptance` owns strict review of steward outputs, rejects weak work, issues concrete improvement guidance, and audits the round scorecard plus workload balance.
+- `stewards/context` owns writable context hygiene, memory compaction, prompt-surface placement, contradiction cleanup, and upkeep of context-affecting workspace notes.
+- `stewards/acceptance` owns strict review of steward outputs, rejects weak work, issues concrete improvement guidance, and audits the round scorecard plus workload balance.
 - leaders analyze and integrate the task themselves; they may delegate only narrow sub-steps to experts.
 - experts execute bounded subtasks only and never delegate.
 - keep in-flight PR volume controlled; default cap is 10 active PRs per repository unless a human explicitly asks otherwise.
@@ -117,9 +118,9 @@ Model tiers live in `roles.toml` and map to `high`, `medium`, and `low`.
 - outward-facing showcase progress must include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
 - durable internal materials must include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
 - steward workloads should stay in the same order of magnitude during the first cycle of a round; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
-- default output floors: `delivery` must drain `tasks/queue/` and report a final zero-queue check; `portfolio` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `context` must produce at least 3 concrete context hygiene fixes or follow-up packets and explicitly report remaining stale, duplicated, or contradictory context; `acceptance` must complete delivery, portfolio, research, context, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
-- curator may dispatch multiple `acceptance` passes over the same steward output; failed audits require the steward to improve and re-submit.
-- curator may also launch multiple `acceptance` instances in parallel to audit different steward outputs in the same round, with an explicit target per acceptance assignment.
+- default output floors: `delivery` must drain `tasks/queue/` and report a final zero-queue check; `portfolio` must produce at least 10 concrete task candidates or follow-up packets and at least 1 outward-facing showcase advancement; `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks and at least 3 durable internal materials; `stewards/context` must produce at least 3 concrete context hygiene fixes or follow-up packets and explicitly report remaining stale, duplicated, or contradictory context; `stewards/acceptance` must complete delivery, portfolio, research, context, and round scorecard audits with pass or fail decisions and improvement advice on every failed review.
+- curator may dispatch multiple `stewards/acceptance` passes over the same steward output; failed audits require the steward to improve and re-submit.
+- curator may also launch multiple `stewards/acceptance` instances in parallel to audit different steward outputs in the same round, with an explicit target per acceptance assignment.
 
 Default routing:
 
@@ -127,13 +128,13 @@ Default routing:
 - deterministic delivery -> `delivery`
 - repo scans / CI / review / repo opportunities -> `portfolio`
 - frontier learning / experiment / research -> `research`
-- writable context hygiene / memory lifecycle / prompt-surface upkeep -> `context`
-- steward audits / strict acceptance -> `acceptance`
-- `delivery` -> `refactor` / `ops` / `review` / `prototype`
-- `portfolio` -> `review` / `ops` / `refactor` / `prototype`
-- `research` -> `prototype` / `review` / `refactor` / `ops`
-- `context` -> `hygiene` / `memory`
-- `acceptance` -> audit other stewards and route rework back through `curator`
+- writable context hygiene / memory lifecycle / prompt-surface upkeep -> `stewards/context`
+- steward audits / strict acceptance -> `stewards/acceptance`
+- `delivery` -> `leaders/refactor` / `leaders/ops` / `leaders/review` / `leaders/prototype`
+- `portfolio` -> `leaders/review` / `leaders/ops` / `leaders/refactor` / `leaders/prototype`
+- `research` -> `leaders/prototype` / `leaders/review` / `leaders/refactor` / `leaders/ops`
+- `stewards/context` -> `leaders/hygiene` / `leaders/memory`
+- `stewards/acceptance` -> audit other stewards and route rework back through `curator`
 - leaders should pass experts bounded local context snapshots rather than raw global state.
 
 ## Runtime contract

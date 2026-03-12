@@ -75,6 +75,7 @@ These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
 
 Operating contract:
 
+- when a bare role name would be ambiguous in prose, prefer scoped references such as `stewards/context`, `stewards/acceptance`, `leaders/review`, or `leaders/ops`
 - `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
 - `curator` should touch every steward lane in each active round, start with a round scorecard, set explicit output floors, re-check `tasks/queue/` after every steward cycle, and refuse to end the round while queue files remain.
 - `curator` should not ask whether it should continue on already in-scope actionable work, and should never end with optional continuation offers; it should continue until the round is complete or a real external blocker exists.
@@ -87,9 +88,9 @@ Operating contract:
 - `delivery` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
 - `portfolio` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
 - `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
-- `context` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
-- `acceptance` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
-- `curator` may also launch multiple `acceptance` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
+- `stewards/context` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
+- `stewards/acceptance` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
+- `curator` may also launch multiple `stewards/acceptance` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
 - leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
 - experts execute bounded tasks only and never redefine scope.
 - default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
