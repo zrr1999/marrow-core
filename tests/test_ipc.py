@@ -92,9 +92,7 @@ async def ipc_server():
         sock = str(tmpdir / "t.sock")
         task_dir = tmpdir / "tasks" / "queue"
         state = HeartbeatState()
-        state.agents["orchestrator"] = AgentState(
-            name="orchestrator", interval=300, tick_count=3
-        )
+        state.agents["orchestrator"] = AgentState(name="orchestrator", interval=300, tick_count=3)
         wake_events = {"orchestrator": asyncio.Event()}
         server = await start_ipc_server(sock, str(task_dir), state, wake_events)
         yield sock, task_dir, state, wake_events

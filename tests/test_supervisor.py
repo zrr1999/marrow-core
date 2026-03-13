@@ -413,7 +413,8 @@ def test_prepare_worker_workspace_permission_skip_is_nonfatal(monkeypatch, tmp_p
         async def communicate(self):
             return (
                 b"workspace sync ok: written=0 skipped=1 errors=0\n",
-                b"cast skipped permission-denied file /tmp/workspace/.opencode/agents/orchestrator.md\n",
+                b"cast skipped permission-denied file "
+                b"/tmp/workspace/.opencode/agents/orchestrator.md\n",
             )
 
     async def fake_exec(*argv, **kwargs):
