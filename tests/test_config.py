@@ -72,15 +72,15 @@ def test_load_config(tmp_path: Path):
 
         [[agents]]
         user = "marrow"
-        name = "curator"
-        agent_command = "opencode run --agent curator"
+        name = "orchestrator"
+        agent_command = "opencode run --agent orchestrator"
         workspace = "/Users/marrow"
         context_dirs = ["/Users/marrow/context.d"]
     """)
     )
     root = load_config(toml)
     assert len(root.agents) == 1
-    assert root.agents[0].name == "curator"
+    assert root.agents[0].name == "orchestrator"
     assert root.agents[0].user == "marrow"
     assert root.agents[0].home == "/Users/marrow"
     assert root.service.mode == "supervisor"

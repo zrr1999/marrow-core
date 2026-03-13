@@ -35,7 +35,7 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
     assert "[ipc]" in text
     assert "enabled = true" in text
     assert "[self_check]" in text
-    assert 'wake_agent = "curator"' in text
+    assert 'wake_agent = "orchestrator"' in text
 
 
 def test_write_config_template_persists_file(tmp_path: Path) -> None:

@@ -8,11 +8,11 @@ from pathlib import Path
 from marrow_core.config import load_config
 from marrow_core.contracts import (
     AUTONOMOUS_AGENTS,
-    EXPERTS,
+    DIRECTORS,
     LEADERS,
     ROLE_MODEL_TIERS,
     ROLE_PATHS,
-    STEWARDS,
+    SPECIALISTS,
     SYNCED_ROLE_FILES,
     WORKSPACE_DIRS,
 )
@@ -49,38 +49,40 @@ def test_role_inventory_matches_contract():
     )
     assert actual == sorted(ROLE_PATHS.values())
     role_dirs = sorted(path.name for path in (REPO_ROOT / "roles").iterdir() if path.is_dir())
-    assert role_dirs == ["experts", "leaders", "stewards"]
+    assert role_dirs == ["directors", "leaders", "specialists"]
 
 
 def test_role_model_tiers_match_expected_inventory():
-    assert ROLE_MODEL_TIERS["curator"] == "high"
-    assert ROLE_MODEL_TIERS["delivery"] == "medium"
-    assert ROLE_MODEL_TIERS["portfolio"] == "medium"
-    assert ROLE_MODEL_TIERS["context"] == "medium"
-    assert ROLE_MODEL_TIERS["acceptance"] == "medium"
-    assert ROLE_MODEL_TIERS["hygiene"] == "medium"
-    assert ROLE_MODEL_TIERS["memory"] == "medium"
+    assert ROLE_MODEL_TIERS["orchestrator"] == "high"
+    assert ROLE_MODEL_TIERS["craft"] == "medium"
+    assert ROLE_MODEL_TIERS["forge"] == "medium"
+    assert ROLE_MODEL_TIERS["mind"] == "medium"
+    assert ROLE_MODEL_TIERS["sentinel"] == "medium"
+    assert ROLE_MODEL_TIERS["evolver"] == "medium"
+    assert ROLE_MODEL_TIERS["reviewer"] == "medium"
     assert ROLE_MODEL_TIERS["coder"] == "low"
 
 
 def test_role_inventory_groups_are_stable():
-    assert tuple(AUTONOMOUS_AGENTS) == ("curator",)
-    assert tuple(STEWARDS) == (
-        "delivery",
-        "portfolio",
-        "research",
-        "context",
-        "acceptance",
+    assert tuple(AUTONOMOUS_AGENTS) == ("orchestrator",)
+    assert tuple(DIRECTORS) == (
+        "craft",
+        "forge",
+        "mind",
+        "sentinel",
     )
     assert tuple(LEADERS) == (
-        "refactor",
-        "prototype",
-        "review",
-        "ops",
-        "hygiene",
-        "memory",
+        "builder",
+        "shaper",
+        "verifier",
+        "courier",
+        "herald",
+        "archivist",
+        "scout",
+        "evolver",
+        "reviewer",
     )
-    assert tuple(EXPERTS) == (
+    assert tuple(SPECIALISTS) == (
         "analyst",
         "researcher",
         "coder",

@@ -7,7 +7,7 @@ a Unix domain socket using a minimal HTTP/1.1 protocol with JSON bodies.
 Usage with curl:
     curl --unix-socket /path/to/marrow.sock http://localhost/status
     curl --unix-socket /path/to/marrow.sock -X POST -d '{"title":"fix bug"}' http://localhost/tasks
-    curl --unix-socket /path/to/marrow.sock -X POST -d '{"agent":"curator"}' http://localhost/wake
+    curl --unix-socket /path/to/marrow.sock -X POST -d '{"agent":"orchestrator"}' http://localhost/wake
 """
 
 from __future__ import annotations

@@ -1,8 +1,8 @@
 ---
 name: writer
 description: >-
-  Expert writer. Produces documentation, summaries, reports, and explanatory
-  text for a bounded output target.
+  Specialist writer. Produces documentation, summaries, reports, and
+  explanatory text for a bounded output target.
 role: subagent
 model:
   tier: low
