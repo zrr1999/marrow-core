@@ -59,6 +59,7 @@ def cast_roles_to_workspace(
 
     for output in outputs:
         full_path = Path(target_config.output_dir) / output.path
+        content = _disable_subagent_question_permission(output.content)
         try:
             full_path.parent.mkdir(parents=True, exist_ok=True)
         except PermissionError:
@@ -79,7 +80,7 @@ def cast_roles_to_workspace(
             continue
 
         try:
-            full_path.write_text(output.content, encoding="utf-8")
+            full_path.write_text(content, encoding="utf-8")
         except PermissionError:
             _record_permission_skip(result, full_path)
             continue
@@ -112,6 +113,22 @@ def _clear_generated_outputs(agents_dir: Path, result: CastResult) -> None:
             _record_permission_skip(result, path)
         except OSError as exc:
             _record_error(result, path, exc)
+
+
+def _disable_subagent_question_permission(content: str) -> str:
+    if not content.startswith("---\n"):
+        return content
+
+    parts = content.split("---\n", 2)
+    if len(parts) != 3:
+        return content
+
+    frontmatter = parts[1]
+    if "mode: subagent" not in frontmatter:
+        return content
+
+    sanitized_frontmatter = frontmatter.replace('  "question": allow\n', "")
+    return f"---\n{sanitized_frontmatter}---\n{parts[2]}"
 
 
 def _prune_empty_dirs(root: Path, result: CastResult) -> None:

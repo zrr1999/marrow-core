@@ -33,23 +33,26 @@ def _write_roles_toml(core_dir: Path) -> None:
     )
 
 
-def _write_role(role_dir: Path, name: str, *, description: str = "Role") -> None:
-    (role_dir / f"{name}.md").write_text(
-        textwrap.dedent(
-            f"""
-            ---
-            name: {name}
-            description: {description}
-            role: subagent
-            model:
-              tier: medium
-            ---
-            You are {name}.
-            """
-        ).strip()
-        + "\n",
-        encoding="utf-8",
-    )
+def _write_role(
+    role_dir: Path,
+    name: str,
+    *,
+    description: str = "Role",
+    tier: str = "medium",
+    capabilities: str | None = None,
+) -> None:
+    lines = [
+        "---",
+        f"name: {name}",
+        f"description: {description}",
+        "role: subagent",
+        "model:",
+        f"  tier: {tier}",
+    ]
+    if capabilities:
+        lines.extend(["capabilities:", f"  - {capabilities}"])
+    lines.extend(["---", f"You are {name}.", ""])
+    (role_dir / f"{name}.md").write_text("\n".join(lines), encoding="utf-8")
 
 
 def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> None:
@@ -116,6 +119,27 @@ def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> 
     cast_roles_to_workspace(str(core_dir), str(workspace))
 
     assert (agents_dir / "custom-local.md").read_text(encoding="utf-8") == "custom"
+
+
+def test_cast_roles_to_workspace_disables_subagent_question_permission(tmp_path: Path) -> None:
+    core_dir = tmp_path / "core"
+    workspace = tmp_path / "workspace"
+    role_dir = core_dir / "roles"
+    role_dir.mkdir(parents=True)
+    (workspace / ".opencode" / "agents").mkdir(parents=True)
+    _write_roles_toml(core_dir)
+    _write_role(role_dir, "helper", tier="medium", capabilities="all")
+
+    result = cast_roles_to_workspace(str(core_dir), str(workspace))
+
+    target = workspace / ".opencode" / "agents" / "helper.md"
+    assert result == CastResult(written=[target], skipped_permission=[], errors=[])
+    content = target.read_text(encoding="utf-8")
+    assert "mode: subagent" in content
+    assert "model: model-medium" in content
+    assert '"bash": allow' in content
+    assert '"task": allow' in content
+    assert '"question": allow' not in content
 
 
 def test_cast_roles_to_workspace_skips_permission_denied_unlink(

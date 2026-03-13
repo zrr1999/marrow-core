@@ -5,7 +5,7 @@ description: >-
   and comparative findings for a specific question.
 role: subagent
 model:
-  tier: low
+  tier: medium
 capabilities:
   - basic
 ---

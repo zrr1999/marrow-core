@@ -5,7 +5,7 @@ description: >-
   dependency analysis for a bounded question.
 role: subagent
 model:
-  tier: low
+  tier: medium
 capabilities:
   - basic
 ---

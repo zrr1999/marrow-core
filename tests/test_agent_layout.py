@@ -54,13 +54,14 @@ def test_role_inventory_matches_contract():
 
 def test_role_model_tiers_match_expected_inventory():
     assert ROLE_MODEL_TIERS["curator"] == "high"
-    assert ROLE_MODEL_TIERS["delivery"] == "medium"
-    assert ROLE_MODEL_TIERS["portfolio"] == "medium"
-    assert ROLE_MODEL_TIERS["context"] == "medium"
-    assert ROLE_MODEL_TIERS["acceptance"] == "medium"
-    assert ROLE_MODEL_TIERS["hygiene"] == "medium"
-    assert ROLE_MODEL_TIERS["memory"] == "medium"
-    assert ROLE_MODEL_TIERS["coder"] == "low"
+    for role in STEWARDS + LEADERS + EXPERTS:
+        assert ROLE_MODEL_TIERS[role] == "medium"
+
+
+def test_role_files_match_contract_model_tiers():
+    for role, tier in ROLE_MODEL_TIERS.items():
+        text = _role_file(role).read_text(encoding="utf-8")
+        assert f"model:\n  tier: {tier}" in text
 
 
 def test_role_inventory_groups_are_stable():

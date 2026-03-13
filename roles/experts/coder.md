@@ -5,7 +5,7 @@ description: >-
   the task is already well-defined.
 role: subagent
 model:
-  tier: low
+  tier: medium
 capabilities:
   - basic
 ---

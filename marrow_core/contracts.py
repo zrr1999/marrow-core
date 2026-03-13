@@ -41,8 +41,7 @@ SYNCED_ROLE_FILES = TOP_LEVEL_AGENTS + STEWARDS + LEADERS + EXPERTS
 
 ROLE_MODEL_TIERS = {
     "curator": "high",
-    **dict.fromkeys(STEWARDS + LEADERS, "medium"),
-    **dict.fromkeys(EXPERTS, "low"),
+    **dict.fromkeys(STEWARDS + LEADERS + EXPERTS, "medium"),
 }
 
 ROLE_PATHS = {

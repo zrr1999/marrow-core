@@ -5,7 +5,7 @@ description: >-
   workspace hygiene tasks with strong caution around destructive actions.
 role: subagent
 model:
-  tier: low
+  tier: medium
 capabilities:
   - basic
 ---

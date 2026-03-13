@@ -5,7 +5,7 @@ description: >-
   a parent role wants a focused git-oriented worker.
 role: subagent
 model:
-  tier: low
+  tier: medium
 capabilities:
   - basic
 ---
