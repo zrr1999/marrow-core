@@ -59,17 +59,17 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
     role_dir.mkdir(parents=True)
     (workspace / ".opencode" / "agents").mkdir(parents=True)
     _write_roles_toml(core_dir)
-    (role_dir / "curator.md").write_text(
+    (role_dir / "orchestrator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: curator
-            description: Top-level curator
+            name: orchestrator
+            description: Top-level orchestrator
             role: primary
             model:
               tier: high
             ---
-            You are curator.
+            You are orchestrator.
             """
         ).strip()
         + "\n",
@@ -78,13 +78,13 @@ def test_cast_roles_to_workspace_generates_opencode_outputs(tmp_path: Path) -> N
 
     result = cast_roles_to_workspace(str(core_dir), str(workspace))
 
-    target = workspace / ".opencode" / "agents" / "curator.md"
+    target = workspace / ".opencode" / "agents" / "orchestrator.md"
     assert result == CastResult(written=[target], skipped_permission=[], errors=[])
     content = target.read_text(encoding="utf-8")
-    assert "description: Top-level curator" in content
+    assert "description: Top-level orchestrator" in content
     assert "mode: primary" in content
     assert "model: model-high" in content
-    assert "You are curator." in content
+    assert "You are orchestrator." in content
 
 
 def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> None:
@@ -96,17 +96,17 @@ def test_cast_roles_to_workspace_preserves_custom_role_files(tmp_path: Path) -> 
     agents_dir.mkdir(parents=True)
     _write_roles_toml(core_dir)
     (agents_dir / "custom-local.md").write_text("custom", encoding="utf-8")
-    (role_dir / "curator.md").write_text(
+    (role_dir / "orchestrator.md").write_text(
         textwrap.dedent(
             """
             ---
-            name: curator
-            description: Top-level curator
+            name: orchestrator
+            description: Top-level orchestrator
             role: primary
             model:
               tier: high
             ---
-            You are curator.
+            You are orchestrator.
             """
         ).strip()
         + "\n",

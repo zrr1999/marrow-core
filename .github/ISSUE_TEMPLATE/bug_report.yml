@@ -53,7 +53,7 @@ body:
         - Python: 3.12.8
         - marrow-core version or commit: v0.1.0
         - Install method: uv tool / source checkout
-        - Model or agent command: `opencode run --agent curator`
+        - Model or agent command: `opencode run --agent orchestrator`
     validations:
       required: true
   - type: textarea

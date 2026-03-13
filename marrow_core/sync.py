@@ -133,7 +133,9 @@ def _run_sync_once_locked(*, core_dir: str, workspace: str, refresh_workspace: b
     deps_changed = _paths_require_restart(changed_files)
     services_changed = _paths_require_service_rerender(changed_files)
     role_changed = any(path.startswith("roles/") for path in changed_files)
-    workspace_changed = role_changed
+    workspace_changed = role_changed or any(
+        path in {"prompts/rules.md", "roles.toml"} for path in changed_files
+    )
 
     if refresh_workspace:
         ensure_workspace_dirs(workspace)

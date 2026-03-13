@@ -70,7 +70,7 @@ def _write_config(
         [self_check]
         enabled = false
         interval_seconds = 900
-        wake_agent = "curator"
+        wake_agent = "orchestrator"
         """
     )
     service_block = textwrap.dedent(
@@ -194,7 +194,7 @@ def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
         assert method == "GET"
         assert path == "/status"
         assert body == ""
-        return {"uptime": 1.2, "agents": {"curator": {"tick_count": 3}}}
+        return {"uptime": 1.2, "agents": {"orchestrator": {"tick_count": 3}}}
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
@@ -213,18 +213,21 @@ def test_wake_submits_ipc_request(monkeypatch, tmp_path: Path) -> None:
 
     async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
         request.update({"socket": socket, "method": method, "path": path, "body": body})
-        return {"ok": True, "agent": "curator"}
+        return {"ok": True, "agent": "orchestrator"}
 
     monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
 
-    result = runner.invoke(app, ["wake", "curator", "--reason", "manual", "--config", str(config)])
+    result = runner.invoke(
+        app,
+        ["wake", "orchestrator", "--reason", "manual", "--config", str(config)],
+    )
 
     assert result.exit_code == 0
-    assert 'wake submitted for "curator"' in result.stdout
+    assert 'wake submitted for "orchestrator"' in result.stdout
     assert request["socket"] == str(socket_path)
     assert request["method"] == "POST"
     assert request["path"] == "/wake"
-    assert json.loads(request["body"]) == {"agent": "curator", "reason": "manual"}
+    assert json.loads(request["body"]) == {"agent": "orchestrator", "reason": "manual"}
 
 
 def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
@@ -404,7 +407,7 @@ def test_workspace_sync_runs_prepare_for_single_workspace(monkeypatch, tmp_path:
         lambda core_dir, workspace: (
             calls.append(("cast", workspace))
             or CastResult(
-                written=[Path(workspace) / ".opencode" / "agents" / "curator.md"],
+                written=[Path(workspace) / ".opencode" / "agents" / "orchestrator.md"],
                 skipped_permission=[],
                 errors=[],
             )
@@ -429,7 +432,7 @@ def test_workspace_sync_returns_zero_on_permission_skips(monkeypatch, tmp_path: 
         "marrow_core.cli.cast_roles_to_workspace",
         lambda core_dir, workspace: CastResult(
             written=[],
-            skipped_permission=[Path(workspace) / ".opencode" / "agents" / "curator.md"],
+            skipped_permission=[Path(workspace) / ".opencode" / "agents" / "orchestrator.md"],
             errors=[],
         ),
     )
@@ -543,11 +546,11 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
             "self_check": {
                 "enabled": True,
                 "interval_seconds": 900,
-                "wake_agent": "curator",
+                "wake_agent": "orchestrator",
             },
             "agents": [
                 {
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": str(tmp_path / "missing-binary"),
                     "workspace": str(workspace),
                     "context_dirs": [str(workspace / "missing-context")],
@@ -555,7 +558,7 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
             ],
         }
     )
-    wake_events = {"curator": asyncio.Event()}
+    wake_events = {"orchestrator": asyncio.Event()}
 
     async def fake_sleep(seconds: int) -> None:
         raise asyncio.CancelledError
@@ -574,8 +577,8 @@ def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
     files = list(task_dir.glob("*.md"))
     assert len(files) == 1
     body = files[0].read_text(encoding="utf-8")
-    assert "Run `curator` in repair mode" in body
-    assert wake_events["curator"].is_set()
+    assert "Run `orchestrator` in repair mode" in body
+    assert wake_events["orchestrator"].is_set()
 
 
 def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: Path) -> None:

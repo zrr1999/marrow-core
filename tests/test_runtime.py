@@ -16,7 +16,7 @@ def test_runtime_paths_default_to_primary_workspace() -> None:
             "core_dir": "/opt/marrow-core",
             "agents": [
                 {
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": "/Users/marrow",
                     "context_dirs": ["/Users/marrow/context.d"],
@@ -36,7 +36,7 @@ def test_runtime_paths_respect_ipc_overrides() -> None:
             "ipc": {"socket_path": "/tmp/custom.sock", "task_dir": "/tmp/tasks"},
             "agents": [
                 {
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": "/Users/marrow",
                     "context_dirs": ["/Users/marrow/context.d"],

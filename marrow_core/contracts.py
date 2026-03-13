@@ -9,23 +9,25 @@ from __future__ import annotations
 ROLE_DIR = "roles"
 WORKSPACE_AGENT_DIR = ".opencode/agents"
 
-TOP_LEVEL_AGENTS = ("curator",)
-STEWARDS = (
-    "delivery",
-    "portfolio",
-    "research",
-    "context",
-    "acceptance",
+TOP_LEVEL_AGENTS = ("orchestrator",)
+DIRECTORS = (
+    "craft",
+    "forge",
+    "mind",
+    "sentinel",
 )
 LEADERS = (
-    "refactor",
-    "prototype",
-    "review",
-    "ops",
-    "hygiene",
-    "memory",
+    "builder",
+    "shaper",
+    "verifier",
+    "courier",
+    "herald",
+    "archivist",
+    "scout",
+    "evolver",
+    "reviewer",
 )
-EXPERTS = (
+SPECIALISTS = (
     "analyst",
     "researcher",
     "coder",
@@ -37,34 +39,36 @@ EXPERTS = (
 
 # Scheduled agents are a runtime concern; keep them distinct from the full role inventory.
 AUTONOMOUS_AGENTS = TOP_LEVEL_AGENTS
-SYNCED_ROLE_FILES = TOP_LEVEL_AGENTS + STEWARDS + LEADERS + EXPERTS
+SYNCED_ROLE_FILES = TOP_LEVEL_AGENTS + DIRECTORS + LEADERS + SPECIALISTS
 
 ROLE_MODEL_TIERS = {
-    "curator": "high",
-    **dict.fromkeys(STEWARDS + LEADERS, "medium"),
-    **dict.fromkeys(EXPERTS, "low"),
+    "orchestrator": "high",
+    **dict.fromkeys(DIRECTORS + LEADERS, "medium"),
+    **dict.fromkeys(SPECIALISTS, "low"),
 }
 
 ROLE_PATHS = {
-    "curator": "roles/curator.md",
-    "delivery": "roles/stewards/delivery.md",
-    "portfolio": "roles/stewards/portfolio.md",
-    "research": "roles/stewards/research.md",
-    "context": "roles/stewards/context.md",
-    "acceptance": "roles/stewards/acceptance.md",
-    "refactor": "roles/leaders/refactor.md",
-    "prototype": "roles/leaders/prototype.md",
-    "review": "roles/leaders/review.md",
-    "ops": "roles/leaders/ops.md",
-    "hygiene": "roles/leaders/hygiene.md",
-    "memory": "roles/leaders/memory.md",
-    "analyst": "roles/experts/analyst.md",
-    "researcher": "roles/experts/researcher.md",
-    "coder": "roles/experts/coder.md",
-    "tester": "roles/experts/tester.md",
-    "writer": "roles/experts/writer.md",
-    "git-ops": "roles/experts/git-ops.md",
-    "filer": "roles/experts/filer.md",
+    "orchestrator": "roles/orchestrator.md",
+    "craft": "roles/directors/craft.md",
+    "forge": "roles/directors/forge.md",
+    "mind": "roles/directors/mind.md",
+    "sentinel": "roles/directors/sentinel.md",
+    "builder": "roles/leaders/builder.md",
+    "shaper": "roles/leaders/shaper.md",
+    "verifier": "roles/leaders/verifier.md",
+    "courier": "roles/leaders/courier.md",
+    "herald": "roles/leaders/herald.md",
+    "archivist": "roles/leaders/archivist.md",
+    "scout": "roles/leaders/scout.md",
+    "evolver": "roles/leaders/evolver.md",
+    "reviewer": "roles/leaders/reviewer.md",
+    "analyst": "roles/specialists/analyst.md",
+    "researcher": "roles/specialists/researcher.md",
+    "coder": "roles/specialists/coder.md",
+    "tester": "roles/specialists/tester.md",
+    "writer": "roles/specialists/writer.md",
+    "git-ops": "roles/specialists/git-ops.md",
+    "filer": "roles/specialists/filer.md",
 }
 
 RUNTIME_DIRS = (

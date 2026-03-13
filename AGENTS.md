@@ -9,7 +9,7 @@ marrow-core is a minimal scheduler for an autonomous agent system with one sched
 Keep these concepts separate:
 
 - `prompts/rules.md` -> stable global policy
-- `roles/` -> role identity and delegation boundaries
+- `roles/` -> canonical role identity and delegation boundaries
 - `context.d/` -> dynamic facts only
 - skills -> reusable procedures outside the repo prompt-layer contract
 
@@ -26,87 +26,104 @@ The canonical source of truth is:
 
 ## Role layout
 
-Directory layout is an architecture aid, not runtime-enforced metadata.
+```text
+roles/
+├── orchestrator.md
+├── directors/
+│   ├── craft.md
+│   ├── forge.md
+│   ├── mind.md
+│   └── sentinel.md
+├── leaders/
+│   ├── builder.md
+│   ├── shaper.md
+│   ├── verifier.md
+│   ├── courier.md
+│   ├── herald.md
+│   ├── archivist.md
+│   ├── scout.md
+│   ├── evolver.md
+│   └── reviewer.md
+└── specialists/
+    ├── coder.md
+    ├── tester.md
+    ├── analyst.md
+    ├── researcher.md
+    ├── writer.md
+    ├── filer.md
+    └── git-ops.md
+```
 
-### top-level scheduled orchestrators — `roles/`
+### top-level orchestrator
 
 | Role | Purpose | Can delegate to |
 |------|---------|-----------------|
-| `curator` | human communication, routing, output pacing, light acceptance | `stewards` |
+| `orchestrator` | human communication, routing, output pacing, light acceptance | `directors` |
 
-### stewards — `roles/stewards/`
-
-| Role | Domain | Can delegate to |
-|------|--------|-----------------|
-| `delivery` | deterministic delivery intake, decomposition, heavy acceptance, queue drain | `leaders` |
-| `portfolio` | repository portfolio scanning, CI/review watchlists, PR/issue movement, opportunity intake, showcase surfaces | `leaders` |
-| `research` | frontier learning, experiments, research intake, internal materials | `leaders` |
-| `context` | writable context hygiene, memory upkeep, prompt-surface placement | `leaders` |
-| `acceptance` | strict steward audits, quality gates, improvement guidance, workload audits | `leaders` |
-
-### leaders — `roles/leaders/`
+### directors
 
 | Role | Domain | Can delegate to |
 |------|--------|-----------------|
-| `refactor` | refactors, migrations, architecture change | `experts` |
-| `prototype` | PoCs, experiments, exploratory builds | `experts` |
-| `review` | PR/CI/review synthesis | `experts` |
-| `ops` | CI, deployment, service, environment orchestration | `experts` |
-| `hygiene` | writable context surfaces, placement fixes, contradiction cleanup | `experts` |
-| `memory` | runtime state, checkpoints, memory lifecycle | `experts` |
+| `craft` | code construction and execution | `leaders` |
+| `forge` | external-world read/write and outward delivery | `leaders` |
+| `mind` | knowledge, exploration, memory, self-evolution | `leaders` |
+| `sentinel` | validation, review coordination, gating | `leaders` |
 
-### experts — `roles/experts/`
+### leaders
 
-`analyst`, `researcher`, `coder`, `tester`, `writer`, `git-ops`, `filer`
+| Role | Domain | Can delegate to |
+|------|--------|-----------------|
+| `builder` | concrete implementation and integration | `specialists` |
+| `shaper` | refactors, migrations, structural change | `specialists` |
+| `verifier` | test execution, repro, runtime validation | `specialists` |
+| `courier` | repository follow-through and external coordination | `specialists` |
+| `herald` | outward broadcast and public updates | `specialists` |
+| `archivist` | durable memory and internal artifacts | `specialists` |
+| `scout` | exploration and reconnaissance | `specialists` |
+| `evolver` | prompt, role, and workflow self-improvement | `specialists` |
+| `reviewer` | static review and quality gates | `specialists` |
 
-Experts never delegate further.
+### specialists
+
+`analyst`, `researcher`, `coder`, `tester`, `writer`, `filer`, `git-ops`
+
+Specialists never delegate further.
 
 ## Delegation policy
 
-These are prompt-level operating rules, not runtime-enforced hierarchy metadata.
-
-- `curator -> stewards`
-- `stewards -> leaders`
-- `leaders -> experts`
-- `experts -> *` forbidden
+- `orchestrator -> directors`
+- `directors -> leaders`
+- `leaders -> specialists`
+- `specialists -> *` forbidden
 - upward calls forbidden
 - one accountable owner per workstream
 - delegation depth capped at 3 hops
 
 Operating contract:
 
-- when a bare role name would be ambiguous in prose, prefer scoped references such as `stewards/context`, `stewards/acceptance`, `leaders/review`, or `leaders/ops`
-- `curator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward.
-- `curator` should touch every steward lane in each active round, start with a round scorecard, set explicit output floors, re-check `tasks/queue/` after every steward cycle, and refuse to end the round while queue files remain.
-- `curator` should not ask whether it should continue on already in-scope actionable work, and should never end with optional continuation offers; it should continue until the round is complete or a real external blocker exists.
-- every active round must show quantifiable value in three tracks: self-improvement across accessible repo buckets, outward-facing showcase progress, and durable internal materials.
-- self-improvement coverage should include `marrow-core`, other org repos, agent-owned repos or surfaces, and user repos when they are accessible; if one bucket is unavailable, the round should record the evidence and substitute another accessible improvement.
-- outward-facing showcase progress should include at least 1 accepted advancement to a homepage, demo path, README, case study, example, changelog, or another public-facing surface.
-- durable internal materials should include at least 3 named artifacts such as experiment briefs, research reports, comparison notes, or decision memos.
-- first-cycle steward workloads should stay in the same order of magnitude; unjustified workload skew above roughly 2:1 should be corrected or explicitly explained.
-- stewards are the heavy-acceptance layer and own lane-specific decomposition.
-- `delivery` drains `tasks/queue/`, moves completed work to `tasks/done/`, and reports the final zero-queue check.
-- `portfolio` must keep scanning until it has at least 10 concrete repo, PR, issue, update, or refactor tasks worth routing and at least 1 outward-facing showcase advancement.
-- `research` must produce at least 5 concrete frontier findings, experiment briefs, comparisons, or follow-up tasks per active round, including at least 3 durable internal materials.
-- `stewards/context` must produce at least 3 concrete context hygiene fixes or follow-up packets per active round and explicitly report remaining stale, duplicated, or contradictory context.
-- `stewards/acceptance` must audit other stewards strictly, fail weak output, check round scorecard coverage plus workload balance, and give concrete improvement advice; curator may dispatch multiple acceptance passes on the same work.
-- `curator` may also launch multiple `stewards/acceptance` instances in parallel to audit different steward outputs in the same round, with explicit audit targets to keep ownership clear.
-- leaders analyze and integrate the task themselves, using experts only for narrow subtasks.
-- experts execute bounded tasks only and never redefine scope.
-- default concurrency guardrail: no more than 10 active PRs per repository unless a human explicitly asks otherwise.
+- when a bare role name would be ambiguous in prose, prefer scoped references such as `directors/mind`, `directors/sentinel`, `leaders/evolver`, or `leaders/reviewer`
+- `orchestrator` should not do deep task analysis or direct implementation; it routes, lightly accepts, and communicates upward
+- `orchestrator` should touch every director lane in each active round and set explicit output floors
+- `craft` owns construction and runtime verification via `builder`, `shaper`, and `verifier`
+- `forge` owns external-world reads and writes via `courier` and `herald`
+- `mind` owns knowledge and self-evolution via `archivist`, `scout`, and `evolver`
+- `sentinel` owns validation and gates via `reviewer`
+- review and testing stay split: static review belongs to `sentinel/reviewer`, while execution-time verification belongs to `craft/verifier`
+- leaders analyze and integrate the task themselves, using specialists only for narrow subtasks
+- specialists execute bounded tasks only and never redefine scope
 
 ## Runtime boundaries
 
-- `marrow_core/contracts.py` — role inventory and workspace topology
-- `marrow_core/prompting.py` — context execution and prompt assembly
-- `marrow_core/runtime.py` — socket, queue, binary path resolution
-- `marrow_core/task_queue.py` — filesystem queue read/write helpers
-- `marrow_core/health.py` — doctor and self-check health checks
-- `marrow_core/services.py` — launchd/systemd rendering
-- `marrow_core/scaffold.py` — workspace scaffold and starter config generation
-- `marrow_core/heartbeat.py` — scheduled orchestration per configured top-level agent
-- `marrow_core/ipc.py` — local control plane over Unix socket
-- `marrow_core/cli.py` — user-facing command surface
+- `marrow_core/contracts.py` - role inventory and workspace topology
+- `marrow_core/prompting.py` - context execution and prompt assembly
+- `marrow_core/runtime.py` - socket, queue, binary path resolution
+- `marrow_core/task_queue.py` - filesystem queue read/write helpers
+- `marrow_core/health.py` - doctor and self-check health checks
+- `marrow_core/services.py` - launchd/systemd rendering
+- `marrow_core/scaffold.py` - workspace scaffold and starter config generation
+- `marrow_core/heartbeat.py` - scheduled orchestration per configured top-level agent
+- `marrow_core/ipc.py` - local control plane over Unix socket
+- `marrow_core/cli.py` - user-facing command surface
 
 ## Filesystem layout
 
@@ -114,10 +131,6 @@ Operating contract:
 /opt/marrow-core/
 ├── marrow_core/
 ├── roles/
-│ ├── experts/
-│ ├── leaders/
-│ ├── stewards/
-│ └── curator.md
 ├── prompts/
 ├── context.d/
 ├── roles.toml
@@ -126,16 +139,16 @@ Operating contract:
 └── setup.sh
 
 /Users/marrow/
-├── .opencode/agents/       # cast runtime role files + custom-*.md
+├── .opencode/agents/
 ├── context.d/
 ├── tasks/
-│ ├── queue/
-│ ├── delegated/
-│ └── done/
+│   ├── queue/
+│   ├── delegated/
+│   └── done/
 ├── runtime/
-│ ├── state/
-│ ├── checkpoints/
-│ └── logs/
+│   ├── state/
+│   ├── checkpoints/
+│   └── logs/exec/
 └── docs/
 ```
 
@@ -157,43 +170,9 @@ Operating contract:
 | `task add` | submit a queued task over IPC |
 | `task list` | inspect queued tasks over IPC |
 
-## Service model
-
-- macOS: `com.marrow.heart.plist`
-- Linux: `marrow-heart.service`
-- `marrow run` is either the single-user heartbeat process or the root supervisor service
-- supervisor mode keeps one long-running service and spawns per-user workers directly instead of rendering extra worker units
-- CLI-managed periodic sync stays inside `marrow run` by invoking `sync-once` in a subprocess
-- core-owned self-check can wake `curator` early with a repair task when doctor-style checks fail
-- all rendered from the same runtime model so PATH, config path, and log destinations stay aligned
-
 ## Testing guidance
 
 - prefer one high-signal behavior test over multiple helper tests for the same failure mode
 - keep supervisor boundary coverage concentrated in `tests/test_supervisor.py`
 - keep single-user compatibility coverage in the narrower module test files
 - add lower-level tests only when a helper has meaningful branching not already covered by a higher-level test
-
-## Quick start
-
-Fresh install:
-
-```bash
-git clone https://github.com/zrr1999/marrow-core.git /opt/marrow-core
-cd /opt/marrow-core
-sudo ./setup.sh
-```
-
-Manual update attempt:
-
-```bash
-cd /opt/marrow-core
-python -m marrow_core.cli sync-once --config marrow.toml
-```
-
-Expected sync outcomes:
-
-- `0` -> `noop`
-- `10` -> `reloaded`
-- `11` -> `restart_required`
-- `1` -> `failed`

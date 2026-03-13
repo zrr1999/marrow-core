@@ -69,7 +69,7 @@ def _write_supervisor_config(tmp_path: Path) -> Path:
 
             [[agents]]
             user = "marrow"
-            name = "curator"
+            name = "orchestrator"
             heartbeat_interval = 300
             heartbeat_timeout = 30
             workspace = {json.dumps(str(workspace))}
@@ -90,7 +90,7 @@ def test_supervisor_config_requires_user_and_defaults_home() -> None:
                 "service": {"mode": "supervisor"},
                 "agents": [
                     {
-                        "name": "curator",
+                        "name": "orchestrator",
                         "agent_command": "cmd",
                         "workspace": "/Users/marrow",
                     }
@@ -104,7 +104,7 @@ def test_supervisor_config_requires_user_and_defaults_home() -> None:
             "agents": [
                 {
                     "user": "marrow",
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": "/Users/marrow",
                 }
@@ -123,7 +123,7 @@ def test_supervisor_runtime_paths_use_root_runtime(tmp_path: Path) -> None:
             "agents": [
                 {
                     "user": "marrow",
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": "/Users/marrow",
                 }
@@ -151,7 +151,7 @@ def test_supervisor_service_render_uses_system_config_path_and_root_logs() -> No
             "agents": [
                 {
                     "user": "marrow",
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": "/Users/marrow",
                 }
@@ -188,7 +188,7 @@ def test_grouped_worker_command_keeps_user_logs_in_workspace(tmp_path: Path) -> 
             "agents": [
                 {
                     "user": "marrow",
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": str(tmp_path / "workspace"),
                 },
@@ -213,7 +213,7 @@ def test_grouped_worker_command_keeps_user_logs_in_workspace(tmp_path: Path) -> 
 
     assert len(specs) == 1
     assert specs[0].home == "/Users/marrow"
-    assert "--agent curator" in cmd and "--agent conductor" in cmd
+    assert "--agent orchestrator" in cmd and "--agent conductor" in cmd
     assert str(specs[0].stdout_log_path) in cmd
     assert str(specs[0].stderr_log_path) in cmd
 
@@ -236,15 +236,15 @@ def test_worker_request_bridge_writes_workspace_tasks_and_wakes_agents(tmp_path:
     (workspace / "tasks" / "queue").mkdir(parents=True)
     request_dir = tmp_path / "runtime-root" / "control" / "workers" / "worker-1"
     create_task_request(request_dir, "Fix bug", "details")
-    create_wake_request(request_dir, "curator", "manual")
-    wake_events = {"curator": asyncio.Event()}
+    create_wake_request(request_dir, "orchestrator", "manual")
+    wake_events = {"orchestrator": asyncio.Event()}
 
     drain_worker_requests(request_dir, str(workspace), wake_events)
 
     tasks = sorted((workspace / "tasks" / "queue").glob("*.md"))
     assert len(tasks) == 1
     assert "Fix bug" in tasks[0].read_text(encoding="utf-8")
-    assert wake_events["curator"].is_set()
+    assert wake_events["orchestrator"].is_set()
 
 
 def test_run_dispatches_to_supervisor(monkeypatch, tmp_path: Path) -> None:
@@ -344,7 +344,7 @@ def test_run_worker_does_not_cast_workspace(monkeypatch, tmp_path: Path) -> None
     asyncio.run(
         __import__("marrow_core.cli").cli._run_worker(
             config,
-            agent_names=("curator",),
+            agent_names=("orchestrator",),
             status_file=tmp_path / "worker.json",
             request_dir=tmp_path / "requests",
         )
@@ -361,7 +361,7 @@ def test_supervisor_prepares_workspace_before_spawning_worker(monkeypatch, tmp_p
             "agents": [
                 {
                     "user": "marrow",
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": "cmd",
                     "workspace": str(tmp_path / "workspace"),
                 }
@@ -413,7 +413,7 @@ def test_prepare_worker_workspace_permission_skip_is_nonfatal(monkeypatch, tmp_p
         async def communicate(self):
             return (
                 b"workspace sync ok: written=0 skipped=1 errors=0\n",
-                b"cast skipped permission-denied file /tmp/workspace/.opencode/agents/curator.md\n",
+                b"cast skipped permission-denied file /tmp/workspace/.opencode/agents/orchestrator.md\n",
             )
 
     async def fake_exec(*argv, **kwargs):

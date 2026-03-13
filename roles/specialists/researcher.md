@@ -1,8 +1,8 @@
 ---
 name: researcher
 description: >-
-  Expert researcher. Gathers external references, prior art, release notes,
-  and comparative findings for a specific question.
+  Specialist researcher. Gathers references, prior art, release notes, and
+  comparative findings for a specific bounded question.
 role: subagent
 model:
   tier: low

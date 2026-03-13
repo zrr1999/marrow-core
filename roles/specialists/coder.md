@@ -1,7 +1,7 @@
 ---
 name: coder
 description: >-
-  Expert coder. Implements scoped code changes, refactors, and fixes when
+  Specialist coder. Implements scoped code changes, refactors, and fixes when
   the task is already well-defined.
 role: subagent
 model:

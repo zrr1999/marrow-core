@@ -8,7 +8,7 @@ from marrow_core.health import check_agent_health, collect_health_issues
 
 def test_check_agent_health_reports_missing_workspace_context_and_binary(tmp_path: Path) -> None:
     agent = AgentConfig(
-        name="curator",
+        name="orchestrator",
         agent_command=str(tmp_path / "missing-binary"),
         workspace=str(tmp_path / "missing-workspace"),
         context_dirs=[str(tmp_path / "missing-context")],
@@ -16,9 +16,9 @@ def test_check_agent_health_reports_missing_workspace_context_and_binary(tmp_pat
 
     issues = check_agent_health(agent)
 
-    assert f"curator: workspace missing: {tmp_path / 'missing-workspace'}" in issues
-    assert f"curator: context dir missing: {tmp_path / 'missing-context'}" in issues
-    assert f"curator: command not found: {tmp_path / 'missing-binary'}" in issues
+    assert f"orchestrator: workspace missing: {tmp_path / 'missing-workspace'}" in issues
+    assert f"orchestrator: context dir missing: {tmp_path / 'missing-context'}" in issues
+    assert f"orchestrator: command not found: {tmp_path / 'missing-binary'}" in issues
 
 
 def test_collect_health_issues_includes_extra_command_failures(tmp_path: Path) -> None:
@@ -34,7 +34,7 @@ def test_collect_health_issues_includes_extra_command_failures(tmp_path: Path) -
         {
             "agents": [
                 {
-                    "name": "curator",
+                    "name": "orchestrator",
                     "agent_command": str(Path("/bin/echo")),
                     "workspace": str(workspace),
                     "context_dirs": [str(context_dir)],
