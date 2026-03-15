@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from marrow_core.runtime import DEFAULT_SERVICE_PATH, marrow_binary
+from marrow_core.runtime import build_service_path, marrow_binary
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,7 @@ def render_service_files(
     core_dir: str,
     service_config_path: str,
     service_user: str,
+    agent_home: str,
     log_dir: str,
 ) -> list[ServiceFile]:
     target = detect_service_platform(platform)
@@ -46,12 +47,14 @@ def render_service_files(
             core_dir=core_dir,
             service_config_path=service_config_path,
             service_user=service_user,
+            agent_home=agent_home,
             log_dir=log_dir,
         )
     return _render_systemd_files(
         core_dir=core_dir,
         service_config_path=service_config_path,
         service_user=service_user,
+        agent_home=agent_home,
         log_dir=log_dir,
     )
 
@@ -71,11 +74,13 @@ def _render_launchd_files(
     core_dir: str,
     service_config_path: str,
     service_user: str,
+    agent_home: str,
     log_dir: str,
 ) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
     config = service_config_path
-    path_env = DEFAULT_SERVICE_PATH
+    path_env = build_service_path(agent_home)
+    working_dir = core_dir or "/tmp"
     username_block = ""
     if service_user:
         username_block = f"  <key>UserName</key>\n  <string>{service_user}</string>\n\n"
@@ -103,7 +108,7 @@ def _render_launchd_files(
                 f"    <key>PATH</key><string>{path_env}</string>\n"
                 "  </dict>\n\n"
                 "  <key>WorkingDirectory</key>\n"
-                f"  <string>{core_dir}</string>\n\n"
+                f"  <string>{working_dir}</string>\n\n"
                 f"{username_block}"
                 "  <key>KeepAlive</key>\n"
                 "  <true/>\n\n"
@@ -123,11 +128,14 @@ def _render_systemd_files(
     core_dir: str,
     service_config_path: str,
     service_user: str,
+    agent_home: str,
     log_dir: str,
 ) -> list[ServiceFile]:
     binary = marrow_binary(core_dir)
     config = service_config_path
     user_line = f"User={service_user}\n" if service_user else ""
+    working_dir = core_dir or "/tmp"
+    path_env = build_service_path(agent_home)
     return [
         ServiceFile(
             name="marrow-heart.service",
@@ -138,8 +146,8 @@ def _render_systemd_files(
                 "[Service]\n"
                 "Type=simple\n"
                 f"{user_line}"
-                f"WorkingDirectory={core_dir}\n"
-                f"Environment=PATH={DEFAULT_SERVICE_PATH}\n"
+                f"WorkingDirectory={working_dir}\n"
+                f"Environment=PATH={path_env}\n"
                 f"ExecStart={binary} run --config {config} --json-logs\n"
                 "Restart=always\n"
                 "RestartSec=5\n"

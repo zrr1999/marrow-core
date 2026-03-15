@@ -328,6 +328,38 @@ def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
     assert "rendered 1 service file(s)" in result.stdout
 
 
+def test_install_service_uses_configured_service_config_path(tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    output_dir = tmp_path / "service-out"
+    text = config.read_text(encoding="utf-8").replace(
+        '[service]\nmode = "single_user"\nruntime_root = '
+        + json.dumps(str(tmp_path / "service-runtime")),
+        '[service]\nmode = "single_user"\nruntime_root = '
+        + json.dumps(str(tmp_path / "service-runtime"))
+        + '\nconfig_path = "/opt/marrow-bot/marrow.toml"',
+        1,
+    )
+    config.write_text(text, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        [
+            "install-service",
+            "--config",
+            str(config),
+            "--platform",
+            "linux",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    service_text = (output_dir / "marrow-heart.service").read_text(encoding="utf-8")
+
+    assert result.exit_code == 0
+    assert "--config /opt/marrow-bot/marrow.toml --json-logs" in service_text
+
+
 def test_sync_once_reports_noop(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
 

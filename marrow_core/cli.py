@@ -847,6 +847,7 @@ def install_service(
         core_dir=root.core_dir,
         service_config_path=resolve_service_config_path(platform, root.service.config_path),
         service_user=resolve_service_user(root),
+        agent_home=root.agents[0].home,
         log_dir=resolve_service_log_dir(root),
     )
     written = write_service_files(files, output_dir)
