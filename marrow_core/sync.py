@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
-from marrow_core.caster import cast_roles_to_workspace
 from marrow_core.runtime import marrow_binary
 from marrow_core.workspace import ensure_workspace_dirs
 
@@ -98,7 +97,20 @@ def run_sync_once(
     state_file: Path,
     lock_file: Path,
     refresh_workspace: bool = True,
+    service_config_path: str = "",
+    rules_path: str = "",
 ) -> SyncOutcome:
+    if not core_dir:
+        outcome = SyncOutcome(
+            SyncResult.FAILED,
+            "sync requires a source checkout core_dir; "
+            "uvx-first runtime installs should disable sync",
+            (),
+            _utc_now(),
+            "",
+        )
+        write_sync_state(state_file, outcome)
+        return outcome
     if not _acquire_lock(lock_file):
         outcome = SyncOutcome(SyncResult.FAILED, "sync already in progress", (), _utc_now(), "")
         write_sync_state(state_file, outcome)
@@ -108,6 +120,8 @@ def run_sync_once(
             core_dir=core_dir,
             workspace=workspace,
             refresh_workspace=refresh_workspace,
+            service_config_path=service_config_path,
+            rules_path=rules_path,
         )
         write_sync_state(state_file, outcome)
         return outcome
@@ -115,7 +129,14 @@ def run_sync_once(
         _release_lock(lock_file)
 
 
-def _run_sync_once_locked(*, core_dir: str, workspace: str, refresh_workspace: bool) -> SyncOutcome:
+def _run_sync_once_locked(
+    *,
+    core_dir: str,
+    workspace: str,
+    refresh_workspace: bool,
+    service_config_path: str,
+    rules_path: str,
+) -> SyncOutcome:
     _run_git(core_dir, "fetch", "origin", "main")
 
     if _git_status_short(core_dir):
@@ -132,19 +153,17 @@ def _run_sync_once_locked(*, core_dir: str, workspace: str, refresh_workspace: b
 
     deps_changed = _paths_require_restart(changed_files)
     services_changed = _paths_require_service_rerender(changed_files)
-    role_changed = any(path.startswith("roles/") for path in changed_files)
-    workspace_changed = role_changed or any(
-        path in {"prompts/rules.md", "roles.toml"} for path in changed_files
-    )
+    tracked_rules = rules_path.removeprefix(f"{core_dir}/") if rules_path else ""
+    role_changed = False
+    workspace_changed = bool(tracked_rules) and any(path == tracked_rules for path in changed_files)
 
     if refresh_workspace:
         ensure_workspace_dirs(workspace)
-        cast_roles_to_workspace(core_dir, workspace)
 
     if deps_changed:
         _run_uv_sync(core_dir)
     if services_changed:
-        _render_services(core_dir)
+        _render_services(core_dir, service_config_path=service_config_path)
 
     if not refresh_workspace and (role_changed or workspace_changed):
         return SyncOutcome(
@@ -177,13 +196,14 @@ def _run_uv_sync(core_dir: str) -> None:
     _run_command(["uv", "sync", "--no-dev", "--directory", core_dir])
 
 
-def _render_services(core_dir: str) -> None:
+def _render_services(core_dir: str, *, service_config_path: str = "") -> None:
+    config_path = service_config_path or f"{core_dir}/marrow.toml"
     _run_command(
         [
             marrow_binary(core_dir),
             "install-service",
             "--config",
-            f"{core_dir}/marrow.toml",
+            config_path,
             "--output-dir",
             core_dir,
         ]

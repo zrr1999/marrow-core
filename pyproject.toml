@@ -10,7 +10,6 @@ authors = [
 dependencies = [
   "loguru>=0.7.3",
   "pydantic>=2.12",
-  "role-forge @ git+https://github.com/zrr1999/role-forge.git@main",
   "typer>=0.15",
 ]
 dynamic = ["version"]
@@ -21,6 +20,7 @@ Repository = "https://github.com/zrr1999/marrow-core"
 
 [project.scripts]
 marrow = "marrow_core.cli:app"
+marrow-core = "marrow_core.cli:app"
 
 [dependency-groups]
 dev = [

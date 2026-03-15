@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import sys
 import tomllib
 import warnings
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+
+try:
+    import pwd
+except ImportError:  # pragma: no cover - non-Unix fallback
+    pwd = None
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -17,6 +23,18 @@ def _clamp(value: int, lo: int, hi: int, name: str) -> int:
     return clamped
 
 
+def _default_home_for_user(user: str) -> str:
+    if not user:
+        return ""
+    if pwd is not None:
+        try:
+            return pwd.getpwnam(user).pw_dir
+        except KeyError:
+            pass
+    base = "/Users" if sys.platform == "darwin" else "/home"
+    return f"{base}/{user}"
+
+
 class AgentConfig(BaseModel):
     """Single scheduled agent definition."""
 
@@ -24,7 +42,7 @@ class AgentConfig(BaseModel):
     heartbeat_interval: int = 300
     heartbeat_timeout: int = 500
     agent_command: str
-    workspace: str  # Agent's writable workspace root (e.g. /Users/marrow)
+    workspace: str = ""  # Agent's writable workspace root (e.g. /Users/marrow)
     user: str = Field(default="", validation_alias=AliasChoices("user", "run_as_user"))
     run_as_group: str = ""
     home: str = ""
@@ -67,7 +85,7 @@ class AgentConfig(BaseModel):
     @field_validator("workspace")
     @classmethod
     def _abs_workspace(cls, v: str) -> str:
-        if not Path(v).is_absolute():
+        if v and not Path(v).is_absolute():
             raise ValueError(f"workspace must be absolute: {v}")
         return v
 
@@ -81,7 +99,13 @@ class AgentConfig(BaseModel):
     @model_validator(mode="after")
     def _default_home(self) -> AgentConfig:
         if not self.home and self.user:
-            self.home = f"/Users/{self.user}"
+            self.home = _default_home_for_user(self.user)
+        if not self.workspace and self.home:
+            self.workspace = self.home
+        if not self.workspace:
+            raise ValueError("workspace must be set or derivable from user/home")
+        if not self.context_dirs:
+            self.context_dirs = [str(Path(self.workspace) / "context.d")]
         return self
 
     @field_validator("context_dirs", mode="before")
@@ -146,7 +170,7 @@ class SelfCheckConfig(BaseModel):
 
     enabled: bool = True
     interval_seconds: int = 900
-    wake_agent: str = "orchestrator"
+    wake_agent: str = ""
     extra_commands: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
@@ -202,12 +226,114 @@ class ServiceConfig(BaseModel):
         return v
 
 
+class PluginConfig(BaseModel):
+    """Hosted plugin/background-service definition."""
+
+    name: str
+    kind: Literal["dashboard", "background_service"] = "background_service"
+    command: str
+    args: list[str] = Field(default_factory=list)
+    enabled: bool = True
+    auto_start: bool = False
+    cwd: str = ""
+    workspace: str = ""
+    config_path: str = ""
+    capabilities: list[str] = Field(default_factory=list)
+    env: dict[str, str] = Field(default_factory=dict)
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("name", "command", mode="before")
+    @classmethod
+    def _strip_required_fields(cls, v: Any) -> str:
+        value = str(v).strip()
+        if not value:
+            raise ValueError("plugin field must not be empty")
+        return value
+
+    @field_validator("cwd", "workspace", "config_path", mode="before")
+    @classmethod
+    def _strip_optional_paths(cls, v: Any) -> str:
+        return str(v).strip() if v is not None else ""
+
+    @field_validator("cwd", "workspace", "config_path")
+    @classmethod
+    def _abs_optional_paths(cls, v: str) -> str:
+        if v and not Path(v).is_absolute():
+            raise ValueError(f"plugin path must be absolute: {v}")
+        return v
+
+    @field_validator("args", "capabilities", mode="before")
+    @classmethod
+    def _normalize_list_fields(cls, v: Any) -> list[str]:
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v.strip()] if v.strip() else []
+        return [str(item).strip() for item in v if str(item).strip()]
+
+    @field_validator("env", mode="before")
+    @classmethod
+    def _normalize_env(cls, v: Any) -> dict[str, str]:
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError("plugin env must be a table/object")
+        return {str(key): str(value) for key, value in v.items()}
+
+
+class ProfileConfig(BaseModel):
+    """Optional external profile bundle paths."""
+
+    root_dir: str = ""
+    rules_path: str = ""
+    source_context_dir: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("root_dir", "rules_path", "source_context_dir", mode="before")
+    @classmethod
+    def _strip_optional_paths(cls, v: Any) -> str:
+        return str(v).strip() if v is not None else ""
+
+    @model_validator(mode="after")
+    def _resolve_paths(self) -> ProfileConfig:
+        root = Path(self.root_dir) if self.root_dir else None
+        if root is not None and not root.is_absolute():
+            raise ValueError(f"profile.root_dir must be absolute: {self.root_dir}")
+
+        defaults = {
+            "source_context_dir": "context.d",
+        }
+
+        if root is not None:
+            self.root_dir = str(root)
+
+        for field_name, default_rel in defaults.items():
+            raw = getattr(self, field_name)
+            if not raw and root is not None:
+                raw = str(root / default_rel)
+            if not raw:
+                continue
+            path = Path(raw)
+            if not path.is_absolute():
+                if root is None:
+                    raise ValueError(
+                        f"profile.{field_name} must be absolute without profile.root_dir: {raw}"
+                    )
+                path = root / raw
+            setattr(self, field_name, str(path))
+        return self
+
+
 class RootConfig(BaseModel):
     """Top-level marrow.toml schema."""
 
-    core_dir: str = "/opt/marrow-core"
+    core_dir: str = ""
+    profile: ProfileConfig = Field(default_factory=ProfileConfig)
     service: ServiceConfig = Field(default_factory=ServiceConfig)
     agents: list[AgentConfig] = Field(default_factory=list)
+    plugins: list[PluginConfig] = Field(default_factory=list)
     ipc: IpcConfig = Field(default_factory=IpcConfig)
     sync: SyncConfig = Field(default_factory=SyncConfig)
     self_check: SelfCheckConfig = Field(default_factory=SelfCheckConfig)
@@ -216,6 +342,8 @@ class RootConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_supervisor_agents(self) -> RootConfig:
+        if not self.self_check.wake_agent and self.agents:
+            self.self_check.wake_agent = self.agents[0].name
         if self.service.mode != "supervisor":
             return self
         for agent in self.agents:
