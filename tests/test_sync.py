@@ -78,7 +78,7 @@ def test_run_sync_once_refuses_dirty_worktree(monkeypatch, tmp_path: Path) -> No
     assert outcome.reason == "dirty worktree"
 
 
-def test_run_sync_once_refreshes_workspace_for_role_only_changes(
+def test_run_sync_once_refreshes_workspace_dirs_only_for_profile_changes(
     monkeypatch, tmp_path: Path
 ) -> None:
     state_file = tmp_path / "state.json"
@@ -101,11 +101,6 @@ def test_run_sync_once_refreshes_workspace_for_role_only_changes(
         "marrow_core.sync.ensure_workspace_dirs",
         lambda workspace: calls.append(("ensure_workspace_dirs", workspace)),
     )
-    monkeypatch.setattr(
-        "marrow_core.sync.cast_roles_to_workspace",
-        lambda core_dir, workspace: calls.append(("cast_roles_to_workspace", workspace)),
-    )
-
     outcome = run_sync_once(
         core_dir=str(tmp_path / "core"),
         workspace=str(tmp_path / "workspace"),
@@ -113,11 +108,8 @@ def test_run_sync_once_refreshes_workspace_for_role_only_changes(
         lock_file=lock_file,
     )
 
-    assert outcome.result is SyncResult.RELOADED
-    assert calls == [
-        ("ensure_workspace_dirs", str(tmp_path / "workspace")),
-        ("cast_roles_to_workspace", str(tmp_path / "workspace")),
-    ]
+    assert outcome.result is SyncResult.NOOP
+    assert calls == [("ensure_workspace_dirs", str(tmp_path / "workspace"))]
 
 
 def test_run_sync_once_requests_restart_for_runtime_changes(monkeypatch, tmp_path: Path) -> None:
@@ -138,7 +130,6 @@ def test_run_sync_once_requests_restart_for_runtime_changes(monkeypatch, tmp_pat
 
     monkeypatch.setattr("marrow_core.sync._run_git", fake_run_git)
     monkeypatch.setattr("marrow_core.sync.ensure_workspace_dirs", lambda workspace: None)
-    monkeypatch.setattr("marrow_core.sync.cast_roles_to_workspace", lambda core_dir, workspace: [])
     monkeypatch.setattr("marrow_core.sync._run_uv_sync", lambda core_dir: commands.append("uv"))
     monkeypatch.setattr(
         "marrow_core.sync._render_services", lambda core_dir: commands.append("services")

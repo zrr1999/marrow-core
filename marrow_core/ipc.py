@@ -15,15 +15,24 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from loguru import logger
 
 from marrow_core.task_queue import create_task_file, list_tasks
 
 if TYPE_CHECKING:
-    from marrow_core.heartbeat import HeartbeatState
+    from collections.abc import Mapping
+
+
+class _WakeHandle(Protocol):
+    def set(self) -> None: ...
+
+
+class _StateView(Protocol):
+    def to_dict(self) -> dict[str, Any]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -66,8 +75,8 @@ async def _handle(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
     task_dir: Path,
-    state: HeartbeatState,
-    wake_events: dict[str, asyncio.Event],
+    state: _StateView,
+    wake_events: Mapping[str, _WakeHandle],
     *,
     task_submitter=None,
     task_lister=None,
@@ -173,8 +182,8 @@ async def _handle(
 async def start_ipc_server(
     socket_path: str,
     task_dir: str,
-    state: HeartbeatState,
-    wake_events: dict[str, asyncio.Event],
+    state: _StateView,
+    wake_events: Mapping[str, _WakeHandle],
     *,
     task_submitter=None,
     task_lister=None,
@@ -187,6 +196,9 @@ async def start_ipc_server(
         sock.unlink()
 
     td = Path(task_dir)
+    td.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(PermissionError):
+        os.chmod(td, 0o770)
 
     async def handler(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
         await _handle(
@@ -200,5 +212,7 @@ async def start_ipc_server(
         )
 
     server = await asyncio.start_unix_server(handler, path=str(sock))
+    with contextlib.suppress(PermissionError):
+        os.chmod(sock, 0o660)
     logger.info("ipc server listening on {}", sock)
     return server

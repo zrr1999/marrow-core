@@ -12,7 +12,6 @@ import pytest
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-from marrow_core.caster import CastResult
 from marrow_core.cli import app
 from marrow_core.config import RootConfig
 from marrow_core.runtime import (
@@ -164,6 +163,7 @@ def test_supervisor_service_render_uses_system_config_path_and_root_logs() -> No
         core_dir="/opt/marrow-core",
         service_config_path=resolve_service_config_path("linux", root.service.config_path),
         service_user=resolve_service_user(root),
+        agent_home=root.agents[0].home,
         log_dir="/var/lib/marrow/logs",
     )
     darwin_files = render_service_files(
@@ -171,6 +171,7 @@ def test_supervisor_service_render_uses_system_config_path_and_root_logs() -> No
         core_dir="/opt/marrow-core",
         service_config_path=resolve_service_config_path("darwin", root.service.config_path),
         service_user=resolve_service_user(root),
+        agent_home=root.agents[0].home,
         log_dir="/var/lib/marrow/logs",
     )
 
@@ -279,14 +280,6 @@ def test_install_service_and_setup_follow_supervisor_boundaries(
         "marrow_core.cli.ensure_workspace_dirs",
         lambda workspace: calls.append(f"workspace:{workspace}"),
     )
-    monkeypatch.setattr(
-        "marrow_core.cli.cast_roles_to_workspace",
-        lambda core_dir, workspace: (
-            calls.append(f"cast:{workspace}")
-            or CastResult(written=[], skipped_permission=[], errors=[])
-        ),
-    )
-
     setup_result = runner.invoke(app, ["setup", "--config", str(config)])
     install_result = runner.invoke(
         app,
@@ -339,8 +332,6 @@ def test_run_worker_does_not_cast_workspace(monkeypatch, tmp_path: Path) -> None
 
     monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
     monkeypatch.setattr("marrow_core.cli.ensure_workspace_dirs", fail_workspace_prepare)
-    monkeypatch.setattr("marrow_core.cli.cast_roles_to_workspace", fail_workspace_prepare)
-
     asyncio.run(
         __import__("marrow_core.cli").cli._run_worker(
             config,
@@ -413,8 +404,7 @@ def test_prepare_worker_workspace_permission_skip_is_nonfatal(monkeypatch, tmp_p
         async def communicate(self):
             return (
                 b"workspace sync ok: written=0 skipped=1 errors=0\n",
-                b"cast skipped permission-denied file "
-                b"/tmp/workspace/.opencode/agents/orchestrator.md\n",
+                b"",
             )
 
     async def fake_exec(*argv, **kwargs):

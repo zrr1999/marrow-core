@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from marrow_core.config import ProfileConfig
 from marrow_core.contracts import WORKSPACE_DIRS
 from marrow_core.workspace import (
-    _core_definition_files,
     ensure_workspace_dirs,
     load_rules,
     verify_workspace,
@@ -30,27 +30,10 @@ def test_ensure_workspace_dirs_creates_sync_state_parent(tmp_path: Path) -> None
     assert (tmp_path / "runtime" / "state").is_dir()
 
 
-def test_core_definition_files_require_roles(tmp_path: Path) -> None:
-    core_dir = tmp_path / "core"
-    assert _core_definition_files(str(core_dir)) == []
-
-
-def test_core_definition_files_read_roles_recursively(tmp_path: Path) -> None:
-    core_dir = tmp_path / "core"
-    (core_dir / "roles").mkdir(parents=True)
-    (core_dir / "roles" / "orchestrator.md").write_text("# Orchestrator", encoding="utf-8")
-
-    files = _core_definition_files(str(core_dir))
-
-    assert files == [core_dir / "roles" / "orchestrator.md"]
-
-
 def test_load_rules(tmp_path: Path):
-    (tmp_path / "prompts").mkdir()
-    (tmp_path / "prompts" / "rules.md").write_text(
-        "# Rules\nDo not break things.", encoding="utf-8"
-    )
-    text = load_rules(str(tmp_path))
+    rules_path = tmp_path / "rules.md"
+    rules_path.write_text("# Rules\nDo not break things.", encoding="utf-8")
+    text = load_rules(ProfileConfig(rules_path=str(rules_path)))
     assert "Do not break things" in text
 
 

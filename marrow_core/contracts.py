@@ -1,75 +1,16 @@
-"""Canonical architecture contract for marrow-core.
+"""Stable runtime contracts for marrow-core.
 
-This module centralizes role inventory and workspace topology so runtime code
-and contract tests can share one source of truth.
+This module intentionally describes only core-owned workspace and service layout.
+Concrete role inventories live in external profiles such as marrow-bot.
 """
 
 from __future__ import annotations
 
-ROLE_DIR = "roles"
 WORKSPACE_AGENT_DIR = ".opencode/agents"
+WORK_ITEM_DIR = "work-items"
 
-TOP_LEVEL_AGENTS = ("orchestrator",)
-DIRECTORS = (
-    "craft",
-    "forge",
-    "mind",
-    "sentinel",
-)
-LEADERS = (
-    "builder",
-    "shaper",
-    "verifier",
-    "courier",
-    "herald",
-    "archivist",
-    "scout",
-    "evolver",
-    "reviewer",
-)
-SPECIALISTS = (
-    "analyst",
-    "researcher",
-    "coder",
-    "tester",
-    "writer",
-    "git-ops",
-    "filer",
-)
-
-# Scheduled agents are a runtime concern; keep them distinct from the full role inventory.
-AUTONOMOUS_AGENTS = TOP_LEVEL_AGENTS
-SYNCED_ROLE_FILES = TOP_LEVEL_AGENTS + DIRECTORS + LEADERS + SPECIALISTS
-
-ROLE_MODEL_TIERS = {
-    "orchestrator": "high",
-    **dict.fromkeys(DIRECTORS + LEADERS, "medium"),
-    **dict.fromkeys(SPECIALISTS, "low"),
-}
-
-ROLE_PATHS = {
-    "orchestrator": "roles/orchestrator.md",
-    "craft": "roles/directors/craft.md",
-    "forge": "roles/directors/forge.md",
-    "mind": "roles/directors/mind.md",
-    "sentinel": "roles/directors/sentinel.md",
-    "builder": "roles/leaders/builder.md",
-    "shaper": "roles/leaders/shaper.md",
-    "verifier": "roles/leaders/verifier.md",
-    "courier": "roles/leaders/courier.md",
-    "herald": "roles/leaders/herald.md",
-    "archivist": "roles/leaders/archivist.md",
-    "scout": "roles/leaders/scout.md",
-    "evolver": "roles/leaders/evolver.md",
-    "reviewer": "roles/leaders/reviewer.md",
-    "analyst": "roles/specialists/analyst.md",
-    "researcher": "roles/specialists/researcher.md",
-    "coder": "roles/specialists/coder.md",
-    "tester": "roles/specialists/tester.md",
-    "writer": "roles/specialists/writer.md",
-    "git-ops": "roles/specialists/git-ops.md",
-    "filer": "roles/specialists/filer.md",
-}
+DEFAULT_TOP_LEVEL_AGENT = "orchestrator"
+AUTONOMOUS_AGENTS = (DEFAULT_TOP_LEVEL_AGENT,)
 
 RUNTIME_DIRS = (
     "runtime/state",
@@ -83,11 +24,17 @@ TASK_DIRS = (
     "tasks/done",
 )
 
+PLUGIN_DIRS = (
+    "plugins",
+    "runtime/plugins",
+    "runtime/logs/plugins",
+)
+
 WORKSPACE_DIRS = (
-    RUNTIME_DIRS[0],
-    RUNTIME_DIRS[1],
-    RUNTIME_DIRS[2],
+    *RUNTIME_DIRS,
     *TASK_DIRS,
+    WORK_ITEM_DIR,
+    *PLUGIN_DIRS,
     "context.d",
     WORKSPACE_AGENT_DIR,
 )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 from marrow_core.config import RootConfig
@@ -81,7 +82,32 @@ def resolve_task_dir(root: RootConfig) -> str:
 
 
 def marrow_binary(core_dir: str) -> str:
+    if not core_dir:
+        return shutil.which("marrow-core") or shutil.which("marrow") or "marrow-core"
     return str(Path(core_dir) / ".venv" / "bin" / "marrow")
+
+
+def build_service_path(home_dir: str = "") -> str:
+    parts: list[str] = []
+    if home_dir:
+        home = Path(home_dir)
+        parts.extend(
+            [
+                str(home / ".bun" / "bin"),
+                str(home / ".local" / "bin"),
+                str(home / "bin"),
+            ]
+        )
+    parts.extend(DEFAULT_SERVICE_PATH.split(":"))
+
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for part in parts:
+        if not part or part in seen:
+            continue
+        seen.add(part)
+        ordered.append(part)
+    return ":".join(ordered)
 
 
 def resolve_sync_state_path(root: RootConfig) -> str:

@@ -1,4 +1,4 @@
-"""Workspace — setup and isolation helpers."""
+"""Workspace and profile path helpers."""
 
 from __future__ import annotations
 
@@ -7,7 +7,8 @@ from pathlib import Path
 
 from loguru import logger
 
-from marrow_core.contracts import ROLE_DIR, WORKSPACE_DIRS
+from marrow_core.config import ProfileConfig
+from marrow_core.contracts import WORKSPACE_DIRS
 
 
 def verify_workspace(workspace: str) -> bool:
@@ -29,17 +30,31 @@ def ensure_workspace_dirs(workspace: str) -> None:
         (base / d).mkdir(parents=True, exist_ok=True)
 
 
-def _core_definition_files(core_dir: str) -> list[Path]:
-    core_path = Path(core_dir)
-    role_dir = core_path / ROLE_DIR
-    if role_dir.is_dir():
-        return sorted(path for path in role_dir.rglob("*.md") if path.is_file())
-    return []
+def _coerce_profile(profile: ProfileConfig | str) -> ProfileConfig:
+    if isinstance(profile, ProfileConfig):
+        return profile
+    return ProfileConfig(root_dir=str(profile))
 
 
-def load_rules(core_dir: str) -> str:
-    """Load the immutable rules prompt from core."""
-    rules_path = Path(core_dir) / "prompts" / "rules.md"
+def profile_rules_path(profile: ProfileConfig | str) -> Path | None:
+    profile = _coerce_profile(profile)
+    if not profile.rules_path:
+        return None
+    return Path(profile.rules_path)
+
+
+def profile_source_context_dir(profile: ProfileConfig | str) -> Path | None:
+    profile = _coerce_profile(profile)
+    if not profile.source_context_dir:
+        return None
+    return Path(profile.source_context_dir)
+
+
+def load_rules(profile: ProfileConfig | str) -> str:
+    """Load immutable rules from the configured external profile bundle."""
+    rules_path = profile_rules_path(profile)
+    if rules_path is None:
+        return ""
     if rules_path.is_file():
         return rules_path.read_text(encoding="utf-8").strip()
     logger.warning("rules file not found: {}", rules_path)
