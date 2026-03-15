@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import textwrap
 import warnings
 from pathlib import Path
@@ -10,6 +11,8 @@ import pytest
 from pydantic import ValidationError
 
 from marrow_core.config import AgentConfig, PluginConfig, ServiceConfig, load_config
+
+EXPECTED_HOME = "/Users/marrow" if sys.platform == "darwin" else "/home/marrow"
 
 
 def test_empty_name_raises():
@@ -92,7 +95,7 @@ def test_load_config(tmp_path: Path):
     assert len(root.agents) == 1
     assert root.agents[0].name == "orchestrator"
     assert root.agents[0].user == "marrow"
-    assert root.agents[0].home == "/Users/marrow"
+    assert root.agents[0].home == EXPECTED_HOME
     assert root.service.mode == "supervisor"
     assert root.core_dir == ""
     assert root.ipc.enabled is True
@@ -124,9 +127,9 @@ def test_load_config_defaults_workspace_and_context_from_user(tmp_path: Path) ->
     assert root.profile.root_dir == "/opt/marrow-bot"
     assert root.profile.source_context_dir == "/opt/marrow-bot/context.d"
     assert root.service.config_path == "/opt/marrow-bot/marrow.toml"
-    assert root.agents[0].workspace.endswith("/marrow")
+    assert root.agents[0].workspace == EXPECTED_HOME
     assert root.agents[0].agent_command == "opencode run --agent orchestrator"
-    assert root.agents[0].context_dirs == ["/Users/marrow/context.d"]
+    assert root.agents[0].context_dirs == [f"{EXPECTED_HOME}/context.d"]
 
 
 def test_extra_forbid(tmp_path: Path):

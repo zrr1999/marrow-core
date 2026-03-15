@@ -35,6 +35,7 @@ from marrow_core.worker import (
 )
 
 runner = CliRunner()
+EXPECTED_HOME = "/Users/marrow" if sys.platform == "darwin" else "/home/marrow"
 
 
 def _write_supervisor_config(tmp_path: Path) -> Path:
@@ -112,7 +113,7 @@ def test_supervisor_config_requires_user_and_defaults_home() -> None:
     )
 
     assert root.agents[0].user == "marrow"
-    assert root.agents[0].home == "/Users/marrow"
+    assert root.agents[0].home == EXPECTED_HOME
 
 
 def test_supervisor_runtime_paths_use_root_runtime(tmp_path: Path) -> None:
@@ -213,7 +214,7 @@ def test_grouped_worker_command_keeps_user_logs_in_workspace(tmp_path: Path) -> 
     )
 
     assert len(specs) == 1
-    assert specs[0].home == "/Users/marrow"
+    assert specs[0].home == EXPECTED_HOME
     assert "--agent orchestrator" in cmd and "--agent conductor" in cmd
     assert str(specs[0].stdout_log_path) in cmd
     assert str(specs[0].stderr_log_path) in cmd
