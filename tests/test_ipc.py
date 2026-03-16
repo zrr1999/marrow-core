@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shutil
+import stat
 import tempfile
 from pathlib import Path
 
@@ -175,6 +177,16 @@ async def test_list_tasks_after_add(ipc_server):
     data = await _ipc_request(sock, "GET", "/tasks")
     assert len(data["tasks"]) == 1
     assert data["tasks"][0]["title"] == "alpha"
+
+
+async def test_ipc_socket_and_task_dir_are_user_writable(ipc_server):
+    sock, task_dir, _, _ = ipc_server
+
+    sock_mode = stat.S_IMODE(os.stat(sock).st_mode)
+    task_dir_mode = stat.S_IMODE(task_dir.stat().st_mode)
+
+    assert sock_mode == 0o660
+    assert task_dir_mode == 0o770
 
 
 async def test_not_found(ipc_server):

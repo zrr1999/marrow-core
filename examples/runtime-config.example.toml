@@ -1,0 +1,61 @@
+[profile]
+root_dir = "/opt/marrow-bot"
+
+[service]
+mode = "supervisor"
+runtime_root = "/var/lib/marrow"
+config_path = "/etc/marrow/marrow.toml"
+
+[ipc]
+enabled = true
+
+[self_check]
+enabled = true
+interval_seconds = 900
+wake_agent = "orchestrator"
+
+[[agents]]
+user = "marrow"
+name = "orchestrator"
+heartbeat_interval = 10800
+heartbeat_timeout = 7200
+workspace = "/Users/marrow"
+agent_command = "/Users/marrow/.opencode/bin/opencode run --agent orchestrator"
+context_dirs = ["/Users/marrow/context.d"]
+
+# Dashboard-like plugin: described in manifest, not auto-started as a service unit.
+[[plugins]]
+name = "dashboard"
+kind = "dashboard"
+command = "python"
+args = [
+  "-m",
+  "marrow_dashboard",
+  "serve",
+  "--config",
+  "/etc/marrow/dashboard.toml"
+]
+cwd = "/opt/marrow-dashboard"
+workspace = "/Users/marrow"
+config_path = "/etc/marrow/dashboard.toml"
+capabilities = ["read_work_items", "show_governance_metrics"]
+
+[plugins.env]
+MARROW_WORKSPACE = "/Users/marrow"
+
+# Background-service plugin: manifest + auto-start service unit when installed.
+[[plugins]]
+name = "task-bridge"
+kind = "background_service"
+command = "python"
+args = ["-m", "marrow_task", "serve", "--config", "/etc/marrow/task.toml"]
+cwd = "/opt/marrow-task"
+workspace = "/Users/marrow"
+config_path = "/etc/marrow/task.toml"
+enabled = true
+auto_start = true
+capabilities = ["claim_task", "complete_task", "write_work_items"]
+
+[plugins.env]
+MARROW_WORKSPACE = "/Users/marrow"
+MARROW_TASK_CONFIG = "/etc/marrow/task.toml"

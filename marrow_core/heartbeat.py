@@ -16,21 +16,16 @@ from typing import Any
 
 from loguru import logger
 
-from marrow_core.config import AgentConfig
+from marrow_core.config import AgentConfig, ProfileConfig
 from marrow_core.log_pruner import prune_exec_logs
 from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import run_agent
 from marrow_core.workspace import load_rules
 
-BASE_PROMPT = (
-    "You are a relentless autonomous agent. Advance the current in-scope work immediately "
-    "and keep pulling the next actionable item without waiting for permission. "
-    "If tasks are queued, attack the highest-priority one immediately. "
-    "If the queue is empty, improve yourself: refine scripts, learn from past runs, "
-    "explore your environment, or create tasks for future value. "
-    "Never idle. Never ask questions. Do not ask whether you should continue on "
-    "already in-scope work. Continue until the round is complete or a real external "
-    "blocker requires human input. Produce tangible output every tick."
+RUNTIME_PROMPT = (
+    "Operate from the configured profile prompt, immutable rules, and current context. "
+    "Use this execution round to make concrete progress, leave useful state, and avoid "
+    "inventing policy that belongs in profile repositories."
 )
 
 # Number of consecutive failed ticks before the circuit opens for one cycle.
@@ -112,7 +107,7 @@ def _session_id(agent_name: str) -> str:
 
 async def heartbeat(
     cfg: AgentConfig,
-    core_dir: str,
+    core_dir: ProfileConfig | str,
     *,
     once: bool = False,
     dry_run: bool = False,
@@ -142,7 +137,7 @@ async def heartbeat(
                 agent_state.running = True
                 agent_state.last_tick_at = time.time()
             try:
-                ok = await _tick(cfg, core_dir, rules, dry_run=dry_run)
+                ok = await _tick(cfg, rules, dry_run=dry_run)
                 circuit.record(ok)
                 if agent_state is not None:
                     agent_state.last_error = "" if ok else "tick returned failure"
@@ -175,7 +170,6 @@ async def heartbeat(
 
 async def _tick(
     cfg: AgentConfig,
-    core_dir: str,
     rules: str,
     *,
     dry_run: bool = False,
@@ -188,7 +182,7 @@ async def _tick(
     # Gather context from all configured context dirs
     context_blocks = await gather_context(cfg.context_dirs)
 
-    prompt = build_prompt(BASE_PROMPT, rules, context_blocks)
+    prompt = build_prompt(RUNTIME_PROMPT, rules, context_blocks)
 
     if dry_run:
         print(f"--- DRY RUN [{name}] session={sid} ---")

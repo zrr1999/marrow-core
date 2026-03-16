@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from marrow_core.config import AgentConfig
-from marrow_core.heartbeat import HeartbeatState, _session_id, _tick, heartbeat
+from marrow_core.heartbeat import RUNTIME_PROMPT, HeartbeatState, _session_id, _tick, heartbeat
 from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import RunResult
 
@@ -50,6 +50,11 @@ def test_build_prompt_rules_only():
     assert "Rule 1" in prompt
 
 
+def test_runtime_prompt_is_generic_runtime_guidance() -> None:
+    assert "configured profile prompt" in RUNTIME_PROMPT
+    assert "relentless autonomous agent" not in RUNTIME_PROMPT
+
+
 async def test_gather_context_runs_executable_scripts_in_order(tmp_path: Path):
     first = tmp_path / "a.py"
     first.write_text("#!/usr/bin/env python3\nprint('first')\n", encoding="utf-8")
@@ -80,7 +85,7 @@ async def test_tick_dry_run_prints_prompt(monkeypatch, tmp_path: Path, capsys) -
 
     monkeypatch.setattr("marrow_core.heartbeat.gather_context", fake_gather_context)
 
-    ok = await _tick(cfg, str(tmp_path), "Be safe.", dry_run=True)
+    ok = await _tick(cfg, "Be safe.", dry_run=True)
 
     captured = capsys.readouterr().out
     assert ok is True
@@ -130,7 +135,7 @@ async def test_tick_runs_agent_and_prunes_logs(monkeypatch, tmp_path: Path) -> N
     monkeypatch.setattr("marrow_core.heartbeat.run_agent", fake_run_agent)
     monkeypatch.setattr("marrow_core.heartbeat.prune_exec_logs", fake_prune_exec_logs)
 
-    ok = await _tick(cfg, str(tmp_path), "Rules")
+    ok = await _tick(cfg, "Rules")
 
     assert ok is True
     assert run_agent_call["argv"] == [sys.executable, "-V"]
@@ -156,7 +161,7 @@ async def test_heartbeat_once_updates_state_on_failure(monkeypatch, tmp_path: Pa
 
     monkeypatch.setattr("marrow_core.heartbeat.load_rules", lambda core_dir: "Rules")
 
-    async def fake_tick(cfg, core_dir, rules, *, dry_run=False):
+    async def fake_tick(cfg, rules, *, dry_run=False):
         return False
 
     monkeypatch.setattr("marrow_core.heartbeat._tick", fake_tick)
@@ -181,7 +186,7 @@ async def test_heartbeat_once_records_tick_exception(monkeypatch, tmp_path: Path
 
     monkeypatch.setattr("marrow_core.heartbeat.load_rules", lambda core_dir: "Rules")
 
-    async def fake_tick(cfg, core_dir, rules, *, dry_run=False):
+    async def fake_tick(cfg, rules, *, dry_run=False):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("marrow_core.heartbeat._tick", fake_tick)

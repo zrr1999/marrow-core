@@ -24,7 +24,7 @@ def test_scaffold_workspace_creates_contract_dirs_and_docs(tmp_path: Path) -> No
 
 
 def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -> None:
-    text = render_config_template(core_dir="/opt/marrow-core", workspace=tmp_path / "workspace")
+    text = render_config_template(core_dir="", workspace=tmp_path / "workspace")
 
     for name in AUTONOMOUS_AGENTS:
         assert f'name = "{name}"' in text
@@ -41,9 +41,9 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
 def test_write_config_template_persists_file(tmp_path: Path) -> None:
     path = write_config_template(
         tmp_path / "generated" / "marrow.toml",
-        core_dir="/opt/marrow-core",
+        core_dir="",
         workspace=tmp_path / "workspace",
     )
 
     assert path.exists()
-    assert 'core_dir = "/opt/marrow-core"' in path.read_text(encoding="utf-8")
+    assert "core_dir =" not in path.read_text(encoding="utf-8")

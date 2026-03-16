@@ -2,77 +2,59 @@
 
 Minimal self-evolving agent scheduler with hard isolation between the immutable core and the writable agent workspace.
 
+> Migration note: profile-coupled assets have been removed from `marrow-core`. New setups should provide prompts, context, role definitions, and runtime config from external profile/runtime repos such as `marrow-bot`.
+
 ## Prompt model
 
 Use one mental model everywhere:
 
-- `rules` -> stable global policy in `prompts/rules.md`
-- `roles` -> canonical role identity and delegation boundaries in `roles/`
-- `context.d` -> dynamic queue, state, and environment facts only
+- `rules` -> stable global policy in the external profile bundle
+- `roles` -> canonical role identity and delegation boundaries in the external profile bundle
+- `context.d` -> dynamic queue, state, and environment facts from the external profile bundle
 - `skills` -> reusable procedures outside repo prompt assembly
 
 Repo-root `agents/` is retired. Do not add prompt material there.
 
-## Role layout
+## Profile ownership
 
-The canonical role tree is:
+Role trees, prompt policy, and model maps are external profile concerns.
 
-```text
-roles/
-├── orchestrator.md
-├── directors/
-│   ├── craft.md
-│   ├── forge.md
-│   ├── mind.md
-│   └── sentinel.md
-├── leaders/
-│   ├── builder.md
-│   ├── shaper.md
-│   ├── verifier.md
-│   ├── courier.md
-│   ├── herald.md
-│   ├── archivist.md
-│   ├── scout.md
-│   ├── evolver.md
-│   └── reviewer.md
-└── specialists/
-    ├── coder.md
-    ├── tester.md
-    ├── analyst.md
-    ├── researcher.md
-    ├── writer.md
-    ├── filer.md
-    └── git-ops.md
-```
-
-Delegation policy:
-
-- `orchestrator -> directors`
-- `directors -> leaders`
-- `leaders -> specialists`
-- `specialists -> none`
-- no upward calls
-- one accountable owner per workstream
-- max delegation depth: 3 hops
-
-Role intent:
-
-- `orchestrator` is the only scheduled top-level agent by default.
-- `directors/craft` owns code construction.
-- `directors/forge` owns external-world reads and writes.
-- `directors/mind` owns knowledge, exploration, memory, and self-evolution.
-- `directors/sentinel` owns validation and gates.
-- `leaders/verifier` executes tests and runtime checks under craft.
-- `leaders/reviewer` handles static review under sentinel.
+`marrow-core` no longer ships canonical `roles/` or an in-repo casting flow. Use an external profile such as `marrow-bot` and cast it with `uvx role-forge`.
 
 ## Canonical model
 
 The canonical source of truth is:
 
-- `roles/` for role prompts and layout
-- `roles.toml` for model-tier casting
+- external profile `roles/` for role prompts and layout
+- external profile `roles.toml` for model-tier casting
 - `marrow_core/contracts.py` for runtime inventory and workspace topology
+- `marrow_core/work_items.py` for cross-repo work-item contracts and storage
+- `marrow_core/plugin_host.py` for hosted plugin/background-service rendering
 - `.opencode/agents/` as the generated runtime surface
+
+## Recommended installation path
+
+Use `marrow-core` as runtime package only:
+
+- install `marrow-core` via `uvx`/package tooling
+- provide runtime config outside core (or from an external profile repo)
+- provide prompt/context/roles from an external profile root via `[profile]`
+- use `uvx marrow-core validate --config /path/to/runtime-config.toml`
+- use `uvx marrow-core install-service --config /path/to/runtime-config.toml`
+
+`marrow-core` no longer carries in-repo profile assets. New deployments should supply them externally.
+
+## uvx-first usage
+
+Preferred invocation is package/runtime-first rather than source-checkout-first:
+
+```bash
+uvx marrow-core validate --config /path/to/runtime-config.toml
+uvx marrow-core run --config /path/to/runtime-config.toml
+uvx marrow-core install-service --config /path/to/runtime-config.toml --platform auto --output-dir ./service-out
+```
+
+The core runtime prompt is now intentionally generic. Execution policy belongs in external profile repos, not in `marrow_core.heartbeat`.
 
 ## CLI
 
@@ -95,11 +77,12 @@ marrow task list        # inspect queued tasks via IPC
 ## Configuration
 
 ```toml
-core_dir = "/opt/marrow-core"
-
 [service]
 mode = "supervisor"
 runtime_root = "/var/lib/marrow"
+
+[profile]
+root_dir = "/path/to/marrow-bot"
 
 [ipc]
 enabled = true
@@ -126,17 +109,19 @@ context_dirs = ["/Users/marrow/context.d"]
 
 ## Runtime contract
 
-`marrow-core` uses `role-forge` as the casting runtime. Canonical role files in `roles/` are cast into `.opencode/agents/`, then execution is handed off to the external `opencode` CLI configured by each agent's `agent_command`.
+`marrow-core` does not cast profiles itself.
 
 The effective execution path is:
 
-1. edit canonical role definitions in `roles/`
-2. cast them into `.opencode/agents/` via `role-forge`
-3. launch `opencode run --agent <name>`
+1. maintain role definitions in an external profile repo
+2. cast them with `uvx role-forge cast --config <profile>/roles.toml`
+3. run `uvx marrow-core ...` against a runtime config that points at that profile
 
 ## Runtime boundaries
 
 - `marrow_core/contracts.py` - canonical role inventory and workspace topology
+- `marrow_core/work_items.py` - contract-first work-item models and filesystem store
+- `marrow_core/plugin_host.py` - plugin/background-service host manifests and units
 - `marrow_core/prompting.py` - context execution and prompt assembly
 - `marrow_core/runtime.py` - socket, queue, service-runtime, and binary path resolution
 - `marrow_core/task_queue.py` - filesystem queue helpers
@@ -151,6 +136,8 @@ The effective execution path is:
 /Users/marrow/
 ├── .opencode/agents/
 ├── context.d/
+├── plugins/
+├── work-items/
 ├── tasks/
 │   ├── queue/
 │   ├── delegated/
@@ -158,9 +145,53 @@ The effective execution path is:
 ├── runtime/
 │   ├── state/
 │   ├── checkpoints/
-│   └── logs/exec/
+│   ├── logs/exec/
+│   ├── logs/plugins/
+│   └── plugins/
 └── docs/
 ```
+
+## Work items and hosted plugins
+
+`marrow-core` now carries two minimal cross-repo contracts:
+
+- **Work items**: a stable JSON-backed model in `marrow_core.work_items` for gateways to ingest, bots to process, and dashboards to inspect.
+- **Hosted plugins**: a small `[[plugins]]` config surface for dashboard/background-service processes. `marrow_core.plugin_host` resolves runtime directories, emits a manifest, and can render autostart units for background services.
+
+Typical hosted plugin/service examples include operator-side repos such as `marrow-dashboard` and `marrow-task`.
+
+When `marrow install-service` is run with `[[plugins]]` configured, it now:
+
+- writes a plugin manifest to `<primary-workspace>/runtime/plugins/manifest.json`
+- renders autostart service units for `background_service` plugins with `auto_start = true`
+
+Minimal `[[plugins]]` shape:
+
+```toml
+[[plugins]]
+name = "dashboard"
+kind = "dashboard"
+command = "python"
+args = ["-m", "marrow_dashboard", "serve", "--config", "/etc/marrow/dashboard.toml"]
+cwd = "/opt/marrow-dashboard"
+workspace = "/Users/marrow"
+config_path = "/etc/marrow/dashboard.toml"
+capabilities = ["read_work_items"]
+
+[[plugins]]
+name = "gateway"
+kind = "background_service"
+command = "python"
+args = ["-m", "marrow_gateway", "serve"]
+cwd = "/opt/marrow-gateway"
+workspace = "/Users/marrow"
+auto_start = true
+
+[plugins.env]
+MARROW_WORKSPACE = "/Users/marrow"
+```
+
+See `examples/runtime-config.example.toml` for a copyable example and `docs/contracts/work-items-and-plugins.md` for the contract-first boundary.
 
 ## Testing guidance
 
@@ -173,17 +204,16 @@ The effective execution path is:
 Fresh install:
 
 ```bash
-git clone https://github.com/zrr1999/marrow-core.git /opt/marrow-core
-cd /opt/marrow-core
-sudo ./setup.sh
+uvx marrow-core validate --config /path/to/runtime-config.toml
 ```
 
 Manual update attempt:
 
 ```bash
-cd /opt/marrow-core
-python -m marrow_core.cli sync-once --config marrow.toml
+uvx marrow-core sync-once --config /path/to/runtime-config.toml
 ```
+
+Note: `sync-once` is maintenance-only and still assumes a source checkout `core_dir`. For pure `uvx` runtime installs, prefer disabling sync or using an external repo-maintenance flow.
 
 Expected sync outcomes:
 

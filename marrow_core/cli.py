@@ -14,15 +14,16 @@ from typing import Annotated
 import typer
 from loguru import logger
 
-from marrow_core.caster import CastResult, cast_roles_to_workspace
-from marrow_core.config import RootConfig, load_config
+from marrow_core.config import ProfileConfig, RootConfig, load_config
 from marrow_core.health import collect_health_issues
 from marrow_core.heartbeat import HeartbeatState, heartbeat
 from marrow_core.ipc import start_ipc_server
 from marrow_core.log import setup_logging
+from marrow_core.plugin_host import render_plugin_service_files, write_plugin_manifest
 from marrow_core.runtime import (
     ensure_service_runtime_dirs,
     marrow_binary,
+    primary_workspace,
     resolve_service_log_dir,
     resolve_service_runtime_root,
     resolve_service_user,
@@ -53,12 +54,16 @@ from marrow_core.worker import (
     publish_worker_state,
     worker_request_dir,
 )
-from marrow_core.workspace import ensure_workspace_dirs, verify_workspace
+from marrow_core.workspace import (
+    ensure_workspace_dirs,
+    profile_source_context_dir,
+    verify_workspace,
+)
 
 app = typer.Typer(add_completion=False, help="marrow-core: self-evolving agent scheduler.")
 
 # Shared option types
-ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to marrow.toml")]
+ConfigOpt = Annotated[Path, typer.Option("--config", "-c", help="Path to runtime config TOML")]
 VerboseOpt = Annotated[bool, typer.Option("--verbose", "-v", help="Enable debug logging")]
 JsonLogsOpt = Annotated[bool, typer.Option("--json-logs", help="Emit JSON log records")]
 IpcOpt = Annotated[
@@ -82,22 +87,13 @@ def _load_root_or_exit(config: Path) -> RootConfig:
     return load_config(config)
 
 
-def _sync_workspace(root: RootConfig, workspace: str) -> CastResult:
+def _sync_workspace(root: RootConfig, workspace: str) -> None:
     ensure_workspace_dirs(workspace)
-    result = cast_roles_to_workspace(root.core_dir, workspace)
-    if result.skipped_permission:
-        logger.warning(
-            'workspace sync degraded for "{}": {} permission-denied paths skipped',
-            workspace,
-            len(result.skipped_permission),
-        )
-    if result.errors:
-        logger.warning(
-            'workspace sync degraded for "{}": {} file operation errors',
-            workspace,
-            len(result.errors),
-        )
-    return result
+    return None
+
+
+def _prompt_profile_source(root: RootConfig) -> ProfileConfig:
+    return root.profile
 
 
 async def _prepare_worker_workspace(config: Path, root: RootConfig, spec: WorkerSpec) -> None:
@@ -152,7 +148,7 @@ async def _run_single_user(
         asyncio.create_task(
             heartbeat(
                 agent,
-                root.core_dir,
+                _prompt_profile_source(root),
                 once=once,
                 dry_run=dry_run,
                 state=state,
@@ -306,7 +302,7 @@ async def _run_worker(
         asyncio.create_task(
             heartbeat(
                 agent,
-                root.core_dir,
+                _prompt_profile_source(root),
                 state=state,
                 wake_event=wake_events[agent.name],
             ),
@@ -447,7 +443,7 @@ async def _run_supervisor(config: Path, *, ipc: bool | None = None) -> None:
 async def _sync_supervisor(config: Path) -> None:
     while True:
         root = load_config(config)
-        outcome = await _invoke_sync_once(root)
+        outcome = await _invoke_sync_once(root, config_path=config)
         if outcome.result is SyncResult.NOOP:
             await asyncio.sleep(root.sync.interval_seconds)
             continue
@@ -468,7 +464,7 @@ async def _sync_supervisor(config: Path) -> None:
         await asyncio.sleep(root.sync.failure_backoff_seconds)
 
 
-async def _invoke_sync_once(root: RootConfig) -> SyncOutcome:
+async def _invoke_sync_once(root: RootConfig, *, config_path: Path | None = None) -> SyncOutcome:
     if not root.agents:
         return SyncOutcome(SyncResult.FAILED, "no agents configured")
     try:
@@ -479,6 +475,8 @@ async def _invoke_sync_once(root: RootConfig) -> SyncOutcome:
             state_file=Path(resolve_sync_state_path(root)),
             lock_file=Path(resolve_sync_lock_path(root)),
             refresh_workspace=root.service.mode != "supervisor",
+            service_config_path=str(config_path) if config_path is not None else "",
+            rules_path=root.profile.rules_path,
         )
     except SyncError as exc:
         return SyncOutcome(SyncResult.FAILED, str(exc))
@@ -607,8 +605,8 @@ def worker_run(
 
 @app.command(name="workspace-sync", hidden=True)
 def workspace_sync(
+    workspace: Annotated[Path, typer.Option("--workspace", help="Workspace to prepare")],
     config: ConfigOpt = Path("marrow.toml"),
-    workspace: Annotated[Path, typer.Option("--workspace", help="Workspace to prepare")] = ...,
     verbose: VerboseOpt = False,
     json_logs: JsonLogsOpt = False,
 ) -> None:
@@ -620,15 +618,12 @@ def workspace_sync(
         typer.echo(f"workspace not configured: {workspace_str}", err=True)
         raise typer.Exit(code=2)
     try:
-        result = _sync_workspace(root, workspace_str)
-    except (FileNotFoundError, ImportError, RuntimeError, ValueError) as exc:
+        _sync_workspace(root, workspace_str)
+    except (RuntimeError, ValueError) as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(
-        "workspace sync ok: "
-        f"written={len(result.written)} "
-        f"skipped={len(result.skipped_permission)} "
-        f"errors={len(result.errors)}"
+        "workspace sync ok: ensured workspace directories only; cast profile with uvx role-forge"
     )
 
 
@@ -637,7 +632,7 @@ def setup(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
 ) -> None:
-    """Initialize workspace dirs and cast roles into runtime agent configs."""
+    """Initialize core runtime dirs and ensure configured workspaces exist."""
     setup_logging(verbose=verbose)
     root = load_config(config)
     if root.service.mode == "supervisor":
@@ -653,15 +648,12 @@ def setup(
             typer.echo(f"FAIL: workspace invalid for {agent.name}", err=True)
             continue
         try:
-            result = _sync_workspace(root, agent.workspace)
-        except (FileNotFoundError, ImportError, RuntimeError, ValueError) as exc:
+            _sync_workspace(root, agent.workspace)
+        except (RuntimeError, ValueError) as exc:
             typer.echo(f"FAIL: {exc}", err=True)
             continue
         typer.echo(
-            f"OK: workspace ready at {agent.workspace} "
-            f"(written={len(result.written)} "
-            f"skipped={len(result.skipped_permission)} "
-            f"errors={len(result.errors)})"
+            f"OK: workspace ready at {agent.workspace}; cast profile separately with uvx role-forge"
         )
 
 
@@ -681,6 +673,8 @@ def validate(
         typer.echo("FAIL: no agents configured", err=True)
         raise typer.Exit(code=2)
     typer.echo(f"Service mode: {root.service.mode}")
+    if root.profile.root_dir:
+        typer.echo(f"Profile root: {root.profile.root_dir}")
     for agent in root.agents:
         typer.echo(f"\n  Agent: {agent.name}")
         typer.echo(f"    interval : {agent.heartbeat_interval}s")
@@ -814,15 +808,23 @@ def scaffold_cmd(
     ],
     core_dir: Annotated[
         str, typer.Option("--core-dir", help="Core directory to reference in config")
-    ] = "/opt/marrow-core",
+    ] = "",
     source_context_dir: Annotated[
         Path | None,
         typer.Option(
             "--source-context-dir", help="Optional default context.d to copy into workspace"
         ),
     ] = None,
+    profile_root: Annotated[
+        Path | None,
+        typer.Option("--profile-root", help="Optional external profile root for scaffold defaults"),
+    ] = None,
 ) -> None:
     """Create a workspace skeleton and a starter config file."""
+    if source_context_dir is None and profile_root is not None:
+        resolved = profile_source_context_dir(str(profile_root))
+        if resolved is not None and resolved.is_dir():
+            source_context_dir = resolved
     scaffold_workspace(workspace, source_context_dir=source_context_dir)
     write_config_template(config_out, core_dir=core_dir, workspace=workspace)
     typer.echo(f"scaffolded workspace: {workspace}")
@@ -847,12 +849,31 @@ def install_service(
         core_dir=root.core_dir,
         service_config_path=resolve_service_config_path(platform, root.service.config_path),
         service_user=resolve_service_user(root),
+        agent_home=root.agents[0].home,
         log_dir=resolve_service_log_dir(root),
     )
+    workspace = primary_workspace(root)
+    manifest_path: Path | None = None
+    if root.plugins:
+        if workspace is None:
+            typer.echo("FAIL: plugin manifest requires a primary workspace", err=True)
+            raise typer.Exit(code=2)
+        manifest_path = write_plugin_manifest(
+            root.plugins,
+            workspace=workspace,
+            destination=workspace / "runtime" / "plugins" / "manifest.json",
+        )
+        files.extend(
+            render_plugin_service_files(
+                platform=platform, plugins=root.plugins, workspace=workspace
+            )
+        )
     written = write_service_files(files, output_dir)
     typer.echo(f"rendered {len(written)} service file(s) to {output_dir}")
     for path in written:
         typer.echo(f"  {path.name}")
+    if manifest_path is not None:
+        typer.echo(f"wrote plugin manifest: {manifest_path}")
 
 
 @app.command(name="sync-once")
@@ -874,6 +895,8 @@ def sync_once(
             state_file=Path(resolve_sync_state_path(root)),
             lock_file=Path(resolve_sync_lock_path(root)),
             refresh_workspace=root.service.mode != "supervisor",
+            service_config_path=str(config),
+            rules_path=root.profile.rules_path,
         )
     except SyncError as exc:
         typer.echo(str(exc), err=True)

@@ -39,6 +39,7 @@ def scaffold_workspace(destination: Path, *, source_context_dir: Path | None = N
 
 
 def render_config_template(*, core_dir: str, workspace: Path) -> str:
+    core_dir_block = f'core_dir = "{core_dir}"\n\n' if core_dir else ""
     blocks = []
     for name in AUTONOMOUS_AGENTS:
         interval, timeout = DEFAULT_AGENT_SCHEDULES[name]
@@ -59,7 +60,21 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
     return (
         textwrap.dedent(
             f"""
-            core_dir = "{core_dir}"
+            {core_dir_block}
+
+            # Optional external profile bundle
+            # [profile]
+            # root_dir = "/path/to/marrow-bot"
+
+            # Optional hosted plugins
+            # [[plugins]]
+            # name = "dashboard"
+            # kind = "dashboard"
+            # command = "python"
+            # args = ["-m", "marrow_dashboard", "serve", "--config", "/etc/marrow/dashboard.toml"]
+            # cwd = "/opt/marrow-dashboard"
+            # workspace = "{workspace}"
+            # capabilities = ["read_work_items"]
 
             [service]
             mode = "supervisor"
