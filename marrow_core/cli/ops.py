@@ -62,7 +62,7 @@ def run_ipc_command(config: Path, method: str, path: str, body: str = "") -> dic
         raise typer.Exit(code=1) from exc
 
 
-def _run_prepare(root) -> None:  # type: ignore[no-untyped-def]
+def _run_prepare(root) -> None:
     """Initialize runtime dirs and ensure configured workspaces exist."""
     if root.service.mode == "supervisor":
         ensure_service_runtime_dirs(root)
@@ -148,11 +148,8 @@ def setup(config: ConfigOpt = Path("marrow.toml"), verbose: VerboseOpt = False) 
 def validate(
     config: ConfigOpt = Path("marrow.toml"),
     verbose: VerboseOpt = False,
-    doctor_flag: bool = typer.Option(
-        False, "--doctor", help="Also run deep workspace health checks."
-    ),
 ) -> None:
-    """Check config and show summary. Use --doctor for deep health checks."""
+    """Check config format and show summary."""
     setup_logging(verbose=verbose)
     try:
         root = load_root_or_exit(config)
@@ -177,11 +174,9 @@ def validate(
             typer.echo(f"    home     : {agent.home}")
         typer.echo(f"    ctx_dirs : {agent.context_dirs}")
     typer.echo("\nVALIDATE OK")
-    if doctor_flag:
-        _run_doctor_checks(root)
 
 
-def _run_doctor_checks(root) -> None:  # type: ignore[no-untyped-def]
+def _run_doctor_checks(root) -> None:
     issues: list[str] = []
     for agent in root.agents:
         typer.echo(f"\n[{agent.name}]")
@@ -228,15 +223,33 @@ def _run_doctor_checks(root) -> None:  # type: ignore[no-untyped-def]
     typer.echo("DOCTOR OK")
 
 
-@app.command(deprecated=True)
-def doctor(config: ConfigOpt = Path("marrow.toml")) -> None:
-    """[Deprecated] Use 'validate --doctor' instead."""
-    typer.echo("Deprecated: use 'validate --doctor' instead of 'doctor'.", err=True)
+@app.command()
+def doctor(config: ConfigOpt = Path("marrow.toml"), verbose: VerboseOpt = False) -> None:
+    """Check config and run deep workspace health checks (workspaces, context dirs, commands)."""
+    setup_logging(verbose=verbose)
     try:
         root = load_root_or_exit(config)
     except Exception as exc:
         typer.echo(f"FAIL config: {exc}", err=True)
         raise typer.Exit(code=2) from exc
+    if not root.agents:
+        typer.echo("FAIL: no agents configured", err=True)
+        raise typer.Exit(code=2)
+    typer.echo(f"Service mode: {root.service.mode}")
+    if root.profile.root_dir:
+        typer.echo(f"Profile root: {root.profile.root_dir}")
+    for agent in root.agents:
+        typer.echo(f"\n  Agent: {agent.name}")
+        typer.echo(f"    interval : {agent.heartbeat_interval}s")
+        typer.echo(f"    timeout  : {agent.heartbeat_timeout}s")
+        typer.echo(f"    command  : {agent.agent_command}")
+        typer.echo(f"    workspace: {agent.workspace}")
+        if agent.user:
+            typer.echo(f"    user     : {agent.user}")
+        if agent.home:
+            typer.echo(f"    home     : {agent.home}")
+        typer.echo(f"    ctx_dirs : {agent.context_dirs}")
+    typer.echo("\nVALIDATE OK")
     _run_doctor_checks(root)
 
 

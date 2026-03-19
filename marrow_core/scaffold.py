@@ -74,7 +74,7 @@ def render_config_template(*, core_dir: str, workspace: Path) -> str:
             # args = ["-m", "marrow_dashboard", "serve", "--config", "/etc/marrow/dashboard.toml"]
             # cwd = "/opt/marrow-dashboard"
             # workspace = "{workspace}"
-            # capabilities = ["read_work_items"]
+            # capabilities = ["read_runtime_status"]
 
             [service]
             mode = "supervisor"

@@ -36,6 +36,8 @@ def test_render_config_template_includes_all_autonomous_agents(tmp_path: Path) -
     assert "enabled = true" in text
     assert "[self_check]" in text
     assert 'wake_agent = "orchestrator"' in text
+    assert "tasks/queue" not in text
+    assert "work-items" not in text
 
 
 def test_write_config_template_persists_file(tmp_path: Path) -> None:

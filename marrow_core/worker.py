@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Any
 
 from marrow_core.config import RootConfig
-from marrow_core.task_queue import create_task_file
 
 
 def _safe_token(value: str) -> str:
@@ -130,7 +129,6 @@ def worker_request_dir(runtime_root: Path, spec: WorkerSpec) -> Path:
 def prepare_worker_runtime_paths(runtime_root: Path, spec: WorkerSpec) -> tuple[Path, Path]:
     state_path = worker_state_path(runtime_root, spec)
     request_dir = worker_request_dir(runtime_root, spec)
-    (request_dir / "tasks").mkdir(parents=True, exist_ok=True)
     (request_dir / "wake").mkdir(parents=True, exist_ok=True)
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.touch(exist_ok=True)
@@ -141,7 +139,7 @@ def prepare_worker_runtime_paths(runtime_root: Path, spec: WorkerSpec) -> tuple[
             import grp
 
             gid = grp.getgrnam(spec.group).gr_gid
-        for path in (state_path, request_dir, request_dir / "tasks", request_dir / "wake"):
+        for path in (state_path, request_dir, request_dir / "wake"):
             os.chown(path, user_info.pw_uid, gid)
     return state_path, request_dir
 
@@ -156,6 +154,7 @@ def build_worker_command(
 ) -> str:
     argv = [
         marrow_bin,
+        "service",
         "worker-run",
         "--config",
         str(config_path),
@@ -178,33 +177,18 @@ def publish_worker_state(status_file: Path, payload: dict[str, Any]) -> None:
     status_file.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def create_task_request(request_dir: Path, title: str, body: str) -> Path:
-    tasks_dir = request_dir / "tasks"
-    tasks_dir.mkdir(parents=True, exist_ok=True)
-    path = tasks_dir / f"{time.strftime('%Y%m%d-%H%M%S')}-{_safe_token(title)}.json"
-    path.write_text(json.dumps({"title": title, "body": body}) + "\n", encoding="utf-8")
-    return path
-
-
-def create_wake_request(request_dir: Path, agent: str, reason: str) -> Path:
+def create_wake_request(request_dir: Path, agent: str, reason: str, prompt: str = "") -> Path:
     wake_dir = request_dir / "wake"
     wake_dir.mkdir(parents=True, exist_ok=True)
     path = wake_dir / f"{time.strftime('%Y%m%d-%H%M%S')}-{_safe_token(agent)}.json"
-    path.write_text(json.dumps({"agent": agent, "reason": reason}) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps({"agent": agent, "reason": reason, "prompt": prompt}) + "\n",
+        encoding="utf-8",
+    )
     return path
 
 
-def drain_worker_requests(request_dir: Path, workspace: str, wake_events: dict[str, Any]) -> None:
-    task_dir = Path(workspace) / "tasks" / "queue"
-    for task_path in sorted((request_dir / "tasks").glob("*.json")):
-        try:
-            payload = json.loads(task_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            task_path.unlink(missing_ok=True)
-            continue
-        create_task_file(task_dir, payload.get("title", "task"), payload.get("body", ""))
-        task_path.unlink(missing_ok=True)
-
+def drain_worker_triggers(request_dir: Path, wake_events: dict[str, Any]) -> None:
     for wake_path in sorted((request_dir / "wake").glob("*.json")):
         try:
             payload = json.loads(wake_path.read_text(encoding="utf-8"))
@@ -214,5 +198,8 @@ def drain_worker_requests(request_dir: Path, workspace: str, wake_events: dict[s
         agent_name = str(payload.get("agent", "")).strip()
         event = wake_events.get(agent_name)
         if event is not None:
-            event.set()
+            event.trigger(
+                reason=str(payload.get("reason", "")).strip(),
+                prompt=str(payload.get("prompt", "")).strip(),
+            )
         wake_path.unlink(missing_ok=True)

@@ -3,12 +3,7 @@
 from __future__ import annotations
 
 from marrow_core.config import RootConfig
-from marrow_core.runtime import (
-    build_service_path,
-    marrow_binary,
-    resolve_socket_path,
-    resolve_task_dir,
-)
+from marrow_core.runtime import build_service_path, marrow_binary, resolve_socket_path
 
 
 def test_runtime_paths_default_to_primary_workspace() -> None:
@@ -27,14 +22,13 @@ def test_runtime_paths_default_to_primary_workspace() -> None:
     )
 
     assert resolve_socket_path(root) == "/Users/marrow/runtime/marrow.sock"
-    assert resolve_task_dir(root) == "/Users/marrow/tasks/queue"
 
 
-def test_runtime_paths_respect_ipc_overrides() -> None:
+def test_runtime_paths_respect_ipc_socket_override() -> None:
     root = RootConfig.model_validate(
         {
             "core_dir": "/opt/marrow-core",
-            "ipc": {"socket_path": "/tmp/custom.sock", "task_dir": "/tmp/tasks"},
+            "ipc": {"socket_path": "/tmp/custom.sock"},
             "agents": [
                 {
                     "name": "orchestrator",
@@ -47,7 +41,6 @@ def test_runtime_paths_respect_ipc_overrides() -> None:
     )
 
     assert resolve_socket_path(root) == "/tmp/custom.sock"
-    assert resolve_task_dir(root) == "/tmp/tasks"
 
 
 def test_marrow_binary_uses_core_virtualenv() -> None:

@@ -1,12 +1,11 @@
 """IPC server — Unix domain socket with JSON API.
 
 Runs as a background asyncio task alongside the heartbeat loop.
-Provides task submission, queue listing, and heartbeat status over
+Provides heartbeat status and immediate trigger control over
 a Unix domain socket using a minimal HTTP/1.1 protocol with JSON bodies.
 
 Usage with curl:
     curl --unix-socket /path/to/marrow.sock http://localhost/status
-    curl --unix-socket /path/to/marrow.sock -X POST -d '{"title":"fix bug"}' http://localhost/tasks
     curl --unix-socket /path/to/marrow.sock -X POST -d '{"agent":"orchestrator"}' http://localhost/wake
 """
 
@@ -21,14 +20,12 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from loguru import logger
 
-from marrow_core.task_queue import create_task_file, list_tasks
-
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
 class _WakeHandle(Protocol):
-    def set(self) -> None: ...
+    def trigger(self, reason: str = "", prompt: str = "") -> None: ...
 
 
 class _StateView(Protocol):
@@ -74,12 +71,8 @@ def _send(
 async def _handle(
     reader: asyncio.StreamReader,
     writer: asyncio.StreamWriter,
-    task_dir: Path,
     state: _StateView,
     wake_events: Mapping[str, _WakeHandle],
-    *,
-    task_submitter=None,
-    task_lister=None,
 ) -> None:
     """Handle one HTTP request over the Unix socket."""
     try:
@@ -114,29 +107,6 @@ async def _handle(
         elif path == "/status" and method == "GET":
             _send(writer, 200, state.to_dict())
 
-        elif path == "/tasks" and method == "GET":
-            tasks = task_lister() if task_lister is not None else list_tasks(task_dir)
-            _send(writer, 200, {"tasks": tasks})
-
-        elif path == "/tasks" and method == "POST":
-            try:
-                req = json.loads(raw_body) if raw_body else {}
-            except json.JSONDecodeError:
-                _send(writer, 400, {"error": "invalid JSON"})
-                return
-            title = req.get("title", "").strip() if isinstance(req, dict) else ""
-            if not title:
-                _send(writer, 400, {"error": "title is required"})
-                return
-            body_text = req.get("body", "").strip() if isinstance(req, dict) else ""
-            fp = (
-                task_submitter(title, body_text)
-                if task_submitter is not None
-                else create_task_file(task_dir, title, body_text)
-            )
-            logger.info("task submitted via ipc: {}", fp.name)
-            _send(writer, 200, {"ok": True, "file": fp.name})
-
         elif path == "/wake" and method == "POST":
             try:
                 req = json.loads(raw_body) if raw_body else {}
@@ -151,8 +121,9 @@ async def _handle(
             if event is None:
                 _send(writer, 404, {"error": f"unknown agent: {agent}"})
                 return
-            event.set()
             reason = req.get("reason", "").strip() if isinstance(req, dict) else ""
+            prompt = req.get("prompt", "").strip() if isinstance(req, dict) else ""
+            event.trigger(reason=reason, prompt=prompt)
             if reason:
                 logger.info('wake submitted via ipc for "{}": {}', agent, reason)
             else:
@@ -181,12 +152,8 @@ async def _handle(
 
 async def start_ipc_server(
     socket_path: str,
-    task_dir: str,
     state: _StateView,
     wake_events: Mapping[str, _WakeHandle],
-    *,
-    task_submitter=None,
-    task_lister=None,
 ) -> asyncio.Server:
     """Start the IPC server on a Unix domain socket."""
     sock = Path(socket_path)
@@ -195,21 +162,8 @@ async def start_ipc_server(
     if sock.exists():
         sock.unlink()
 
-    td = Path(task_dir)
-    td.mkdir(parents=True, exist_ok=True)
-    with contextlib.suppress(PermissionError):
-        os.chmod(td, 0o770)
-
     async def handler(r: asyncio.StreamReader, w: asyncio.StreamWriter) -> None:
-        await _handle(
-            r,
-            w,
-            td,
-            state,
-            wake_events,
-            task_submitter=task_submitter,
-            task_lister=task_lister,
-        )
+        await _handle(r, w, state, wake_events)
 
     server = await asyncio.start_unix_server(handler, path=str(sock))
     with contextlib.suppress(PermissionError):

@@ -10,8 +10,10 @@ import sys
 import textwrap
 from pathlib import Path
 
+from typer.main import get_command
 from typer.testing import CliRunner
 
+import marrow_core.cli.ops as ops_module
 from marrow_core.cli.__main__ import app
 from marrow_core.contracts import AUTONOMOUS_AGENTS
 
@@ -149,12 +151,32 @@ def test_doctor_reports_ok_for_valid_workspace(tmp_path: Path) -> None:
     assert "DOCTOR OK" in result.stdout
 
 
-def test_validate_doctor_flag_reports_ok_for_valid_workspace(tmp_path: Path) -> None:
+def test_doctor_reports_validate_and_doctor_ok_for_valid_workspace(tmp_path: Path) -> None:
     config = _write_config(tmp_path)
-    result = runner.invoke(app, ["validate", "--doctor", "--config", str(config)])
+    result = runner.invoke(app, ["doctor", "--config", str(config)])
     assert result.exit_code == 0
     assert "VALIDATE OK" in result.stdout
     assert "DOCTOR OK" in result.stdout
+
+
+def test_root_doctor_registration_matches_ops_command() -> None:
+    root_command = get_command(app).commands["doctor"]
+    ops_command = get_command(ops_module.app).commands["doctor"]
+
+    assert root_command.deprecated is ops_command.deprecated is False
+    assert root_command.help == ops_command.help
+
+
+def test_root_help_and_doctor_help_do_not_reference_validate_flag() -> None:
+    root_help = runner.invoke(app, ["--help"])
+    doctor_help = runner.invoke(app, ["doctor", "--help"])
+
+    assert root_help.exit_code == 0
+    assert doctor_help.exit_code == 0
+    assert "validate --doctor" not in root_help.stdout
+    assert "validate --doctor" not in doctor_help.stdout
+    assert "(deprecated)" not in doctor_help.stdout
+    assert "Check config and run deep workspace health checks" in doctor_help.stdout
 
 
 def test_service_run_once_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import textwrap
 import warnings
 from pathlib import Path
@@ -102,6 +103,30 @@ def test_load_config(tmp_path: Path):
     assert root.self_check.enabled is True
     assert len(root.plugins) == 1
     assert root.plugins[0].name == "dashboard"
+
+
+def test_ipc_rejects_removed_task_dir_field() -> None:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as handle:
+        handle.write(
+            textwrap.dedent(
+                """\
+                [ipc]
+                enabled = true
+                task_dir = "/tmp/tasks"
+
+                [[agents]]
+                name = "orchestrator"
+                agent_command = "cmd"
+                workspace = "/tmp"
+                """
+            )
+        )
+        path = Path(handle.name)
+    try:
+        with pytest.raises(ValidationError, match="task_dir"):
+            load_config(path)
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_load_config_defaults_workspace_and_context_from_user(tmp_path: Path) -> None:

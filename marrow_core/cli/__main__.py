@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import typer
+from typer.main import get_command
 
 import marrow_core.cli.ops as ops_module
 import marrow_core.cli.service as service_module
@@ -12,33 +15,32 @@ app = typer.Typer(add_completion=False, help="marrow-core runtime commands.")
 app.add_typer(service_app, name="service", hidden=True)
 
 
-def _public(command_name: str, callback, help_text: str) -> None:
-    app.command(name=command_name, help=help_text)(callback)
+def _mirror(command_name: str, source_app: typer.Typer, callback) -> None:
+    source_commands = cast(dict[str, Any], cast(Any, get_command(source_app)).commands)
+    source_command = source_commands[command_name]
+    app.command(
+        name=command_name,
+        help=source_command.help,
+        deprecated=source_command.deprecated,
+        hidden=source_command.hidden,
+    )(callback)
 
 
-def _deprecated(command_name: str, callback, help_text: str) -> None:
-    app.command(name=command_name, help=help_text, deprecated=True)(callback)
+_mirror("run", service_module.app, service_module.run)
+_mirror("run-once", service_module.app, service_module.run_once)
+_mirror("dry-run", service_module.app, service_module.dry_run)
+_mirror("sync-once", service_module.app, service_module.sync_once)
+_mirror("install", ops_module.app, ops_module.install)
+_mirror("setup", ops_module.app, ops_module.setup)
+_mirror("validate", ops_module.app, ops_module.validate)
+_mirror("doctor", ops_module.app, ops_module.doctor)
+_mirror("scaffold", ops_module.app, ops_module.scaffold_cmd)
+_mirror("install-service", ops_module.app, ops_module.install_service)
+_mirror("status", ops_module.app, ops_module.status)
+_mirror("wake", ops_module.app, ops_module.wake)
 
-
-def _hidden(command_name: str, callback, help_text: str) -> None:
-    app.command(name=command_name, hidden=True, help=help_text)(callback)
-
-
-_public("run", service_module.run, "Run the scheduler service.")
-_deprecated("run-once", service_module.run_once, "[Deprecated] Use 'run --once' instead.")
-_deprecated("dry-run", service_module.dry_run, "[Deprecated] Use 'run --dry-run' instead.")
-_public("sync-once", service_module.sync_once, "Run one bounded sync attempt.")
-_public("install", ops_module.install, "Render service definitions (use --prepare to init dirs).")
-_deprecated("setup", ops_module.setup, "[Deprecated] Use 'install --prepare' instead.")
-_public("validate", ops_module.validate, "Validate config and show summary.")
-_deprecated("doctor", ops_module.doctor, "[Deprecated] Use 'validate --doctor' instead.")
-_public("scaffold", ops_module.scaffold_cmd, "Create a starter workspace and config.")
-_deprecated("install-service", ops_module.install_service, "[Deprecated] Use 'install' instead.")
-_public("status", ops_module.status, "Query runtime state via IPC.")
-_public("wake", ops_module.wake, "Wake an agent with optional one-shot prompt.")
-
-_hidden("worker-run", service_module.worker_run, "Internal worker entrypoint.")
-_hidden("workspace-sync", service_module.workspace_sync, "Internal workspace preparation.")
+_mirror("worker-run", service_module.app, service_module.worker_run)
+_mirror("workspace-sync", service_module.app, service_module.workspace_sync)
 
 
 def main() -> None:

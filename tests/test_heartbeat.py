@@ -11,6 +11,7 @@ from marrow_core.config import AgentConfig
 from marrow_core.heartbeat import RUNTIME_PROMPT, HeartbeatState, _session_id, _tick, heartbeat
 from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import RunResult
+from marrow_core.triggers import TriggerRequest
 
 
 def test_session_id_format():
@@ -161,7 +162,7 @@ async def test_heartbeat_once_updates_state_on_failure(monkeypatch, tmp_path: Pa
 
     monkeypatch.setattr("marrow_core.heartbeat.load_rules", lambda core_dir: "Rules")
 
-    async def fake_tick(cfg, rules, *, dry_run=False):
+    async def fake_tick(cfg, rules, *, dry_run=False, trigger_request=None):
         return False
 
     monkeypatch.setattr("marrow_core.heartbeat._tick", fake_tick)
@@ -186,7 +187,7 @@ async def test_heartbeat_once_records_tick_exception(monkeypatch, tmp_path: Path
 
     monkeypatch.setattr("marrow_core.heartbeat.load_rules", lambda core_dir: "Rules")
 
-    async def fake_tick(cfg, rules, *, dry_run=False):
+    async def fake_tick(cfg, rules, *, dry_run=False, trigger_request=None):
         raise RuntimeError("boom")
 
     monkeypatch.setattr("marrow_core.heartbeat._tick", fake_tick)
@@ -197,3 +198,33 @@ async def test_heartbeat_once_records_tick_exception(monkeypatch, tmp_path: Path
     assert agent_state.tick_count == 1
     assert agent_state.running is False
     assert agent_state.last_error == "tick raised exception"
+
+
+async def test_tick_includes_one_shot_trigger_prompt(monkeypatch, tmp_path: Path) -> None:
+    cfg = AgentConfig(
+        name="scout",
+        agent_command=f"{sys.executable} -V",
+        workspace=str(tmp_path),
+        context_dirs=[],
+    )
+    run_agent_call: dict[str, object] = {}
+
+    async def fake_gather_context(context_dirs: list[str], timeout: int = 15) -> list[str]:
+        return []
+
+    async def fake_run_agent(argv, *, message, timeout, cwd, log_dir, session_id):
+        run_agent_call["message"] = message
+        return RunResult(returncode=0, started=1.0, ended=2.0)
+
+    monkeypatch.setattr("marrow_core.heartbeat.gather_context", fake_gather_context)
+    monkeypatch.setattr("marrow_core.heartbeat.run_agent", fake_run_agent)
+
+    ok = await _tick(
+        cfg,
+        "Rules",
+        trigger_request=TriggerRequest(reason="manual", prompt="Fix the broken startup path."),
+    )
+
+    assert ok is True
+    assert "Operator trigger for this run only." in str(run_agent_call["message"])
+    assert "Fix the broken startup path." in str(run_agent_call["message"])

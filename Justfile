@@ -37,6 +37,14 @@ pre-commit:
 # Full CI check (format + lint + check + test)
 ci: format lint check test
 
+# Preview docs locally (http://localhost:8000)
+docs:
+    uv run zensical serve
+
+# Build static docs site
+docs-build:
+    uv run zensical build
+
 # Clean build artifacts
 clean:
     rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .ruff_cache/ .coverage htmlcov/ coverage.xml
