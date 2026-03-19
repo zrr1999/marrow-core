@@ -50,3 +50,25 @@ def test_collect_health_issues_includes_extra_command_failures(tmp_path: Path) -
 
     assert len(issues) == 1
     assert 'extra command failed: "python3 -c' in issues[0]
+
+
+def test_collect_health_issues_no_longer_depends_on_task_dirs(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    context_dir = workspace / "context.d"
+    context_dir.mkdir()
+
+    root = RootConfig.model_validate(
+        {
+            "agents": [
+                {
+                    "name": "orchestrator",
+                    "agent_command": str(Path("/bin/echo")),
+                    "workspace": str(workspace),
+                    "context_dirs": [str(context_dir)],
+                }
+            ]
+        }
+    )
+
+    assert collect_health_issues(root) == []

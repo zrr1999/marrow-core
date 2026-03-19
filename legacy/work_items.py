@@ -1,10 +1,10 @@
-"""Contract-first work-item models and a simple filesystem store."""
+"""Contract-first work-item models kept only as backup."""
 
 from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -13,13 +13,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 def utc_now() -> datetime:
-    """Return an aware UTC timestamp."""
     return datetime.now(UTC)
 
 
-class WorkItemStatus(str, Enum):
-    """Minimal lifecycle states shared across intake and dashboard layers."""
-
+class WorkItemStatus(StrEnum):
     RECEIVED = "received"
     READY = "ready"
     IN_PROGRESS = "in_progress"
@@ -29,8 +26,6 @@ class WorkItemStatus(str, Enum):
 
 
 class WorkItemSource(BaseModel):
-    """External origin metadata for a work item."""
-
     channel: str
     system: str = ""
     event_type: str = ""
@@ -49,8 +44,6 @@ class WorkItemSource(BaseModel):
 
 
 class WorkItemPayload(BaseModel):
-    """Portable payload to be interpreted by downstream workers or plugins."""
-
     title: str
     body: str = ""
     kind: str = "generic"
@@ -68,8 +61,6 @@ class WorkItemPayload(BaseModel):
 
 
 class WorkItem(BaseModel):
-    """Stable work-item contract used between gateways, bots, and dashboards."""
-
     item_id: str = Field(default_factory=lambda: uuid4().hex)
     kind: str = "generic"
     status: WorkItemStatus = WorkItemStatus.RECEIVED
@@ -105,13 +96,10 @@ class WorkItem(BaseModel):
         return [str(item).strip() for item in value if str(item).strip()]
 
     def with_status(self, status: WorkItemStatus) -> WorkItem:
-        """Return a copy with an updated status and timestamp."""
         return self.model_copy(update={"status": status, "updated_at": utc_now()})
 
 
 class FileSystemWorkItemStore:
-    """Persist work items as one JSON document per file."""
-
     def __init__(self, root: Path) -> None:
         self.root = root
 
@@ -176,6 +164,5 @@ class FileSystemWorkItemStore:
         return updated
 
     def export_summary(self) -> str:
-        """Render a compact JSON summary suitable for simple dashboards."""
         payload = [item.model_dump(mode="json") for item in self.list()]
         return json.dumps(payload, indent=2, ensure_ascii=False)

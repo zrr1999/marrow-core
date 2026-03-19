@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import textwrap
 import warnings
 from pathlib import Path
@@ -10,7 +11,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, PluginConfig, ServiceConfig, load_config
+from marrow_core.config import (
+    AgentConfig,
+    PluginConfig,
+    ServiceConfig,
+    _default_home_for_user,
+    load_config,
+)
 
 EXPECTED_HOME = "/Users/marrow" if sys.platform == "darwin" else "/home/marrow"
 
@@ -68,6 +75,31 @@ def test_plugin_requires_absolute_paths() -> None:
         PluginConfig(name="dashboard", kind="dashboard", command="python", cwd="relative/path")
 
 
+def test_default_home_for_user_uses_pwd_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _PwdEntry:
+        pw_dir = "/srv/marrow"
+
+    monkeypatch.setattr("marrow_core.config.pwd.getpwnam", lambda user: _PwdEntry())
+
+    assert _default_home_for_user("marrow") == "/srv/marrow"
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [("darwin", "/Users/marrow"), ("linux", "/home/marrow")],
+)
+def test_default_home_for_user_falls_back_for_missing_user(
+    monkeypatch: pytest.MonkeyPatch, platform: str, expected: str
+) -> None:
+    def _missing_user(user: str):
+        raise KeyError(user)
+
+    monkeypatch.setattr("marrow_core.config.pwd.getpwnam", _missing_user)
+    monkeypatch.setattr("marrow_core.config.sys.platform", platform)
+
+    assert _default_home_for_user("marrow") == expected
+
+
 def test_load_config(tmp_path: Path):
     toml = tmp_path / "marrow.toml"
     toml.write_text(
@@ -102,6 +134,30 @@ def test_load_config(tmp_path: Path):
     assert root.self_check.enabled is True
     assert len(root.plugins) == 1
     assert root.plugins[0].name == "dashboard"
+
+
+def test_ipc_rejects_removed_task_dir_field() -> None:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".toml", delete=False) as handle:
+        handle.write(
+            textwrap.dedent(
+                """\
+                [ipc]
+                enabled = true
+                task_dir = "/tmp/tasks"
+
+                [[agents]]
+                name = "orchestrator"
+                agent_command = "cmd"
+                workspace = "/tmp"
+                """
+            )
+        )
+        path = Path(handle.name)
+    try:
+        with pytest.raises(ValidationError, match="task_dir"):
+            load_config(path)
+    finally:
+        path.unlink(missing_ok=True)
 
 
 def test_load_config_defaults_workspace_and_context_from_user(tmp_path: Path) -> None:

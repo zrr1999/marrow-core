@@ -7,7 +7,6 @@ Concrete role inventories live in external profiles such as marrow-bot.
 from __future__ import annotations
 
 WORKSPACE_AGENT_DIR = ".opencode/agents"
-WORK_ITEM_DIR = "work-items"
 
 DEFAULT_TOP_LEVEL_AGENT = "orchestrator"
 AUTONOMOUS_AGENTS = (DEFAULT_TOP_LEVEL_AGENT,)
@@ -16,12 +15,7 @@ RUNTIME_DIRS = (
     "runtime/state",
     "runtime/checkpoints",
     "runtime/logs/exec",
-)
-
-TASK_DIRS = (
-    "tasks/queue",
-    "tasks/delegated",
-    "tasks/done",
+    "runtime/control",
 )
 
 PLUGIN_DIRS = (
@@ -32,8 +26,6 @@ PLUGIN_DIRS = (
 
 WORKSPACE_DIRS = (
     *RUNTIME_DIRS,
-    *TASK_DIRS,
-    WORK_ITEM_DIR,
     *PLUGIN_DIRS,
     "context.d",
     WORKSPACE_AGENT_DIR,

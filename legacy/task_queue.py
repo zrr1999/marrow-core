@@ -1,4 +1,4 @@
-"""Filesystem task queue helpers."""
+"""Filesystem task queue helpers kept only as backup."""
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ from typing import Any
 
 
 def create_task_file(task_dir: Path, title: str, body: str) -> Path:
-    """Write a task markdown file into the queue directory."""
     task_dir.mkdir(parents=True, exist_ok=True)
     ts = time.strftime("%Y%m%d-%H%M%S")
     safe = "".join(c if c.isalnum() or c in "-_ " else "" for c in title)[:50].strip()
@@ -20,7 +19,6 @@ def create_task_file(task_dir: Path, title: str, body: str) -> Path:
 
 
 def list_tasks(task_dir: Path) -> list[dict[str, Any]]:
-    """List task files in queue directory."""
     if not task_dir.is_dir():
         return []
     tasks: list[dict[str, Any]] = []

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pwd
 import sys
 import tomllib
 import warnings
@@ -9,11 +10,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
-
-try:
-    import pwd
-except ImportError:  # pragma: no cover - non-Unix fallback
-    pwd = None
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -26,11 +22,10 @@ def _clamp(value: int, lo: int, hi: int, name: str) -> int:
 def _default_home_for_user(user: str) -> str:
     if not user:
         return ""
-    if pwd is not None:
-        try:
-            return pwd.getpwnam(user).pw_dir
-        except KeyError:
-            pass
+    try:
+        return pwd.getpwnam(user).pw_dir
+    except KeyError:
+        pass
     base = "/Users" if sys.platform == "darwin" else "/home"
     return f"{base}/{user}"
 
@@ -131,7 +126,6 @@ class IpcConfig(BaseModel):
 
     enabled: bool = True
     socket_path: str = ""  # If empty, derived from first agent's workspace
-    task_dir: str = ""  # If empty, derived from first agent's workspace
 
     model_config = ConfigDict(extra="forbid")
 

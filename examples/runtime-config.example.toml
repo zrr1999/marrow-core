@@ -43,7 +43,7 @@ capabilities = ["read_work_items", "show_governance_metrics"]
 [plugins.env]
 MARROW_WORKSPACE = "/Users/marrow"
 
-# Background-service plugin: manifest + auto-start service unit when installed.
+# External background-service repo: manifest + auto-start service unit when installed.
 [[plugins]]
 name = "task-bridge"
 kind = "background_service"

@@ -1,8 +1,8 @@
 # marrow-core
 
-Minimal self-evolving agent scheduler with hard isolation between the immutable core and the writable agent workspace.
+Minimal service/runtime kernel for autonomous agent scheduling.
 
-> Migration note: profile-coupled assets have been removed from `marrow-core`. New setups should provide prompts, context, role definitions, and runtime config from external profile/runtime repos such as `marrow-bot`.
+> Migration note: `marrow-core` is being narrowed to service ownership only. Task systems, work-item models, and workflow repos now live outside the active core boundary.
 
 ## Prompt model
 
@@ -28,7 +28,6 @@ The canonical source of truth is:
 - external profile `roles/` for role prompts and layout
 - external profile `roles.toml` for model-tier casting
 - `marrow_core/contracts.py` for runtime inventory and workspace topology
-- `marrow_core/work_items.py` for cross-repo work-item contracts and storage
 - `marrow_core/plugin_host.py` for hosted plugin/background-service rendering
 - `.opencode/agents/` as the generated runtime surface
 
@@ -46,15 +45,21 @@ Use `marrow-core` as runtime package only:
 
 ## uvx-first usage
 
-Preferred invocation is package/runtime-first rather than source-checkout-first:
-
 ```bash
 uvx marrow-core validate --config /path/to/runtime-config.toml
 uvx marrow-core run --config /path/to/runtime-config.toml
 uvx marrow-core install-service --config /path/to/runtime-config.toml --platform auto --output-dir ./service-out
 ```
 
-The core runtime prompt is now intentionally generic. Execution policy belongs in external profile repos, not in `marrow_core.heartbeat`.
+The core runtime prompt is intentionally generic. Execution policy belongs in external profile repos, not in `marrow_core.heartbeat`.
+
+## Docs deployment
+
+Documentation is built with Zensical. Run `just docs-build` from `marrow-core/` to generate the static site into `site/`; that directory is build output and is intentionally not tracked in git.
+
+For Vercel deployment, set the project Root Directory to `marrow-core`, use the commands from `vercel.json`, and deploy the generated `site/` directory as a static site.
+
+The docs repo/edit links are configured for the monorepo layout under `marrow-core/docs/`.
 
 ## CLI
 
@@ -68,11 +73,11 @@ marrow scaffold         # create a new writable workspace skeleton and starter c
 marrow validate         # check config and show summary
 marrow doctor           # verify workspace, context dirs, and agent command availability
 marrow status           # query live heartbeat state over IPC
-marrow wake             # wake one configured agent immediately via IPC
+marrow wake             # wake one configured agent immediately via IPC, with optional prompt
 marrow install-service  # render launchd or systemd service files
-marrow task add         # submit a task into tasks/queue via IPC
-marrow task list        # inspect queued tasks via IPC
 ```
+
+`service` remains as an internal grouping for runtime-only commands such as worker bootstrap, but the normal interface is the root command set.
 
 ## Configuration
 
@@ -120,15 +125,14 @@ The effective execution path is:
 ## Runtime boundaries
 
 - `marrow_core/contracts.py` - canonical role inventory and workspace topology
-- `marrow_core/work_items.py` - contract-first work-item models and filesystem store
 - `marrow_core/plugin_host.py` - plugin/background-service host manifests and units
 - `marrow_core/prompting.py` - context execution and prompt assembly
-- `marrow_core/runtime.py` - socket, queue, service-runtime, and binary path resolution
-- `marrow_core/task_queue.py` - filesystem queue helpers
+- `marrow_core/runtime.py` - socket, service-runtime, and binary path resolution
 - `marrow_core/health.py` - reusable doctor and self-check health checks
 - `marrow_core/services.py` - launchd/systemd rendering
 - `marrow_core/scaffold.py` - workspace scaffold and starter config generation
-- `marrow_core/heartbeat.py`, `marrow_core/cli.py`, `marrow_core/ipc.py` - orchestration layers
+- `marrow_core/heartbeat.py`, `marrow_core/ipc.py`, `marrow_core/triggers.py` - orchestration layers
+- `marrow_core/cli/` - unified root CLI plus internal service helpers
 
 ## Workspace layout
 
@@ -137,12 +141,8 @@ The effective execution path is:
 ├── .opencode/agents/
 ├── context.d/
 ├── plugins/
-├── work-items/
-├── tasks/
-│   ├── queue/
-│   ├── delegated/
-│   └── done/
 ├── runtime/
+│   ├── control/
 │   ├── state/
 │   ├── checkpoints/
 │   ├── logs/exec/
@@ -151,16 +151,15 @@ The effective execution path is:
 └── docs/
 ```
 
-## Work items and hosted plugins
+## Hosted plugins
 
-`marrow-core` now carries two minimal cross-repo contracts:
+`marrow-core` carries a minimal hosted-plugin contract:
 
-- **Work items**: a stable JSON-backed model in `marrow_core.work_items` for gateways to ingest, bots to process, and dashboards to inspect.
 - **Hosted plugins**: a small `[[plugins]]` config surface for dashboard/background-service processes. `marrow_core.plugin_host` resolves runtime directories, emits a manifest, and can render autostart units for background services.
 
-Typical hosted plugin/service examples include operator-side repos such as `marrow-dashboard` and `marrow-task`.
+Typical hosted plugin/service examples include operator-side repos such as `marrow-dashboard` and task/workflow repos outside `marrow-core`.
 
-When `marrow install-service` is run with `[[plugins]]` configured, it now:
+When `marrow install-service` is run with `[[plugins]]` configured, it:
 
 - writes a plugin manifest to `<primary-workspace>/runtime/plugins/manifest.json`
 - renders autostart service units for `background_service` plugins with `auto_start = true`
@@ -191,7 +190,7 @@ auto_start = true
 MARROW_WORKSPACE = "/Users/marrow"
 ```
 
-See `examples/runtime-config.example.toml` for a copyable example and `docs/contracts/work-items-and-plugins.md` for the contract-first boundary.
+See `examples/runtime-config.example.toml` for a copyable example and `docs/refactor-blueprint.md` for the current split direction.
 
 ## Testing guidance
 
@@ -201,8 +200,6 @@ See `examples/runtime-config.example.toml` for a copyable example and `docs/cont
 
 ## Quick start
 
-Fresh install:
-
 ```bash
 uvx marrow-core validate --config /path/to/runtime-config.toml
 ```
@@ -210,7 +207,7 @@ uvx marrow-core validate --config /path/to/runtime-config.toml
 Manual update attempt:
 
 ```bash
-uvx marrow-core sync-once --config /path/to/runtime-config.toml
+uvx marrow-core service sync-once --config /path/to/runtime-config.toml
 ```
 
 Note: `sync-once` is maintenance-only and still assumes a source checkout `core_dir`. For pure `uvx` runtime installs, prefer disabling sync or using an external repo-maintenance flow.

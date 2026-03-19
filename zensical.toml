@@ -1,0 +1,71 @@
+[project]
+site_name = "marrow-core"
+site_description = "Minimal self-evolving agent scheduler with hard core/evolution isolation"
+site_author = "Zhan Rongrui"
+site_url = "https://marrow-core.sixbones.dev"
+repo_url = "https://github.com/zrr1999/marrow-lab"
+repo_name = "zrr1999/marrow-lab"
+edit_uri = "edit/main/marrow-core/docs/"
+docs_dir = "docs"
+site_dir = "site"
+nav = [
+  { "Home" = "index.md" },
+  { "Quickstart" = "quickstart.md" },
+  { "CLI Reference" = "cli.md" },
+  { "Architecture" = [
+    "architecture/index.md",
+    { "Service Boundary" = "architecture/service-boundary.md" },
+    { "Profile Ownership" = "architecture/profile-ownership.md" },
+  ] },
+  { "Design Notes" = [
+    "design/legacy-migration.md",
+    "design/refactor-blueprint.md",
+  ] },
+]
+
+[project.theme]
+language = "zh"
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "navigation.expand",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to system preference"
+
+[project.markdown_extensions]
+admonition = {  }
+pymdownx.details = {  }
+pymdownx.superfences = {  }
+pymdownx.highlight = { anchor_linenums = true }
+pymdownx.inlinehilite = {  }
+pymdownx.snippets = {  }
+pymdownx.tabbed = { alternate_style = true }
+toc = { permalink = true }

@@ -8,7 +8,6 @@ from pathlib import Path
 from marrow_core.config import RootConfig
 
 DEFAULT_SOCKET_PATH = "/tmp/marrow.sock"
-DEFAULT_TASK_DIR = "/tmp/marrow-tasks"
 DEFAULT_SERVICE_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DEFAULT_SYNC_STATE_FILE = "runtime/state/sync-status.json"
 DEFAULT_SYNC_LOCK_FILE = "runtime/state/sync.lock"
@@ -70,17 +69,6 @@ def resolve_socket_path(root: RootConfig) -> str:
     return DEFAULT_SOCKET_PATH
 
 
-def resolve_task_dir(root: RootConfig) -> str:
-    if root.ipc.task_dir:
-        return root.ipc.task_dir
-    workspace = primary_workspace(root)
-    if workspace is not None:
-        return str(workspace / "tasks" / "queue")
-    if root.service.mode == "supervisor":
-        return str(Path(resolve_service_runtime_root(root)) / "control" / "tasks")
-    return DEFAULT_TASK_DIR
-
-
 def marrow_binary(core_dir: str) -> str:
     if not core_dir:
         return shutil.which("marrow-core") or shutil.which("marrow") or "marrow-core"
@@ -138,7 +126,6 @@ def ensure_service_runtime_dirs(root: RootConfig) -> list[Path]:
     paths = [
         runtime_root / "state",
         runtime_root / "state" / "workers",
-        runtime_root / "control" / "tasks",
         runtime_root / "control" / "wake",
         log_dir,
     ]

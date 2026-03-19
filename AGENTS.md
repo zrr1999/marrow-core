@@ -75,10 +75,8 @@ site-packages/marrow_core/ or uvx runtime
 | `validate` | config summary and schema validation |
 | `doctor` | workspace/context/command availability checks |
 | `status` | heartbeat state via IPC |
-| `wake` | wake a configured agent via IPC |
+| `wake` | wake a configured agent via IPC, optionally with one-shot prompt |
 | `install-service` | render launchd/systemd service files |
-| `task add` | submit a queued task over IPC |
-| `task list` | inspect queued tasks over IPC |
 
 ## Testing guidance
 

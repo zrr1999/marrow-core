@@ -20,6 +20,7 @@ from marrow_core.config import AgentConfig, ProfileConfig
 from marrow_core.log_pruner import prune_exec_logs
 from marrow_core.prompting import build_prompt, gather_context
 from marrow_core.runner import run_agent
+from marrow_core.triggers import TriggerMailbox, TriggerRequest
 from marrow_core.workspace import load_rules
 
 RUNTIME_PROMPT = (
@@ -112,7 +113,7 @@ async def heartbeat(
     once: bool = False,
     dry_run: bool = False,
     state: HeartbeatState | None = None,
-    wake_event: asyncio.Event | None = None,
+    trigger_mailbox: TriggerMailbox | None = None,
 ) -> None:
     """Run the heartbeat loop for a single agent."""
     rules = load_rules(core_dir)
@@ -130,6 +131,7 @@ async def heartbeat(
     logger.info("[{}] started (interval={}s, timeout={}s)", name, interval, timeout)
 
     while True:
+        trigger_request = trigger_mailbox.consume_pending() if trigger_mailbox is not None else None
         if circuit.is_open:
             pass  # circuit open — skip this cycle, circuit.is_open already logged
         else:
@@ -137,7 +139,7 @@ async def heartbeat(
                 agent_state.running = True
                 agent_state.last_tick_at = time.time()
             try:
-                ok = await _tick(cfg, rules, dry_run=dry_run)
+                ok = await _tick(cfg, rules, dry_run=dry_run, trigger_request=trigger_request)
                 circuit.record(ok)
                 if agent_state is not None:
                     agent_state.last_error = "" if ok else "tick returned failure"
@@ -157,15 +159,22 @@ async def heartbeat(
 
         if once:
             return
-        if wake_event is None:
+        if trigger_mailbox is None:
             await asyncio.sleep(interval)
             continue
-        try:
-            await asyncio.wait_for(wake_event.wait(), timeout=interval)
-            wake_event.clear()
+        if await trigger_mailbox.wait(interval):
             logger.info("[{}] woke early due to external event", name)
-        except TimeoutError:
-            pass
+
+
+def _trigger_context(trigger_request: TriggerRequest | None) -> str:
+    if trigger_request is None or not (trigger_request.reason or trigger_request.prompt):
+        return ""
+    lines = ["Operator trigger for this run only."]
+    if trigger_request.reason:
+        lines.append(f"Reason: {trigger_request.reason}")
+    if trigger_request.prompt:
+        lines.extend(["", trigger_request.prompt])
+    return "\n".join(lines).strip()
 
 
 async def _tick(
@@ -173,6 +182,7 @@ async def _tick(
     rules: str,
     *,
     dry_run: bool = False,
+    trigger_request: TriggerRequest | None = None,
 ) -> bool:
     name = cfg.name
     sid = _session_id(name)
@@ -181,6 +191,9 @@ async def _tick(
 
     # Gather context from all configured context dirs
     context_blocks = await gather_context(cfg.context_dirs)
+    trigger_block = _trigger_context(trigger_request)
+    if trigger_block:
+        context_blocks = [f"--- [trigger] ---\n{trigger_block}", *context_blocks]
 
     prompt = build_prompt(RUNTIME_PROMPT, rules, context_blocks)
 
