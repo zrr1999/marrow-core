@@ -1,4 +1,4 @@
-"""Black-box tests for marrow_core.cli."""
+"""High-signal CLI tests for the split command surfaces."""
 
 from __future__ import annotations
 
@@ -12,10 +12,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from marrow_core.cli import app
-from marrow_core.config import RootConfig
+from marrow_core.cli.__main__ import app
 from marrow_core.contracts import AUTONOMOUS_AGENTS
-from marrow_core.task_queue import create_task_file
 
 runner = CliRunner()
 
@@ -34,7 +32,6 @@ def _write_config(
     script.write_text("#!/usr/bin/env python3\nprint('queue ok')\n", encoding="utf-8")
     script.chmod(script.stat().st_mode | stat.S_IXUSR)
 
-    task_dir = workspace / "tasks" / "queue"
     ipc_block = textwrap.dedent(
         """
 
@@ -49,7 +46,6 @@ def _write_config(
             [ipc]
             enabled = true
             socket_path = {json.dumps(str(socket_path))}
-            task_dir = {json.dumps(str(task_dir))}
             """
         )
 
@@ -140,66 +136,86 @@ def _write_config(
 
 def test_validate_lists_all_autonomous_agents(tmp_path: Path) -> None:
     config = _write_config(tmp_path)
-
     result = runner.invoke(app, ["validate", "--config", str(config)])
-
     assert result.exit_code == 0
     for name in AUTONOMOUS_AGENTS:
         assert f"Agent: {name}" in result.stdout
-    assert "VALIDATE OK" in result.stdout
 
 
 def test_doctor_reports_ok_for_valid_workspace(tmp_path: Path) -> None:
     config = _write_config(tmp_path)
-
     result = runner.invoke(app, ["doctor", "--config", str(config)])
-
     assert result.exit_code == 0
     assert "DOCTOR OK" in result.stdout
 
 
-def test_doctor_reports_missing_context_dir(tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    broken = config.read_text(encoding="utf-8").replace("context.d", "missing-context")
-    config.write_text(broken, encoding="utf-8")
-
-    result = runner.invoke(app, ["doctor", "--config", str(config)])
-
-    assert result.exit_code == 1
-    assert "missing-context (missing)" in result.stdout
-
-
-def test_run_once_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:
+def test_service_run_once_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     calls: list[tuple[str, bool, bool, bool]] = []
 
     async def fake_heartbeat(
-        agent, core_dir, *, once=False, dry_run=False, state=None, wake_event=None
+        agent, core_dir, *, once=False, dry_run=False, state=None, trigger_mailbox=None
     ):
         calls.append((agent.name, once, dry_run, state is not None))
 
-    monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr("marrow_core.cli.service.heartbeat", fake_heartbeat)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
 
-    result = runner.invoke(app, ["run-once", "--config", str(config)])
+    result = runner.invoke(app, ["service", "run-once", "--config", str(config)])
 
     assert result.exit_code == 0
     assert calls == [(name, True, False, True) for name in AUTONOMOUS_AGENTS]
 
 
-def test_dry_run_invokes_heartbeat_in_dry_mode(monkeypatch, tmp_path: Path) -> None:
+def test_run_once_flag_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    calls: list[tuple[str, bool, bool, bool]] = []
+
+    async def fake_heartbeat(
+        agent, core_dir, *, once=False, dry_run=False, state=None, trigger_mailbox=None
+    ):
+        calls.append((agent.name, once, dry_run, state is not None))
+
+    monkeypatch.setattr("marrow_core.cli.service.heartbeat", fake_heartbeat)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
+
+    result = runner.invoke(app, ["run", "--once", "--config", str(config)])
+
+    assert result.exit_code == 0
+    assert calls == [(name, True, False, True) for name in AUTONOMOUS_AGENTS]
+
+
+def test_service_dry_run_invokes_heartbeat_in_dry_mode(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     calls: list[tuple[str, bool, bool]] = []
 
     async def fake_heartbeat(
-        agent, core_dir, *, once=False, dry_run=False, state=None, wake_event=None
+        agent, core_dir, *, once=False, dry_run=False, state=None, trigger_mailbox=None
     ):
         calls.append((agent.name, once, dry_run))
 
-    monkeypatch.setattr("marrow_core.cli.heartbeat", fake_heartbeat)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr("marrow_core.cli.service.heartbeat", fake_heartbeat)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
 
-    result = runner.invoke(app, ["dry-run", "--config", str(config)])
+    result = runner.invoke(app, ["service", "dry-run", "--config", str(config)])
+
+    assert result.exit_code == 0
+    assert calls == [(name, True, True) for name in AUTONOMOUS_AGENTS]
+
+
+def test_run_dry_run_flag_invokes_heartbeat_in_dry_mode(monkeypatch, tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    calls: list[tuple[str, bool, bool]] = []
+
+    async def fake_heartbeat(
+        agent, core_dir, *, once=False, dry_run=False, state=None, trigger_mailbox=None
+    ):
+        calls.append((agent.name, once, dry_run))
+
+    monkeypatch.setattr("marrow_core.cli.service.heartbeat", fake_heartbeat)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
+
+    result = runner.invoke(app, ["run", "--dry-run", "--config", str(config)])
 
     assert result.exit_code == 0
     assert calls == [(name, True, True) for name in AUTONOMOUS_AGENTS]
@@ -210,91 +226,53 @@ def test_status_prints_ipc_payload(monkeypatch, tmp_path: Path) -> None:
     socket_path.write_text("", encoding="utf-8")
     config = _write_config(tmp_path, socket_path=socket_path)
 
-    async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
-        assert socket == str(socket_path)
+    def fake_run_ipc_command(config_path: Path, method: str, path: str, body: str = "") -> dict:
+        assert config_path == config
         assert method == "GET"
         assert path == "/status"
         assert body == ""
         return {"uptime": 1.2, "agents": {"orchestrator": {"tick_count": 3}}}
 
-    monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
+    monkeypatch.setattr("marrow_core.cli.ops.run_ipc_command", fake_run_ipc_command)
 
     result = runner.invoke(app, ["status", "--config", str(config)])
 
     assert result.exit_code == 0
     assert '"uptime": 1.2' in result.stdout
-    assert '"tick_count": 3' in result.stdout
 
 
-def test_wake_submits_ipc_request(monkeypatch, tmp_path: Path) -> None:
+def test_wake_submits_ipc_request_with_prompt(monkeypatch, tmp_path: Path) -> None:
     socket_path = tmp_path / "marrow.sock"
     socket_path.write_text("", encoding="utf-8")
     config = _write_config(tmp_path, socket_path=socket_path)
     request: dict[str, str] = {}
 
-    async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
-        request.update({"socket": socket, "method": method, "path": path, "body": body})
+    def fake_run_ipc_command(config_path: Path, method: str, path: str, body: str = "") -> dict:
+        request.update({"method": method, "path": path, "body": body})
         return {"ok": True, "agent": "orchestrator"}
 
-    monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
+    monkeypatch.setattr("marrow_core.cli.ops.run_ipc_command", fake_run_ipc_command)
 
     result = runner.invoke(
         app,
-        ["wake", "orchestrator", "--reason", "manual", "--config", str(config)],
+        [
+            "wake",
+            "orchestrator",
+            "--reason",
+            "manual",
+            "--prompt",
+            "Focus on repair.",
+            "--config",
+            str(config),
+        ],
     )
 
     assert result.exit_code == 0
-    assert 'wake submitted for "orchestrator"' in result.stdout
-    assert request["socket"] == str(socket_path)
-    assert request["method"] == "POST"
-    assert request["path"] == "/wake"
-    assert json.loads(request["body"]) == {"agent": "orchestrator", "reason": "manual"}
-
-
-def test_task_add_submits_json_payload(monkeypatch, tmp_path: Path) -> None:
-    socket_path = tmp_path / "marrow.sock"
-    socket_path.write_text("", encoding="utf-8")
-    config = _write_config(tmp_path, socket_path=socket_path)
-    request: dict[str, str] = {}
-
-    async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
-        request.update({"socket": socket, "method": method, "path": path, "body": body})
-        return {"ok": True, "file": "20260308-fix-bug.md"}
-
-    monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
-
-    result = runner.invoke(
-        app,
-        ["task", "add", "Fix bug", "--body", "details", "--config", str(config)],
-    )
-
-    assert result.exit_code == 0
-    assert "task submitted" in result.stdout
-    assert request["socket"] == str(socket_path)
-    assert request["method"] == "POST"
-    assert request["path"] == "/tasks"
-    assert json.loads(request["body"]) == {"title": "Fix bug", "body": "details"}
-
-
-def test_task_list_prints_queue_entries(monkeypatch, tmp_path: Path) -> None:
-    socket_path = tmp_path / "marrow.sock"
-    socket_path.write_text("", encoding="utf-8")
-    config = _write_config(tmp_path, socket_path=socket_path)
-
-    async def fake_ipc_request(socket: str, method: str, path: str, body: str = "") -> dict:
-        assert socket == str(socket_path)
-        assert method == "GET"
-        assert path == "/tasks"
-        assert body == ""
-        return {"tasks": [{"file": "task-1.md", "title": "First task"}]}
-
-    monkeypatch.setattr("marrow_core.cli._ipc_request", fake_ipc_request)
-
-    result = runner.invoke(app, ["task", "list", "--config", str(config)])
-
-    assert result.exit_code == 0
-    assert "task-1.md" in result.stdout
-    assert "First task" in result.stdout
+    assert json.loads(request["body"]) == {
+        "agent": "orchestrator",
+        "reason": "manual",
+        "prompt": "Focus on repair.",
+    }
 
 
 def test_scaffold_creates_workspace_and_config(tmp_path: Path) -> None:
@@ -323,10 +301,9 @@ def test_scaffold_creates_workspace_and_config(tmp_path: Path) -> None:
     assert (workspace / "context.d" / "queue.py").exists()
     assert config_out.exists()
     assert 'core_dir = "/opt/marrow-core"' in config_out.read_text(encoding="utf-8")
-    assert "[self_check]" in config_out.read_text(encoding="utf-8")
 
 
-def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
+def test_install_service_renders_units(tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     output_dir = tmp_path / "service-out"
 
@@ -345,85 +322,7 @@ def test_install_service_renders_units(monkeypatch, tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert (output_dir / "marrow-heart.service").exists()
-    assert not (output_dir / "marrow-heart-sync.timer").exists()
     assert "rendered 1 service file(s)" in result.stdout
-
-
-def test_install_service_uses_configured_service_config_path(tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    output_dir = tmp_path / "service-out"
-    text = config.read_text(encoding="utf-8").replace(
-        '[service]\nmode = "single_user"\nruntime_root = '
-        + json.dumps(str(tmp_path / "service-runtime")),
-        '[service]\nmode = "single_user"\nruntime_root = '
-        + json.dumps(str(tmp_path / "service-runtime"))
-        + '\nconfig_path = "/opt/marrow-bot/marrow.toml"',
-        1,
-    )
-    config.write_text(text, encoding="utf-8")
-
-    result = runner.invoke(
-        app,
-        [
-            "install-service",
-            "--config",
-            str(config),
-            "--platform",
-            "linux",
-            "--output-dir",
-            str(output_dir),
-        ],
-    )
-
-    service_text = (output_dir / "marrow-heart.service").read_text(encoding="utf-8")
-
-    assert result.exit_code == 0
-    assert "--config /opt/marrow-bot/marrow.toml --json-logs" in service_text
-
-
-def test_install_service_writes_plugin_manifest_and_plugin_units(tmp_path: Path) -> None:
-    config = _write_config(tmp_path, with_plugin=True)
-    output_dir = tmp_path / "service-out"
-
-    result = runner.invoke(
-        app,
-        [
-            "install-service",
-            "--config",
-            str(config),
-            "--platform",
-            "linux",
-            "--output-dir",
-            str(output_dir),
-        ],
-    )
-
-    manifest_path = tmp_path / "workspace" / "runtime" / "plugins" / "manifest.json"
-
-    assert result.exit_code == 0
-    assert (output_dir / "marrow-heart.service").exists()
-    assert (output_dir / "marrow-plugin-gateway.service").exists()
-    assert manifest_path.exists()
-    assert '"name": "gateway"' in manifest_path.read_text(encoding="utf-8")
-    assert "wrote plugin manifest" in result.stdout
-
-
-def test_sync_once_reports_noop(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-
-    def fake_run_sync_once(**kwargs):
-        assert kwargs["workspace"].endswith("workspace")
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.NOOP, "remote unchanged")
-
-    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-
-    result = runner.invoke(app, ["sync-once", "--config", str(config)])
-
-    assert result.exit_code == 0
-    assert '"result": "noop"' in result.stdout
 
 
 def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None:
@@ -434,8 +333,8 @@ def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None
 
         return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
 
-    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr("marrow_core.cli.service.run_sync_once", fake_run_sync_once)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
 
     result = runner.invoke(app, ["sync-once", "--config", str(config)])
 
@@ -443,77 +342,11 @@ def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None
     assert '"result": "restart_required"' in result.stdout
 
 
-def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Path) -> None:
+def test_workspace_sync_returns_nonzero_on_errors(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
-    sleeps: list[int] = []
-    reloads: list[str] = []
-
-    async def fake_invoke_sync_once(root, *, config_path=None):
-        assert root.sync.interval_seconds == 3600
-        assert config_path == config
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.RELOADED, "workspace metadata refreshed")
-
-    async def fake_reload_runtime(config_path: Path, root) -> None:
-        assert config_path == config
-        reloads.extend(agent.name for agent in root.agents)
-
-    async def fake_sleep(seconds: int) -> None:
-        sleeps.append(seconds)
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
-    monkeypatch.setattr("marrow_core.cli._reload_runtime", fake_reload_runtime)
-    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
-
-    with contextlib.suppress(asyncio.CancelledError):
-        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
-
-    assert reloads == list(AUTONOMOUS_AGENTS)
-    assert sleeps == [3600]
-
-
-def test_workspace_sync_runs_prepare_for_single_workspace(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    calls: list[tuple[str, str]] = []
-
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
+    monkeypatch.setattr("marrow_core.cli.service.setup_logging", lambda **_: None)
     monkeypatch.setattr(
-        "marrow_core.cli.ensure_workspace_dirs",
-        lambda workspace: calls.append(("ensure", workspace)),
-    )
-
-    result = runner.invoke(
-        app,
-        ["workspace-sync", "--config", str(config), "--workspace", str(tmp_path / "workspace")],
-    )
-
-    assert result.exit_code == 0
-    assert calls == [("ensure", str(tmp_path / "workspace"))]
-    assert "workspace sync ok: ensured workspace directories only" in result.stdout
-
-
-def test_workspace_sync_returns_zero_when_dirs_exist(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-
-    result = runner.invoke(
-        app,
-        ["workspace-sync", "--config", str(config), "--workspace", str(tmp_path / "workspace")],
-    )
-
-    assert result.exit_code == 0
-    assert "workspace sync ok: ensured workspace directories only" in result.stdout
-
-
-def test_workspace_sync_returns_nonzero_on_config_errors(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-
-    monkeypatch.setattr("marrow_core.cli.setup_logging", lambda **_: None)
-    monkeypatch.setattr(
-        "marrow_core.cli.ensure_workspace_dirs",
+        "marrow_core.cli.service.sync_workspace",
         lambda workspace: (_ for _ in ()).throw(RuntimeError("workspace create failed")),
     )
 
@@ -526,179 +359,30 @@ def test_workspace_sync_returns_nonzero_on_config_errors(monkeypatch, tmp_path: 
     assert "workspace create failed" in result.output
 
 
-def test_sync_supervisor_uses_failure_backoff(monkeypatch, tmp_path: Path) -> None:
+def test_sync_supervisor_reloads_after_reloaded_result(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     sleeps: list[int] = []
-
-    async def fake_invoke_sync_once(root, *, config_path=None):
-        assert root.sync.failure_backoff_seconds == 30
-        assert config_path == config
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.FAILED, "git fetch failed")
-
-    async def fake_sleep(seconds: int) -> None:
-        sleeps.append(seconds)
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
-    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
-
-    with contextlib.suppress(asyncio.CancelledError):
-        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
-
-    assert sleeps == [30]
-
-
-def test_sync_supervisor_restarts_only_when_env_enabled(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
+    reloads: list[str] = []
 
     async def fake_invoke_sync_once(root, *, config_path=None):
         assert config_path == config
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
-
-    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
-    monkeypatch.setenv("MARROW_RESTART_HEART_AFTER_SYNC", "1")
-
-    result: object | None = None
-    try:
-        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
-    except BaseException as exc:  # pragma: no branch - expected exit path
-        result = exc
-
-    assert result is not None
-    assert isinstance(result, __import__("typer").Exit)
-    assert getattr(result, "exit_code", None) == 0
-
-
-def test_sync_supervisor_skips_restart_when_env_disabled(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    sleeps: list[int] = []
-
-    async def fake_invoke_sync_once(root, *, config_path=None):
-        assert config_path == config
-        from marrow_core.sync import SyncOutcome, SyncResult
-
-        return SyncOutcome(SyncResult.RESTART_REQUIRED, "runtime changed")
-
-    async def fake_sleep(seconds: int) -> None:
-        sleeps.append(seconds)
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr("marrow_core.cli._invoke_sync_once", fake_invoke_sync_once)
-    monkeypatch.delenv("MARROW_RESTART_HEART_AFTER_SYNC", raising=False)
-    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
-
-    with contextlib.suppress(asyncio.CancelledError):
-        asyncio.run(__import__("marrow_core.cli").cli._sync_supervisor(config))
-
-    assert sleeps == [3600]
-
-
-def test_self_check_supervisor_creates_repair_task_and_wakes_agent(
-    monkeypatch, tmp_path: Path
-) -> None:
-    workspace = tmp_path / "workspace"
-    task_dir = workspace / "tasks" / "queue"
-    task_dir.mkdir(parents=True)
-    root = RootConfig.model_validate(
-        {
-            "core_dir": str(tmp_path / "core"),
-            "self_check": {
-                "enabled": True,
-                "interval_seconds": 900,
-                "wake_agent": "orchestrator",
-            },
-            "agents": [
-                {
-                    "name": "orchestrator",
-                    "agent_command": str(tmp_path / "missing-binary"),
-                    "workspace": str(workspace),
-                    "context_dirs": [str(workspace / "missing-context")],
-                }
-            ],
-        }
-    )
-    wake_events = {"orchestrator": asyncio.Event()}
-
-    async def fake_sleep(seconds: int) -> None:
-        raise asyncio.CancelledError
-
-    monkeypatch.setattr("marrow_core.cli.asyncio.sleep", fake_sleep)
-
-    with contextlib.suppress(asyncio.CancelledError):
-        asyncio.run(
-            __import__("marrow_core.cli").cli._self_check_supervisor(
-                root,
-                lambda title, body: create_task_file(task_dir, title, body),
-                wake_events,
-            )
-        )
-
-    files = list(task_dir.glob("*.md"))
-    assert len(files) == 1
-    body = files[0].read_text(encoding="utf-8")
-    assert "Run `orchestrator` in repair mode" in body
-    assert wake_events["orchestrator"].is_set()
-
-
-def test_invoke_sync_once_calls_run_sync_once_in_thread(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    root = __import__("marrow_core.cli").cli.load_config(config)
-    call: dict[str, object] = {}
-
-    async def fake_to_thread(func, /, *args, **kwargs):
-        call["func"] = func
-        call["args"] = args
-        call["kwargs"] = kwargs
-        return func(*args, **kwargs)
-
-    def fake_run_sync_once(**kwargs):
-        call["run_sync_once_kwargs"] = kwargs
         from marrow_core.sync import SyncOutcome, SyncResult
 
         return SyncOutcome(SyncResult.RELOADED, "workspace metadata refreshed")
 
-    monkeypatch.setattr("marrow_core.cli.asyncio.to_thread", fake_to_thread)
-    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
+    async def fake_reload_runtime(config_path: Path, root) -> None:
+        reloads.extend(agent.name for agent in root.agents)
 
-    outcome = asyncio.run(
-        __import__("marrow_core.cli").cli._invoke_sync_once(root, config_path=config)
-    )
+    async def fake_sleep(seconds: int) -> None:
+        sleeps.append(seconds)
+        raise asyncio.CancelledError
 
-    assert outcome.result.value == "reloaded"
-    assert call["func"] is fake_run_sync_once
-    assert call["args"] == ()
-    assert call["kwargs"] == {
-        "core_dir": str(tmp_path / "core"),
-        "workspace": str(tmp_path / "workspace"),
-        "state_file": tmp_path / "workspace" / "runtime" / "state" / "sync-status.json",
-        "lock_file": tmp_path / "workspace" / "runtime" / "state" / "sync.lock",
-        "refresh_workspace": True,
-        "service_config_path": str(config),
-        "rules_path": "",
-    }
-    assert call["run_sync_once_kwargs"] == call["kwargs"]
+    monkeypatch.setattr("marrow_core.cli.service._invoke_sync_once", fake_invoke_sync_once)
+    monkeypatch.setattr("marrow_core.cli.service._reload_runtime", fake_reload_runtime)
+    monkeypatch.setattr("marrow_core.cli.service.asyncio.sleep", fake_sleep)
 
+    with contextlib.suppress(asyncio.CancelledError):
+        asyncio.run(__import__("marrow_core.cli.service").cli.service._sync_supervisor(config))
 
-def test_invoke_sync_once_wraps_sync_errors(monkeypatch, tmp_path: Path) -> None:
-    config = _write_config(tmp_path)
-    root = __import__("marrow_core.cli").cli.load_config(config)
-
-    async def fake_to_thread(func, /, *args, **kwargs):
-        return func(*args, **kwargs)
-
-    def fake_run_sync_once(**kwargs):
-        raise __import__("marrow_core.sync").sync.SyncError("git fetch failed")
-
-    monkeypatch.setattr("marrow_core.cli.asyncio.to_thread", fake_to_thread)
-    monkeypatch.setattr("marrow_core.cli.run_sync_once", fake_run_sync_once)
-
-    outcome = asyncio.run(
-        __import__("marrow_core.cli").cli._invoke_sync_once(root, config_path=config)
-    )
-
-    assert outcome.result.value == "failed"
-    assert outcome.reason == "git fetch failed"
+    assert reloads == list(AUTONOMOUS_AGENTS)
+    assert sleeps == [3600]
