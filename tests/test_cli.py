@@ -333,6 +333,39 @@ def test_install_service_renders_units(tmp_path: Path) -> None:
     assert "rendered 1 service file(s)" in result.stdout
 
 
+def test_install_renders_units(tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    output_dir = tmp_path / "service-out"
+
+    result = runner.invoke(
+        app,
+        [
+            "install",
+            "--config",
+            str(config),
+            "--platform",
+            "linux",
+            "--output-dir",
+            str(output_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (output_dir / "marrow-heart.service").exists()
+    assert "rendered 1 service file(s)" in result.stdout
+
+
+def test_install_prepare_initializes_workspace(tmp_path: Path) -> None:
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    config = _write_config(tmp_path)
+
+    result = runner.invoke(app, ["install", "--prepare", "--config", str(config)])
+
+    assert result.exit_code == 0
+    assert "OK: workspace ready" in result.stdout
+
+
 def test_sync_once_reports_restart_required(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
 

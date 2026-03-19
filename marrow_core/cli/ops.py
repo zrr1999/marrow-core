@@ -62,11 +62,8 @@ def run_ipc_command(config: Path, method: str, path: str, body: str = "") -> dic
         raise typer.Exit(code=1) from exc
 
 
-@app.command()
-def setup(config: ConfigOpt = Path("marrow.toml"), verbose: VerboseOpt = False) -> None:
+def _run_prepare(root) -> None:  # type: ignore[no-untyped-def]
     """Initialize runtime dirs and ensure configured workspaces exist."""
-    setup_logging(verbose=verbose)
-    root = load_root_or_exit(config)
     if root.service.mode == "supervisor":
         ensure_service_runtime_dirs(root)
         typer.echo(f"OK: supervisor runtime ready at {resolve_service_runtime_root(root)}")
@@ -85,6 +82,66 @@ def setup(config: ConfigOpt = Path("marrow.toml"), verbose: VerboseOpt = False) 
             typer.echo(f"FAIL: {exc}", err=True)
             continue
         typer.echo(f"OK: workspace ready at {agent.workspace}")
+
+
+@app.command()
+def install(
+    config: ConfigOpt = Path("marrow.toml"),
+    output_dir: Path = typer.Option(Path("service-out"), "--output-dir"),
+    platform: str = typer.Option("auto", "--platform", help="auto, darwin, or linux"),
+    prepare: bool = typer.Option(
+        False, "--prepare", help="Initialize runtime dirs instead of rendering service files."
+    ),
+    verbose: VerboseOpt = False,
+) -> None:
+    """Render service definitions, or initialize runtime dirs with --prepare."""
+    setup_logging(verbose=verbose)
+    root = load_root_or_exit(config)
+    if prepare:
+        _run_prepare(root)
+        return
+    if not root.agents:
+        typer.echo("FAIL: no agents configured", err=True)
+        raise typer.Exit(code=2)
+    files = render_service_files(
+        platform=platform,
+        core_dir=root.core_dir,
+        service_config_path=resolve_service_config_path(platform, root.service.config_path),
+        service_user=resolve_service_user(root),
+        agent_home=root.agents[0].home,
+        log_dir=resolve_service_log_dir(root),
+    )
+    workspace = primary_workspace(root)
+    manifest_path: Path | None = None
+    if root.plugins:
+        if workspace is None:
+            typer.echo("FAIL: plugin manifest requires a primary workspace", err=True)
+            raise typer.Exit(code=2)
+        manifest_path = write_plugin_manifest(
+            root.plugins,
+            workspace=workspace,
+            destination=workspace / "runtime" / "plugins" / "manifest.json",
+        )
+        files.extend(
+            render_plugin_service_files(
+                platform=platform, plugins=root.plugins, workspace=workspace
+            )
+        )
+    written = write_service_files(files, output_dir)
+    typer.echo(f"rendered {len(written)} service file(s) to {output_dir}")
+    for path in written:
+        typer.echo(f"  {path.name}")
+    if manifest_path is not None:
+        typer.echo(f"wrote plugin manifest: {manifest_path}")
+
+
+@app.command(deprecated=True)
+def setup(config: ConfigOpt = Path("marrow.toml"), verbose: VerboseOpt = False) -> None:
+    """[Deprecated] Use 'install --prepare' instead."""
+    typer.echo("Deprecated: use 'install --prepare' instead of 'setup'.", err=True)
+    setup_logging(verbose=verbose)
+    root = load_root_or_exit(config)
+    _run_prepare(root)
 
 
 @app.command()
@@ -210,13 +267,14 @@ def scaffold_cmd(
     typer.echo(f"wrote config: {config_out}")
 
 
-@app.command(name="install-service")
+@app.command(name="install-service", deprecated=True)
 def install_service(
     config: ConfigOpt = Path("marrow.toml"),
     output_dir: Path = typer.Option(Path("service-out"), "--output-dir"),
     platform: str = typer.Option("auto", "--platform", help="auto, darwin, or linux"),
 ) -> None:
-    """Render service definitions for launchd or systemd."""
+    """[Deprecated] Use 'install' instead."""
+    typer.echo("Deprecated: use 'install' instead of 'install-service'.", err=True)
     root = load_root_or_exit(config)
     if not root.agents:
         typer.echo("FAIL: no agents configured", err=True)
