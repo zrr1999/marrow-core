@@ -149,6 +149,14 @@ def test_doctor_reports_ok_for_valid_workspace(tmp_path: Path) -> None:
     assert "DOCTOR OK" in result.stdout
 
 
+def test_validate_doctor_flag_reports_ok_for_valid_workspace(tmp_path: Path) -> None:
+    config = _write_config(tmp_path)
+    result = runner.invoke(app, ["validate", "--doctor", "--config", str(config)])
+    assert result.exit_code == 0
+    assert "VALIDATE OK" in result.stdout
+    assert "DOCTOR OK" in result.stdout
+
+
 def test_service_run_once_invokes_heartbeat_once(monkeypatch, tmp_path: Path) -> None:
     config = _write_config(tmp_path)
     calls: list[tuple[str, bool, bool, bool]] = []

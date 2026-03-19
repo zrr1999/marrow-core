@@ -30,7 +30,7 @@ _deprecated("dry-run", service_module.dry_run, "[Deprecated] Use 'run --dry-run'
 _public("sync-once", service_module.sync_once, "Run one bounded sync attempt.")
 _public("setup", ops_module.setup, "Initialize runtime directories and workspaces.")
 _public("validate", ops_module.validate, "Validate config and show summary.")
-_public("doctor", ops_module.doctor, "Check workspace and command health.")
+_deprecated("doctor", ops_module.doctor, "[Deprecated] Use 'validate --doctor' instead.")
 _public("scaffold", ops_module.scaffold_cmd, "Create a starter workspace and config.")
 _public("install-service", ops_module.install_service, "Render service definitions.")
 _public("status", ops_module.status, "Query runtime state via IPC.")
