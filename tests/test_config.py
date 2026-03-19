@@ -11,7 +11,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from marrow_core.config import AgentConfig, PluginConfig, ServiceConfig, load_config
+from marrow_core.config import (
+    AgentConfig,
+    PluginConfig,
+    ServiceConfig,
+    _default_home_for_user,
+    load_config,
+)
 
 EXPECTED_HOME = "/Users/marrow" if sys.platform == "darwin" else "/home/marrow"
 
@@ -67,6 +73,31 @@ def test_service_mode_rejects_unknown() -> None:
 def test_plugin_requires_absolute_paths() -> None:
     with pytest.raises(ValueError, match="absolute"):
         PluginConfig(name="dashboard", kind="dashboard", command="python", cwd="relative/path")
+
+
+def test_default_home_for_user_uses_pwd_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _PwdEntry:
+        pw_dir = "/srv/marrow"
+
+    monkeypatch.setattr("marrow_core.config.pwd.getpwnam", lambda user: _PwdEntry())
+
+    assert _default_home_for_user("marrow") == "/srv/marrow"
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"),
+    [("darwin", "/Users/marrow"), ("linux", "/home/marrow")],
+)
+def test_default_home_for_user_falls_back_for_missing_user(
+    monkeypatch: pytest.MonkeyPatch, platform: str, expected: str
+) -> None:
+    def _missing_user(user: str):
+        raise KeyError(user)
+
+    monkeypatch.setattr("marrow_core.config.pwd.getpwnam", _missing_user)
+    monkeypatch.setattr("marrow_core.config.sys.platform", platform)
+
+    assert _default_home_for_user("marrow") == expected
 
 
 def test_load_config(tmp_path: Path):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pwd
 import sys
 import tomllib
 import warnings
@@ -9,14 +10,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
-
-_pwd: Any = None
-try:
-    import pwd as _pwd_module
-except ImportError:  # pragma: no cover - non-Unix fallback
-    pass
-else:
-    _pwd = _pwd_module
 
 
 def _clamp(value: int, lo: int, hi: int, name: str) -> int:
@@ -29,11 +22,10 @@ def _clamp(value: int, lo: int, hi: int, name: str) -> int:
 def _default_home_for_user(user: str) -> str:
     if not user:
         return ""
-    if _pwd is not None:
-        try:
-            return _pwd.getpwnam(user).pw_dir
-        except KeyError:
-            pass
+    try:
+        return pwd.getpwnam(user).pw_dir
+    except KeyError:
+        pass
     base = "/Users" if sys.platform == "darwin" else "/home"
     return f"{base}/{user}"
 
