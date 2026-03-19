@@ -53,6 +53,14 @@ uvx marrow-core install-service --config /path/to/runtime-config.toml --platform
 
 The core runtime prompt is intentionally generic. Execution policy belongs in external profile repos, not in `marrow_core.heartbeat`.
 
+## Docs deployment
+
+Documentation is built with Zensical. Run `just docs-build` from `marrow-core/` to generate the static site into `site/`; that directory is build output and is intentionally not tracked in git.
+
+For Vercel deployment, set the project Root Directory to `marrow-core`, use the commands from `vercel.json`, and deploy the generated `site/` directory as a static site.
+
+The docs repo/edit links are configured for the monorepo layout under `marrow-core/docs/`.
+
 ## CLI
 
 ```text

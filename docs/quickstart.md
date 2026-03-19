@@ -78,3 +78,15 @@ just docs
 # 构建静态站点
 just docs-build
 ```
+
+`just docs-build` 会把生成的静态站点写入 `site/`；该目录是构建产物，已加入 `.gitignore`，不要手动提交。
+
+## Vercel 部署
+
+- Framework Preset: `Other`
+- Root Directory: `marrow-core`
+- Install Command: `uv sync --dev`
+- Build Command: `uv run zensical build`
+- Output Directory: `site`
+
+Vercel 会直接部署 `site/` 中的静态内容，因此只需要保留 `docs/` 源文件，不需要把生成后的 HTML/CSS/JS 提交到仓库。
