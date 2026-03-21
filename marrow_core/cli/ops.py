@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import io
 import json
 import os
 import shlex
@@ -18,9 +20,11 @@ from marrow_core.cli.common import (
     load_root_or_exit,
     sync_workspace,
 )
-from marrow_core.config import load_config
+from marrow_core.config import _default_home_for_user, load_config
+from marrow_core.health import collect_sync_health_issues
 from marrow_core.log import setup_logging
 from marrow_core.plugin_host import render_plugin_service_files, write_plugin_manifest
+from marrow_core.profile import prepare_home, validate_context_providers, validate_role_references
 from marrow_core.runtime import (
     ensure_service_runtime_dirs,
     primary_workspace,
@@ -214,6 +218,12 @@ def _run_doctor_checks(root) -> None:
             else:
                 typer.echo(f"  command: {binary}")
 
+    typer.echo("\n[sync]")
+    typer.echo(f"  enabled: {str(root.sync.enabled).lower()}")
+    if root.sync.enabled:
+        typer.echo(f"  core_dir: {root.core_dir or '(unset)'}")
+    issues.extend(collect_sync_health_issues(root))
+
     typer.echo("")
     if issues:
         typer.echo(f"DOCTOR: {len(issues)} issue(s) found:", err=True)
@@ -278,6 +288,134 @@ def scaffold_cmd(
     write_config_template(config_out, core_dir=core_dir, workspace=workspace)
     typer.echo(f"scaffolded workspace: {workspace}")
     typer.echo(f"wrote config: {config_out}")
+
+
+@app.command(name="profile-setup")
+def profile_setup(
+    config: ConfigOpt = Path("marrow.toml"),
+    user: str = typer.Option("", "--user", help="Bot user (empty = derive from config)"),
+    home: str = typer.Option("", "--home", help="Bot home directory"),
+    install_service: bool = typer.Option(
+        False, "--install-service", help="Also render service files"
+    ),
+    doctor_flag: bool = typer.Option(False, "--doctor", help="Run doctor checks"),
+    output_dir: Path = typer.Option(
+        Path("service-out"), "--output-dir", help="Service file output directory"
+    ),
+    verbose: VerboseOpt = False,
+) -> None:
+    """Set up a profile directory: validate, prepare home, workspace setup, and dry-run."""
+    setup_logging(verbose=verbose)
+    root = load_root_or_exit(config)
+
+    profile_dir = Path(root.profile.root_dir) if root.profile.root_dir else config.resolve().parent
+
+    # Resolve bot home directory.
+    bot_home: Path | None = None
+    if home:
+        bot_home = Path(home)
+    elif user:
+        bot_home = Path(_default_home_for_user(user))
+    elif root.agents:
+        for agent in root.agents:
+            if agent.home:
+                bot_home = Path(agent.home)
+                break
+    if bot_home is None:
+        typer.echo("FAIL: no home directory (use --home or set agent home in config)", err=True)
+        raise typer.Exit(code=2)
+
+    # Count total steps.
+    total = 5
+    if doctor_flag:
+        total += 1
+    if install_service:
+        total += 1
+    n = 0
+
+    def _step_ok(msg: str) -> None:
+        nonlocal n
+        n += 1
+        typer.echo(f"[{n}/{total}] {msg}")
+
+    def _step_fail(msg: str, details: list[str] | None = None) -> None:
+        nonlocal n
+        n += 1
+        typer.echo(f"[{n}/{total}] {msg}", err=True)
+        if details:
+            for d in details:
+                typer.echo(f"  - {d}", err=True)
+        raise typer.Exit(code=1)
+
+    # [1] Validate context providers
+    issues = validate_context_providers(profile_dir)
+    if issues:
+        _step_fail("Validating context providers... FAIL", issues)
+    _step_ok("Validating context providers... ok")
+
+    # [2] Validate role references
+    issues = validate_role_references(profile_dir)
+    if issues:
+        _step_fail("Validating role references... FAIL", issues)
+    _step_ok("Validating role references... ok")
+
+    # [3] Prepare home directory
+    prepare_home(profile_dir, bot_home)
+    _step_ok(f"Preparing home directory... ok — {bot_home}")
+
+    # [4] Setting up workspace
+    sink = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(sink):
+            _run_prepare(root)
+    except typer.Exit as exc:
+        if exc.exit_code != 0:
+            _step_fail("Setting up workspace... FAIL", [sink.getvalue().strip()])
+    _step_ok("Setting up workspace... ok")
+
+    # [5] Validate profile & dry-run
+    if not root.agents:
+        _step_fail("Validating profile & dry-run... FAIL", ["no agents configured"])
+    sink = io.StringIO()
+    try:
+        from marrow_core.cli.service import _run_single_user
+
+        with contextlib.redirect_stdout(sink):
+            asyncio.run(_run_single_user(config, once=True, dry_run=True))
+    except typer.Exit as exc:
+        if exc.exit_code != 0:
+            _step_fail("Validating profile & dry-run... FAIL", [sink.getvalue().strip()])
+    except Exception as exc:
+        _step_fail("Validating profile & dry-run... FAIL", [str(exc)])
+    _step_ok("Validating profile & dry-run... ok")
+
+    # Optional: doctor
+    if doctor_flag:
+        sink = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(sink):
+                _run_doctor_checks(root)
+        except typer.Exit as exc:
+            if exc.exit_code != 0:
+                _step_fail("Running doctor checks... FAIL", [sink.getvalue().strip()])
+        _step_ok("Running doctor checks... ok")
+
+    # Optional: install-service
+    if install_service:
+        if not root.agents:
+            _step_fail("Rendering service files... FAIL", ["no agents configured"])
+        files = render_service_files(
+            platform="auto",
+            core_dir=root.core_dir,
+            service_config_path=resolve_service_config_path("auto", root.service.config_path),
+            service_user=resolve_service_user(root),
+            agent_home=root.agents[0].home,
+            log_dir=resolve_service_log_dir(root),
+        )
+        written = write_service_files(files, output_dir)
+        _step_ok(f"Rendering service files... ok — {len(written)} file(s) to {output_dir}")
+
+    typer.echo("\n✓ Profile setup complete.")
 
 
 @app.command(name="install-service", deprecated=True)

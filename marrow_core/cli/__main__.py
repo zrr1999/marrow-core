@@ -36,6 +36,7 @@ _mirror("validate", ops_module.app, ops_module.validate)
 _mirror("doctor", ops_module.app, ops_module.doctor)
 _mirror("scaffold", ops_module.app, ops_module.scaffold_cmd)
 _mirror("install-service", ops_module.app, ops_module.install_service)
+_mirror("profile-setup", ops_module.app, ops_module.profile_setup)
 _mirror("status", ops_module.app, ops_module.status)
 _mirror("wake", ops_module.app, ops_module.wake)
 
