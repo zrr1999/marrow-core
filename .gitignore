@@ -11,4 +11,5 @@ htmlcov/
 coverage.xml
 marrow_core/_version.py
 .opencode/
+.cursor/
 docs/plans/
