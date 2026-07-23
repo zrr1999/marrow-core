@@ -1,5 +1,10 @@
 # marrow-core Architecture
 
+> **Archived repository:** marrow-core was superseded by
+> [Spark](https://github.com/zrr1999/spark) on 2026-07-23. Keep this repository
+> read-only except for archival or migration corrections. New runtime behavior
+> belongs in Spark.
+
 ## Overview
 
 marrow-core is a minimal runtime package for autonomous agent scheduling. It does not ship a default profile, role tree, or casting workflow.
