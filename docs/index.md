@@ -1,6 +1,15 @@
 # marrow-core
 
-**最小化自演化 agent 调度器，严格隔离核心与演化层。**
+!!! warning "项目已归档"
+
+    marrow-core 已于 2026-07-23 退役，由
+    [Spark](https://github.com/zrr1999/spark) 的 daemon 自治 driver runtime
+    取代。新部署请使用 Spark；现有部署请先阅读
+    [退役与迁移指南](retirement.md)。
+
+**历史上的最小化自演化 agent 调度器，严格隔离核心与演化层。**
+
+以下内容用于维护迁移期间的历史部署，不再代表活跃产品边界。
 
 marrow-core 是一个纯粹的 service/runtime 内核，负责 agent 调度、服务生命周期和运行时自检。它不携带默认配置文件、角色树或 casting 流程——这些均由外部 profile 仓库（如 `marrow-bot`）提供。
 

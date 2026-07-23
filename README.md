@@ -1,8 +1,19 @@
 # marrow-core
 
-Minimal service/runtime kernel for autonomous agent scheduling.
+> [!IMPORTANT]
+> This repository was retired on 2026-07-23 and is archived. For new
+> deployments, use [Spark](https://github.com/zrr1999/spark). Spark's daemon now
+> owns autonomous driver timing, retry, recovery, invocation fencing, and fresh
+> execution continuity.
+>
+> Existing deployments should follow the
+> [retirement and migration guide](docs/retirement.md). Do not run marrow-core
+> and the equivalent Spark driver against the same workspace at the same time.
 
-> Migration note: `marrow-core` is being narrowed to service ownership only. Task systems, work-item models, and workflow repos now live outside the active core boundary.
+Historical service/runtime kernel for autonomous agent scheduling.
+
+The remainder of this README documents the final marrow-core release for
+operators maintaining a migration. It is no longer an active product surface.
 
 ## Prompt model
 

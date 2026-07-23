@@ -1,5 +1,11 @@
 # 快速入门
 
+!!! warning "仅用于迁移旧部署"
+
+    不要基于 marrow-core 创建新部署。请使用
+    [Spark](https://github.com/zrr1999/spark)，或先阅读
+    [退役与迁移指南](retirement.md) 再处理现有实例。
+
 ## 安装
 
 ### 推荐：通过 uvx 运行（无需本地安装）
